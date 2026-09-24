@@ -1,0 +1,47 @@
+@import "tailwindcss";
+@import "./styles/tokens.css";
+
+@layer utilities {
+  .text-page-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 2rem;
+    color: var(--color-neutral-900);
+  }
+  .text-section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.75rem;
+    color: var(--color-neutral-900);
+  }
+  .text-card-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.5rem;
+    color: var(--color-neutral-900);
+  }
+  .text-meta {
+    font-size: 0.8125rem;
+    color: var(--color-neutral-500);
+  }
+  .text-caption {
+    font-size: 0.75rem;
+    color: var(--color-neutral-400);
+  }
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--color-neutral-50);
+  color: var(--color-neutral-900);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}

@@ -1,0 +1,66 @@
+@theme {
+  /* Brand */
+  --color-brand-50:  #eef4ff;
+  --color-brand-100: #dce8ff;
+  --color-brand-300: #93b4ff;
+  --color-brand-500: #3366ff;   /* primary chính, dùng cho nút/link chính */
+  --color-brand-600: #2952d9;
+  --color-brand-700: #1f3fad;
+
+  /* Neutral (nền, text, border) */
+  --color-neutral-0:   #ffffff;
+  --color-neutral-50:  #f8fafc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0f172a;
+
+  /* 5 Semantic Tiers */
+  --color-tier-neutral-bg:     var(--color-neutral-100);
+  --color-tier-neutral-text:   var(--color-neutral-600);
+  --color-tier-neutral-border: var(--color-neutral-200);
+  --color-tier-neutral-dot:    var(--color-neutral-400);
+
+  --color-tier-pending-bg:     #e8effe;   /* xanh dương nhạt */
+  --color-tier-pending-text:   #2952d9;
+  --color-tier-pending-border: #c7d7fb;
+  --color-tier-pending-dot:    #3366ff;
+
+  --color-tier-attention-bg:     #fef6e7; /* vàng hổ phách */
+  --color-tier-attention-text:   #92620a;
+  --color-tier-attention-border: #f9e3b3;
+  --color-tier-attention-dot:    #d9910b;
+
+  --color-tier-success-bg:     #e7f7ee;  /* xanh lá */
+  --color-tier-success-text:   #16794a;
+  --color-tier-success-border: #bfead2;
+  --color-tier-success-dot:    #1fa15c;
+
+  --color-tier-danger-bg:      #fdecec;  /* đỏ */
+  --color-tier-danger-text:    #b3261e;
+  --color-tier-danger-border:  #f7c9c7;
+  --color-tier-danger-dot:     #dc3c33;
+
+  /* Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-full: 9999px;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.05);
+  --shadow-md: 0 4px 12px -2px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.04);
+  --shadow-lg: 0 12px 32px -8px rgb(15 23 42 / 0.16);
+
+  /* Elevation */
+  --z-sticky-header: 30;
+  --z-dropdown: 40;
+  --z-dialog-overlay: 50;
+  --z-dialog: 51;
+  --z-toast: 60;
+}
