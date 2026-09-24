@@ -1,5 +1,10 @@
 import React from 'react';
-import { Outlet, useParams, NavLink, Link } from 'react-router-dom';
+import { Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ContextHeader } from '@/components/shared/ContextHeader';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { Badge } from '@/components/ui/Badge';
+import { useAuthStore } from '@/store/authStore';
+import { seedClubs } from '@/mocks/data/clubs';
 import {
   LayoutGrid,
   CalendarDays,
@@ -9,30 +14,47 @@ import {
   UserPlus,
   Wallet,
   Settings,
-  ArrowLeft,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/Badge';
-import { useAuthStore } from '@/store/authStore';
-import { seedClubs } from '@/mocks/data/clubs';
-import { cn } from '@/lib/cn';
 
 export const ClubWorkspaceShell: React.FC = () => {
   const { clubId = 'club_01' } = useParams<{ clubId: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
   const clubRole = useAuthStore((state) => state.clubRole);
-  const myRole = clubRole(clubId) || 'manager'; // Default fallback for seed manager demo
+  const myRole = clubRole(clubId) || 'manager';
 
   const club = seedClubs.find((c) => c.id === clubId) || seedClubs[0];
 
-  const menuItems = [
-    { key: 'overview', label: 'Tổng quan', href: 'overview', icon: LayoutGrid, show: () => true },
-    { key: 'events', label: 'Sự kiện', href: 'events', icon: CalendarDays, show: () => true },
-    { key: 'tasks', label: 'Nhiệm vụ', href: 'tasks', icon: ListChecks, show: () => true },
-    { key: 'chat', label: 'Chat CLB', href: 'chat', icon: MessageCircle, show: () => true },
-    { key: 'members', label: 'Thành viên', href: 'members', icon: Users, show: () => true },
-    { key: 'recruitments', label: 'Tuyển thành viên', href: 'recruitments', icon: UserPlus, show: (role: string) => role === 'manager' },
-    { key: 'finance', label: 'Quỹ CLB', href: 'finance', icon: Wallet, show: (role: string) => role === 'manager' || role === 'treasurer' },
-    { key: 'settings', label: 'Cài đặt', href: 'settings', icon: Settings, show: (role: string) => role === 'manager' },
+  const pathParts = location.pathname.split('/');
+  const activeTab = pathParts[pathParts.length - 1] || 'overview';
+
+  const allMenuItems = [
+    { value: 'overview', label: 'Tổng quan', icon: LayoutGrid, show: () => true },
+    { value: 'events', label: 'Sự kiện', icon: CalendarDays, show: () => true },
+    { value: 'tasks', label: 'Nhiệm vụ', icon: ListChecks, show: () => true },
+    { value: 'chat', label: 'Chat CLB', icon: MessageCircle, show: () => true },
+    { value: 'members', label: 'Thành viên', icon: Users, show: () => true },
+    {
+      value: 'recruitments',
+      label: 'Tuyển thành viên',
+      icon: UserPlus,
+      show: (role: string) => role === 'manager' || role === 'lead',
+    },
+    {
+      value: 'finance',
+      label: 'Quỹ CLB',
+      icon: Wallet,
+      show: (role: string) => role === 'manager' || role === 'treasurer' || role === 'lead',
+    },
+    {
+      value: 'settings',
+      label: 'Cài đặt',
+      icon: Settings,
+      show: (role: string) => role === 'manager' || role === 'lead',
+    },
   ];
+
+  const visibleTabs = allMenuItems.filter((item) => item.show(myRole));
 
   const roleLabelMap: Record<string, string> = {
     manager: 'Ban Quản Lý (Manager)',
@@ -42,71 +64,44 @@ export const ClubWorkspaceShell: React.FC = () => {
     vice: 'Phó ban (Vice)',
   };
 
+  const handleTabChange = (val: string) => {
+    navigate(`/clubs/${clubId}/workspace/${val}`);
+  };
+
   return (
     <div className="space-y-6">
-      {/* Workspace Header */}
-      <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Link
-              to={`/clubs/${clubId}`}
-              className="p-2 -ml-2 text-neutral-400 hover:text-neutral-700 transition-colors"
-              title="Về trang giới thiệu CLB"
-            >
-              <ArrowLeft size={20} />
-            </Link>
-            {club.logoUrl ? (
-              <img
-                src={club.logoUrl}
-                alt={club.name}
-                className="h-14 w-14 rounded-xl object-cover border border-neutral-100 shadow-xs"
-              />
-            ) : (
-              <div className="h-14 w-14 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold text-lg">
-                {club.name[0]}
-              </div>
-            )}
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-section-title text-neutral-900">{club.name}</h2>
-                <Badge tier="brand" size="sm">
-                  {roleLabelMap[myRole]}
-                </Badge>
-              </div>
-              <p className="text-meta text-neutral-500 mt-0.5">{club.field} — Không gian làm việc nội bộ CLB</p>
-            </div>
-          </div>
-        </div>
+      {/* ContextHeader for nested workspace with explicit backHref */}
+      <ContextHeader
+        backHref={`/clubs/${clubId}`}
+        title={`Workspace: ${club.name}`}
+        subtitle={`${club.field} • Không gian làm việc nội bộ`}
+        avatar={{
+          src: club.logoUrl,
+          name: club.name,
+        }}
+        actions={
+          <Badge tier="brand" size="sm">
+            {roleLabelMap[myRole] || 'Thành viên CLB'}
+          </Badge>
+        }
+      />
 
-        {/* Tab Navigation Menu */}
-        <div className="flex items-center gap-2 border-t border-neutral-100 mt-6 pt-2 overflow-x-auto">
-          {menuItems
-            .filter((item) => item.show(myRole))
-            .map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.key}
-                  to={`/clubs/${clubId}/workspace/${item.href}`}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-medium transition-colors whitespace-nowrap',
-                      isActive
-                        ? 'bg-brand-50 text-brand-700 font-semibold'
-                        : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
-                    )
-                  }
-                >
-                  <Icon size={16} />
-                  <span>{item.label}</span>
-                </NavLink>
-              );
-            })}
-        </div>
+      {/* SegmentedControl Workspace Sub-Menu */}
+      <div className="flex items-center pb-2 overflow-x-auto">
+        <SegmentedControl
+          options={visibleTabs}
+          value={activeTab}
+          onValueChange={handleTabChange}
+          size="md"
+        />
       </div>
 
-      {/* Nested View */}
-      <Outlet />
+      {/* Workspace Active Tab View */}
+      <div className="pt-1">
+        <Outlet />
+      </div>
     </div>
   );
 };
+
+export default ClubWorkspaceShell;

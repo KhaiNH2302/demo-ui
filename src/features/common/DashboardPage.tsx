@@ -1,234 +1,351 @@
-import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Repeat2,
-  UsersRound,
-  Building2,
-  Sparkles,
-  CalendarDays,
-  BookOpen,
-  CheckCircle2,
-  ArrowRight,
-  Clock,
-} from 'lucide-react';
-import { PageHeader } from '@/components/shared/PageHeader';
-import { SummaryCard } from '@/components/shared/SummaryCard';
-import { QueryBoundary } from '@/components/shared/QueryBoundary';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { apiClient } from '@/lib/apiClient';
+import { useAuthStore } from '@/store/authStore';
+import { ActionStrip, type ActionItem } from '@/components/shared/ActionStrip';
+import { FeedCard } from '@/components/shared/FeedCard';
+import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { useAuthStore } from '@/store/authStore';
-import { apiClient } from '@/lib/apiClient';
-import { queryKeys } from '@/lib/queryKeys';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import {
+  Sparkles,
+  Repeat2,
+  UsersRound,
+  Calendar,
+  BookOpen,
+  GraduationCap,
+  MessageCircle,
+  ArrowRight,
+  Send,
+  Plus,
+  Compass,
+} from 'lucide-react';
+import { formatDate } from '@/lib/format';
 
-export default function DashboardPage() {
-  const user = useAuthStore((state) => state.user);
+import DiscoverPage from '@/features/discover/DiscoverPage';
+
+export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const [mobileTab, setMobileTab] = useState<'feed' | 'discover'>('feed');
 
-  const summaryQuery = useQuery({
-    queryKey: queryKeys.dashboard.summary,
-    queryFn: () => apiClient.get('/dashboard/summary') as Promise<{
-      metrics: {
-        openSwaps: number;
-        pendingSwapConns: number;
-        pendingGroupRequests: number;
-        myClubApps: number;
-        pendingMentoring: number;
-        upcomingEvents: number;
-        recentPosts: number;
-      };
-      actionItems: { id: string; title: string; linkTo: string; type: string; time: string }[];
-    }>,
+  // Fetch pending action items
+  const actionItemsQuery = useQuery({
+    queryKey: ['dashboard', 'action-items'],
+    queryFn: async () => {
+      // Mock data for action strip
+      const items: ActionItem[] = [
+        {
+          id: 'act_1',
+          type: 'swap',
+          title: 'Lời mời đổi lớp PRN231 cần xác nhận',
+          count: 2,
+          linkTo: '/swap/connections',
+        },
+        {
+          id: 'act_2',
+          type: 'group',
+          title: 'Yêu cầu gia nhập nhóm SWP391',
+          count: 1,
+          linkTo: '/groups/me',
+        },
+        {
+          id: 'act_3',
+          type: 'club',
+          title: 'Đơn tuyển CLB JS Club có lịch phỏng vấn',
+          count: 1,
+          linkTo: '/applications',
+        },
+        {
+          id: 'act_4',
+          type: 'mentoring',
+          title: 'Yêu cầu tư vấn CSD201 đang chờ phản hồi',
+          count: 1,
+          linkTo: '/mentoring/requests',
+        },
+      ];
+      return items;
+    },
   });
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={`Xin chào, ${user?.fullName || 'Sinh viên'}! 👋`}
-        description="Chào mừng bạn quay trở lại với Hệ thống kết nối sinh viên SCS"
-        actions={
-          <div className="flex items-center gap-2">
-            <Link to="/swap/new">
-              <Button size="sm" variant="outline" leftIcon={<Repeat2 size={14} />}>
-                Đổi lớp
-              </Button>
-            </Link>
-            <Link to="/groups/new">
-              <Button size="sm" variant="outline" leftIcon={<UsersRound size={14} />}>
-                Tạo nhóm
-              </Button>
-            </Link>
-          </div>
-        }
-      />
+      {/* Mobile Tab Switcher between Feed and Discover */}
+      <div className="md:hidden flex items-center justify-center pb-1">
+        <SegmentedControl
+          options={[
+            { value: 'feed', label: 'Bảng tin hoạt động', icon: Sparkles },
+            { value: 'discover', label: 'Khám phá cộng đồng', icon: Compass },
+          ]}
+          value={mobileTab}
+          onValueChange={(v) => setMobileTab(v as any)}
+          size="md"
+          fullWidth
+        />
+      </div>
 
-      <QueryBoundary query={summaryQuery}>
-        {(data) => (
-          <div className="space-y-6">
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <SummaryCard
-                icon={Repeat2}
-                label="Yêu cầu Đổi lớp mở"
-                value={data.metrics.openSwaps}
-                tone="pending"
-                onClick={() => navigate('/swap')}
-              />
-              <SummaryCard
-                icon={UsersRound}
-                label="Lời mời & Yêu cầu nhóm"
-                value={data.metrics.pendingGroupRequests}
-                tone="attention"
-                onClick={() => navigate('/groups/me')}
-              />
-              <SummaryCard
-                icon={Sparkles}
-                label="Mentoring đang chờ"
-                value={data.metrics.pendingMentoring}
-                tone="brand"
-                onClick={() => navigate('/mentoring/requests')}
-              />
-              <SummaryCard
-                icon={CalendarDays}
-                label="Sự kiện CLB sắp tới"
-                value={data.metrics.upcomingEvents}
-                tone="success"
-                onClick={() => navigate('/clubs')}
-              />
+      {mobileTab === 'discover' ? (
+        <DiscoverPage />
+      ) : (
+        <div className="space-y-6">
+          {/* Welcome Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200/60 pb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">
+                Xin chào, {user?.fullName || 'Sinh viên'} 👋
+              </h1>
+              <p className="text-xs text-neutral-500 mt-0.5">
+                Cập nhật các hoạt động học tập, kết nối lớp học và sự kiện mới nhất tại trường
+              </p>
             </div>
 
-            {/* 2-column layout for Action Items & Quick Shortcuts */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left 2-col: Việc cần xử lý */}
-              <div className="lg:col-span-2 space-y-4">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between w-full">
-                      <CardTitle className="text-sm font-semibold flex items-center gap-2 text-neutral-900">
-                        <CheckCircle2 size={18} className="text-brand-600" /> Việc cần xử lý
-                      </CardTitle>
-                      <Badge tier="attention" size="sm">
-                        {data.actionItems.length} mục
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="divide-y divide-neutral-100">
-                    {data.actionItems.length === 0 ? (
-                      <div className="py-8 text-center text-xs text-neutral-400">
-                        Tuyệt vời! Không có việc nào đang chờ bạn xử lý.
-                      </div>
-                    ) : (
-                      data.actionItems.map((item) => (
-                        <div
-                          key={item.id}
-                          onClick={() => navigate(item.linkTo)}
-                          className="flex items-center justify-between py-3 px-2 hover:bg-neutral-50 rounded-md transition-colors cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <span className="h-2 w-2 rounded-full bg-brand-500 shrink-0" />
-                            <div className="min-w-0">
-                              <p className="text-xs font-semibold text-neutral-900 truncate">{item.title}</p>
-                              <div className="flex items-center gap-1 text-[11px] text-neutral-400 mt-0.5">
-                                <Clock size={12} /> {item.time}
-                              </div>
-                            </div>
-                          </div>
-                          <Button variant="ghost" size="sm" className="text-brand-600 hover:text-brand-700 shrink-0">
-                            Xem ngay <ArrowRight size={14} className="ml-1" />
-                          </Button>
-                        </div>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={() => navigate('/swap/new')} leftIcon={<Repeat2 size={15} />}>
+                Đổi lịch học
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => navigate('/discover')} leftIcon={<Compass size={15} />}>
+                Khám phá
+              </Button>
+            </div>
+          </div>
 
-                {/* Quick explore banners */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div
-                    onClick={() => navigate('/swap/new')}
-                    className="p-4 rounded-xl border border-brand-200 bg-brand-50/40 hover:bg-brand-50/70 transition-colors cursor-pointer flex items-center justify-between"
-                  >
-                    <div>
-                      <h4 className="text-xs font-bold text-neutral-900">Đăng bài Đổi Lớp mới</h4>
-                      <p className="text-[11px] text-neutral-600 mt-0.5">Tìm bạn đối ứng đổi mã lớp với AI matching</p>
+          {/* Action Strip: Urgent Pending Tasks */}
+          <ActionStrip items={actionItemsQuery.data || []} />
+
+          {/* Social Activity Feed (Infinite Stream Layout) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-1">
+            {/* Main Stream (2 cols) */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className="flex items-center justify-between pb-1">
+                <h3 className="text-sm font-bold text-neutral-800 flex items-center gap-1.5">
+                  <Sparkles size={16} className="text-brand-500" /> Bảng tin tổng hợp
+                </h3>
+                <span className="text-xs text-neutral-400">Tự động gợi ý theo hồ sơ</span>
+              </div>
+
+              {/* Feed Card 1: Swap Match Recommendation */}
+              <FeedCard
+                kind="swap-match"
+                context="Gợi ý hoán đổi lớp học · Đối ứng hoàn hảo"
+                badgeText="Độ khớp 98%"
+                badgeVariant="success"
+                actions={
+                  <>
+                    <span className="text-xs text-neutral-500">Môn: SWP391 • Kỳ Fall 2026</span>
+                    <Button size="sm" onClick={() => navigate('/swap')}>
+                      Xem & Gửi lời mời <ArrowRight size={14} className="ml-1" />
+                    </Button>
+                  </>
+                }
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <Avatar name="Trần Văn Minh" size="md" />
+                      <div>
+                        <h4 className="text-sm font-bold text-neutral-900">Trần Văn Minh</h4>
+                        <p className="text-[11px] text-neutral-400">Đại học FPT Hà Nội</p>
+                      </div>
                     </div>
-                    <Repeat2 size={24} className="text-brand-600 shrink-0 ml-2" />
+                    <Badge tier="success">Đối ứng hoàn hảo</Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-neutral-50 border border-neutral-100 text-xs">
+                    <div>
+                      <span className="text-neutral-400 block text-[10px] uppercase">Lớp của Minh:</span>
+                      <span className="font-bold text-neutral-800">SE1701 (Thứ 2, 4, 6)</span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-400 block text-[10px] uppercase">Lớp mong muốn:</span>
+                      <span className="font-bold text-brand-600">SE1703 (Lớp của bạn)</span>
+                    </div>
+                  </div>
+                </div>
+              </FeedCard>
+
+              {/* Feed Card 2: AI Group Suggestion */}
+              <FeedCard
+                kind="group-suggestion"
+                context="Gợi ý nhóm học tập · AI Match"
+                badgeText="Khớp 95% kỹ năng"
+                badgeVariant="brand"
+                actions={
+                  <>
+                    <span className="text-xs text-neutral-500">Còn trống 2 vị trí thành viên</span>
+                    <Button size="sm" variant="outline" onClick={() => navigate('/groups')}>
+                      Xem nhóm <ArrowRight size={14} className="ml-1" />
+                    </Button>
+                  </>
+                }
+              >
+                <div className="space-y-2.5">
+                  <h4 className="text-base font-bold text-neutral-900">
+                    Nhóm làm đồ án Tốt nghiệp Capstone Project — AI & Web App
+                  </h4>
+                  <p className="text-xs text-neutral-600 line-clamp-2 leading-relaxed">
+                    Nhóm đã có 3 thành viên phụ trách Backend và Mobile. Cần tuyển thêm 1 bạn làm Frontend React và 1 bạn Tester có kiến thức Automation.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <Badge variant="secondary">React</Badge>
+                    <Badge variant="secondary">TypeScript</Badge>
+                    <Badge variant="secondary">Spring Boot</Badge>
+                    <Badge variant="secondary">FastAPI</Badge>
+                  </div>
+                </div>
+              </FeedCard>
+
+              {/* Feed Card 3: Knowledge Document Sharing */}
+              <FeedCard
+                kind="knowledge"
+                context="Tài liệu nổi bật · CSD201"
+                badgeText="Tài liệu"
+                badgeVariant="attention"
+                actions={
+                  <>
+                    <span className="text-xs text-neutral-400 flex items-center gap-1.5">
+                      <MessageCircle size={14} /> 12 thảo luận • 45 lượt tải
+                    </span>
+                    <Button size="sm" variant="ghost" onClick={() => navigate('/knowledge')}>
+                      Đọc chi tiết <ArrowRight size={14} className="ml-1" />
+                    </Button>
+                  </>
+                }
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Avatar name="Lê Hoàng Long" size="sm" />
+                    <span className="text-xs font-semibold text-neutral-800">Lê Hoàng Long</span>
+                    <span className="text-xs text-neutral-400">• 2 giờ trước</span>
+                  </div>
+                  <h4 className="text-base font-bold text-neutral-900 hover:text-brand-600 transition-colors">
+                    Tổng hợp bộ đề ôn thi Practical Exam CSD201 có lời giải mẫu các thuật toán Tree & Graph
+                  </h4>
+                  <p className="text-xs text-neutral-600 line-clamp-2 leading-relaxed">
+                    Tài liệu bao gồm 15 bài toán cốt lõi môn Cấu trúc dữ liệu và Giải thuật thường ra trong đề thi Practical Exam tại Đại học FPT, kèm code Java chuẩn tối ưu.
+                  </p>
+                </div>
+              </FeedCard>
+
+              {/* Feed Card 4: Club Event */}
+              <FeedCard
+                kind="event"
+                context="Sự kiện CLB sắp diễn ra · F-Code Club"
+                badgeText="Mở đăng ký"
+                badgeVariant="pending"
+                actions={
+                  <>
+                    <span className="text-xs text-neutral-500">Địa điểm: Hội trường Alpha, FPTU</span>
+                    <Button size="sm" onClick={() => navigate('/clubs')}>
+                      Đăng ký tham gia <ArrowRight size={14} className="ml-1" />
+                    </Button>
+                  </>
+                }
+              >
+                <div className="space-y-2">
+                  <h4 className="text-base font-bold text-neutral-900">
+                    Workshop: Làm chủ AI Prompt Engineering & Ứng dụng GitHub Copilot cho sinh viên CNTT
+                  </h4>
+                  <p className="text-xs text-neutral-600 line-clamp-2 leading-relaxed">
+                    Diễn giả từ cựu sinh viên FPT Software chia sẻ kinh nghiệm ứng dụng AI Agent và công cụ sinh code thông minh trong các dự án thực tế.
+                  </p>
+                  <div className="flex items-center gap-4 text-xs text-neutral-500 pt-1">
+                    <span className="flex items-center gap-1">
+                      <Calendar size={14} className="text-brand-500" /> Thứ 7, 28/09/2026 (08:30 - 11:30)
+                    </span>
+                  </div>
+                </div>
+              </FeedCard>
+            </div>
+
+            {/* Right Sidebar: Shortcuts & Highlights (1 col) */}
+            <div className="space-y-6">
+              {/* Quick Profile Summary */}
+              <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs space-y-4">
+                <div className="flex items-center gap-3">
+                  <Avatar src={user?.avatarUrl} name={user?.fullName} size="lg" />
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-bold text-neutral-900 truncate">{user?.fullName}</h4>
+                    <p className="text-xs text-neutral-500 truncate">{user?.email}</p>
+                    <Badge tier="brand" size="sm" className="mt-1">
+                      Sinh viên FPTU
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="border-t border-neutral-100 pt-3 flex items-center justify-between text-xs text-neutral-500">
+                  <span>Mức độ hoàn thiện hồ sơ</span>
+                  <span className="font-bold text-brand-600">85%</span>
+                </div>
+
+                <Button variant="outline" size="sm" className="w-full" onClick={() => navigate('/profile/me')}>
+                  Cập nhật tiêu chí Matching
+                </Button>
+              </div>
+
+              {/* Quick Discover Tiles */}
+              <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs space-y-3">
+                <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                  Khám phá nhanh
+                </h4>
+
+                <div className="space-y-2">
+                  <div
+                    onClick={() => navigate('/discover?tab=groups')}
+                    className="flex items-center justify-between p-3 rounded-xl border border-neutral-100 hover:border-brand-300 hover:bg-brand-50/20 transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                        <UsersRound size={18} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-neutral-800">Tìm nhóm học tập</p>
+                        <p className="text-[11px] text-neutral-400">18 nhóm đang tuyển thành viên</p>
+                      </div>
+                    </div>
+                    <ArrowRight size={14} className="text-neutral-400" />
                   </div>
 
                   <div
-                    onClick={() => navigate('/mentoring/ai')}
-                    className="p-4 rounded-xl border border-indigo-200 bg-indigo-50/40 hover:bg-indigo-50/70 transition-colors cursor-pointer flex items-center justify-between"
+                    onClick={() => navigate('/discover?tab=clubs')}
+                    className="flex items-center justify-between p-3 rounded-xl border border-neutral-100 hover:border-brand-300 hover:bg-brand-50/20 transition-all cursor-pointer"
                   >
-                    <div>
-                      <h4 className="text-xs font-bold text-neutral-900">Tìm Mentor với AI</h4>
-                      <p className="text-[11px] text-neutral-600 mt-0.5">Nhập nhu cầu học tập để nhận gợi ý Mentor phù hợp</p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                        <Calendar size={18} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-neutral-800">CLB & Tổ chức sinh viên</p>
+                        <p className="text-[11px] text-neutral-400">6 CLB đang mở đợt tuyển</p>
+                      </div>
                     </div>
-                    <Sparkles size={24} className="text-indigo-600 shrink-0 ml-2" />
+                    <ArrowRight size={14} className="text-neutral-400" />
+                  </div>
+
+                  <div
+                    onClick={() => navigate('/discover?tab=mentors')}
+                    className="flex items-center justify-between p-3 rounded-xl border border-neutral-100 hover:border-brand-300 hover:bg-brand-50/20 transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 text-purple-600">
+                        <GraduationCap size={18} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-neutral-800">Mentor hướng dẫn</p>
+                        <p className="text-[11px] text-neutral-400">Tư vấn 1-1 qua AI & Chat</p>
+                      </div>
+                    </div>
+                    <ArrowRight size={14} className="text-neutral-400" />
                   </div>
                 </div>
               </div>
-
-              {/* Right column: Quick Navigation & Stats */}
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm font-semibold">Khám phá module SCS</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <Link
-                      to="/knowledge"
-                      className="flex items-center justify-between p-2.5 rounded-lg border border-neutral-100 hover:bg-neutral-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5 text-xs font-medium text-neutral-800">
-                        <BookOpen size={16} className="text-emerald-600" />
-                        <span>Kho kiến thức & Tài liệu</span>
-                      </div>
-                      <Badge tier="neutral" size="sm">{data.metrics.recentPosts}</Badge>
-                    </Link>
-
-                    <Link
-                      to="/clubs"
-                      className="flex items-center justify-between p-2.5 rounded-lg border border-neutral-100 hover:bg-neutral-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5 text-xs font-medium text-neutral-800">
-                        <Building2 size={16} className="text-blue-600" />
-                        <span>Câu lạc bộ sinh viên</span>
-                      </div>
-                      <Badge tier="neutral" size="sm">F-Code, JS...</Badge>
-                    </Link>
-
-                    <Link
-                      to="/groups"
-                      className="flex items-center justify-between p-2.5 rounded-lg border border-neutral-100 hover:bg-neutral-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5 text-xs font-medium text-neutral-800">
-                        <UsersRound size={16} className="text-purple-600" />
-                        <span>Nhóm học tập & Đồ án</span>
-                      </div>
-                      <Badge tier="neutral" size="sm">SWP391...</Badge>
-                    </Link>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-neutral-900 text-white p-5">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-brand-300">
-                    <Sparkles size={16} /> SCS Smart Matching 2026
-                  </div>
-                  <p className="text-xs text-neutral-300 mt-2 leading-relaxed">
-                    Hệ thống ứng dụng thuật toán so khớp lịch học tự khai kết hợp AI giúp tăng tỷ lệ kết nối đổi lớp và tìm bạn đồng hành lên đến 92%.
-                  </p>
-                  <Link to="/profile/me">
-                    <Button variant="secondary" size="sm" className="w-full mt-4 bg-neutral-800 text-white border-neutral-700 hover:bg-neutral-700">
-                      Cập nhật tiêu chí matching
-                    </Button>
-                  </Link>
-                </Card>
-              </div>
             </div>
           </div>
-        )}
-      </QueryBoundary>
+        </div>
+      )}
     </div>
   );
-}
+};
+
+export default DashboardPage;

@@ -17,6 +17,7 @@ import OnboardingPage from '@/features/auth/OnboardingPage';
 
 // Common Pages
 import DashboardPage from '@/features/common/DashboardPage';
+import DiscoverPage from '@/features/discover/DiscoverPage';
 import ErrorPage from '@/features/common/ErrorPage';
 
 // Profile
@@ -120,6 +121,7 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: 'discover', element: <DiscoverPage /> },
       { path: 'profile/me', element: <ProfilePage /> },
       { path: 'users/:id', element: <PublicProfilePage /> },
       { path: 'notifications', element: <NotificationsPage /> },

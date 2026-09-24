@@ -27,7 +27,7 @@ export const AdminShell: React.FC = () => {
   const hasRole = useAuthStore((state) => state.hasRole);
   const navigate = useNavigate();
 
-  const isSystemAdmin = hasRole('system_admin');
+  const isSystemAdmin = hasRole('system_admin') || hasRole('SystemAdmin');
 
   const navItems = [
     { to: '/admin', label: 'Tổng quan (Dashboard)', icon: LayoutDashboard, end: true },
@@ -41,9 +41,9 @@ export const AdminShell: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-100 flex flex-col">
+    <div className="min-h-screen bg-neutral-100 flex flex-col antialiased">
       {/* Topbar Admin */}
-      <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-neutral-200 bg-neutral-900 text-white px-4 md:px-8 shadow-sm">
+      <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-neutral-800 bg-neutral-900 text-white px-4 md:px-8 shadow-sm">
         <div className="flex items-center gap-3">
           <IconButton
             variant="ghost"
@@ -81,7 +81,7 @@ export const AdminShell: React.FC = () => {
                 navigate('/login');
               }}
               title="Đăng xuất"
-              className="text-neutral-400 hover:text-rose-400 p-1 transition-colors ml-2"
+              className="text-neutral-400 hover:text-rose-400 p-1 transition-colors ml-2 cursor-pointer"
             >
               <LogOut size={16} />
             </button>
@@ -92,7 +92,7 @@ export const AdminShell: React.FC = () => {
       {/* Main layout */}
       <div className="flex flex-1">
         {/* Sidebar Desktop */}
-        <aside className="hidden lg:flex w-64 flex-col border-r border-neutral-200 bg-white p-4 shrink-0 shadow-xs">
+        <aside className="hidden lg:flex w-64 flex-col justify-between border-r border-neutral-200 bg-white p-4 shrink-0 shadow-xs">
           <nav className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -103,7 +103,7 @@ export const AdminShell: React.FC = () => {
                   end={item.end}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center gap-3 rounded-md px-3.5 py-2.5 text-xs font-medium transition-colors',
+                      'flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-xs font-medium transition-colors',
                       isActive
                         ? 'bg-purple-50 text-purple-700 font-semibold'
                         : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
@@ -116,43 +116,67 @@ export const AdminShell: React.FC = () => {
               );
             })}
           </nav>
+
+          {/* Persistent Return to Social Surface Link */}
+          <div className="pt-4 border-t border-neutral-100">
+            <Link
+              to="/"
+              className="flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 transition-colors"
+            >
+              <ArrowLeft size={16} />
+              <span>← Về ứng dụng SCS</span>
+            </Link>
+          </div>
         </aside>
 
         {/* Drawer Mobile */}
         {mobileOpen && (
           <div className="fixed inset-0 z-40 lg:hidden flex">
             <div className="fixed inset-0 bg-neutral-900/50" onClick={() => setMobileOpen(false)} />
-            <div className="relative w-64 max-w-xs bg-white p-4 flex flex-col shadow-xl z-50">
-              <div className="flex items-center justify-between pb-3 border-b border-neutral-100 mb-3">
-                <span className="font-bold text-sm text-neutral-900">Quản trị hệ thống</span>
-                <IconButton variant="ghost" size="sm" aria-label="Đóng" onClick={() => setMobileOpen(false)}>
-                  <X size={18} />
-                </IconButton>
+            <div className="relative w-64 max-w-xs bg-white p-4 flex flex-col justify-between shadow-xl z-50">
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-neutral-100 mb-3">
+                  <span className="font-bold text-sm text-neutral-900">Quản trị hệ thống</span>
+                  <IconButton variant="ghost" size="sm" aria-label="Đóng" onClick={() => setMobileOpen(false)}>
+                    <X size={18} />
+                  </IconButton>
+                </div>
+                <nav className="space-y-1">
+                  {navItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        end={item.end}
+                        onClick={() => setMobileOpen(false)}
+                        className={({ isActive }) =>
+                          cn(
+                            'flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-xs font-medium transition-colors',
+                            isActive
+                              ? 'bg-purple-50 text-purple-700 font-semibold'
+                              : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+                          )
+                        }
+                      >
+                        <Icon size={18} />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    );
+                  })}
+                </nav>
               </div>
-              <nav className="space-y-1">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      end={item.end}
-                      onClick={() => setMobileOpen(false)}
-                      className={({ isActive }) =>
-                        cn(
-                          'flex items-center gap-3 rounded-md px-3.5 py-2.5 text-xs font-medium transition-colors',
-                          isActive
-                            ? 'bg-purple-50 text-purple-700 font-semibold'
-                            : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
-                        )
-                      }
-                    >
-                      <Icon size={18} />
-                      <span>{item.label}</span>
-                    </NavLink>
-                  );
-                })}
-              </nav>
+
+              <div className="pt-4 border-t border-neutral-100">
+                <Link
+                  to="/"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 transition-colors"
+                >
+                  <ArrowLeft size={16} />
+                  <span>← Về ứng dụng SCS</span>
+                </Link>
+              </div>
             </div>
           </div>
         )}
@@ -165,3 +189,5 @@ export const AdminShell: React.FC = () => {
     </div>
   );
 };
+
+export default AdminShell;
