@@ -5,10 +5,12 @@ import { formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import type { Conversation } from '@/types/entities';
 
-const kindLabels = {
+const kindLabels: Record<Conversation['kind'], string> = {
   swap: '🔄 Đổi lớp',
   mentoring: '🎓 Mentoring',
   club: '🏛️ CLB',
+  group: '👥 Nhóm',
+  direct: '💬 Trực tiếp',
 };
 
 export interface ConversationListProps {

@@ -11,6 +11,14 @@ import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/cn';
 import type { Message, Conversation } from '@/types/entities';
 
+const kindLabels: Record<Conversation['kind'], string> = {
+  swap: '🔄 Đổi lớp',
+  mentoring: '🎓 Mentoring',
+  club: '🏛️ CLB',
+  group: '👥 Nhóm',
+  direct: '💬 Trực tiếp',
+};
+
 export interface ChatWindowProps {
   conversationId: string;
   conversation?: Conversation;
@@ -71,7 +79,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
         {conversation && (
           <Badge tier="neutral" size="sm">
-            {conversation.kind.toUpperCase()}
+            {kindLabels[conversation.kind] || conversation.kind}
           </Badge>
         )}
       </div>

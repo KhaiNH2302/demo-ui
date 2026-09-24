@@ -169,36 +169,34 @@ export const router = createBrowserRouter([
       { path: 'mentor/posts', element: <MentorPostsPage /> },
       { path: 'mentor/requests', element: <MentorRequestsPage /> },
 
+      // FE-04: Club Workspace (ClubWorkspaceShell) — LỒNG bên trong AppShell,
+      // để IconRailNav/Topbar/BottomTabBar không bao giờ biến mất (xem
+      // design-system/03-patterns.md § 7.5 và § 9). Không tách thành route gốc riêng.
+      {
+        path: 'clubs/:clubId/workspace',
+        element: <ClubWorkspaceShell />,
+        children: [
+          { index: true, element: <Navigate to="overview" replace /> },
+          { path: 'overview', element: <ClubOverviewPage /> },
+          { path: 'events', element: <ClubEventsPage /> },
+          { path: 'events/new', element: <ClubEventFormPage /> },
+          { path: 'events/:eventId', element: <ClubEventDetailPage /> },
+          { path: 'events/:eventId/edit', element: <ClubEventFormPage /> },
+          { path: 'tasks', element: <ClubTasksPage /> },
+          { path: 'chat', element: <ClubChatPage /> },
+          { path: 'members', element: <ClubMembersPage /> },
+          { path: 'recruitments', element: <ClubRecruitmentsPage /> },
+          { path: 'recruitments/:rid/applications', element: <ClubRecruitmentApplicationsPage /> },
+          { path: 'finance', element: <ClubFinanceOverviewPage /> },
+          { path: 'finance/transactions', element: <ClubTransactionsPage /> },
+          { path: 'finance/expenses', element: <ClubExpensesPage /> },
+          { path: 'finance/reconciliation', element: <ClubReconciliationPage /> },
+          { path: 'settings', element: <ClubSettingsPage /> },
+        ],
+      },
+
       // Dev Showcase
       { path: 'dev/kitchen-sink', element: <KitchenSinkPage /> },
-    ],
-  },
-
-  // FE-04: Club Workspace (ClubWorkspaceShell)
-  {
-    path: '/clubs/:clubId/workspace',
-    element: (
-      <ProtectedRoute>
-        <ClubWorkspaceShell />
-      </ProtectedRoute>
-    ),
-    children: [
-      { index: true, element: <Navigate to="overview" replace /> },
-      { path: 'overview', element: <ClubOverviewPage /> },
-      { path: 'events', element: <ClubEventsPage /> },
-      { path: 'events/new', element: <ClubEventFormPage /> },
-      { path: 'events/:eventId', element: <ClubEventDetailPage /> },
-      { path: 'events/:eventId/edit', element: <ClubEventFormPage /> },
-      { path: 'tasks', element: <ClubTasksPage /> },
-      { path: 'chat', element: <ClubChatPage /> },
-      { path: 'members', element: <ClubMembersPage /> },
-      { path: 'recruitments', element: <ClubRecruitmentsPage /> },
-      { path: 'recruitments/:rid/applications', element: <ClubRecruitmentApplicationsPage /> },
-      { path: 'finance', element: <ClubFinanceOverviewPage /> },
-      { path: 'finance/transactions', element: <ClubTransactionsPage /> },
-      { path: 'finance/expenses', element: <ClubExpensesPage /> },
-      { path: 'finance/reconciliation', element: <ClubReconciliationPage /> },
-      { path: 'settings', element: <ClubSettingsPage /> },
     ],
   },
 

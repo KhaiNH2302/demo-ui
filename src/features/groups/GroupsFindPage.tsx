@@ -10,6 +10,7 @@ import { AIFallbackBanner } from '@/components/shared/AIFallbackBanner';
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { UserMiniCard } from '@/components/shared/UserMiniCard';
+import { AvatarStack } from '@/components/shared/AvatarStack';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
@@ -181,12 +182,14 @@ export default function GroupsFindPage() {
                                 <p className="text-xs text-neutral-600 mt-0.5">{group.topic}</p>
                               </div>
 
-                              <div className="text-right shrink-0">
-                                <div className="text-xs text-neutral-500 mb-1">
-                                  Sức chứa: <strong>{group.memberCount}/{group.memberLimit}</strong>
-                                </div>
-                                <div className="w-24">
-                                  <Progress value={group.memberCount} max={group.memberLimit} />
+                              <div className="flex flex-col items-end gap-1.5 shrink-0">
+                                <AvatarStack
+                                  users={[{ name: owner.fullName }, { name: 'Thành viên' }]}
+                                  max={3}
+                                  size="sm"
+                                />
+                                <div className="text-[11px] text-neutral-500">
+                                  <strong>{group.memberCount}/{group.memberLimit}</strong> thành viên
                                 </div>
                               </div>
                             </div>
@@ -255,12 +258,14 @@ export default function GroupsFindPage() {
                               <p className="text-xs text-neutral-600 mt-0.5">{group.topic}</p>
                             </div>
 
-                            <div className="text-right shrink-0">
-                              <div className="text-xs text-neutral-500 mb-1">
-                                Sức chứa: <strong>{group.memberCount}/{group.memberLimit}</strong>
-                              </div>
-                              <div className="w-24">
-                                <Progress value={group.memberCount} max={group.memberLimit} />
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
+                              <AvatarStack
+                                users={[{ name: owner.fullName }, { name: 'Thành viên' }]}
+                                max={3}
+                                size="sm"
+                              />
+                              <div className="text-[11px] text-neutral-500">
+                                <strong>{group.memberCount}/{group.memberLimit}</strong> thành viên
                               </div>
                             </div>
                           </div>

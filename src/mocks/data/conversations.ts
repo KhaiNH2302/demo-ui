@@ -28,6 +28,15 @@ export const seedConversations: Conversation[] = [
     lastMessage: 'Chào mừng các bạn tham gia chuẩn bị cho sự kiện Workshop cuối tuần!',
     lastMessageAt: '2026-09-24T11:00:00Z',
   },
+  {
+    id: 'conv_04',
+    kind: 'group',
+    refId: 'grp_01',
+    title: 'Nhóm học React & TypeScript nâng cao',
+    participantIds: ['usr_student_01', 'usr_mentor_02', 'usr_student_03'],
+    lastMessage: 'Tuần này nhóm mình họp lúc 20:00 tối thứ 5 nhé mọi người.',
+    lastMessageAt: '2026-09-24T14:30:00Z',
+  },
 ];
 
 export const seedMessages: Message[] = [
@@ -65,5 +74,12 @@ export const seedMessages: Message[] = [
     senderId: 'usr_manager_03',
     content: 'Chào mừng các bạn tham gia chuẩn bị cho sự kiện Workshop cuối tuần!',
     createdAt: '2026-09-24T11:00:00Z',
+  },
+  {
+    id: 'msg_06',
+    conversationId: 'conv_04',
+    senderId: 'usr_student_01',
+    content: 'Tuần này nhóm mình họp lúc 20:00 tối thứ 5 nhé mọi người.',
+    createdAt: '2026-09-24T14:30:00Z',
   },
 ];

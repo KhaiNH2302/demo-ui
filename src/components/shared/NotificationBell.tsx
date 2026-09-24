@@ -14,11 +14,14 @@ export const NotificationBell: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: notifications = [] } = useQuery<Notification[]>({
+  const { data } = useQuery<Notification[]>({
     queryKey: queryKeys.notifications.list(),
     queryFn: () => apiClient.get('/notifications'),
     refetchInterval: 15000,
   });
+  // Phòng trường hợp response không đúng shape (API lỗi/transient) — không để
+  // cả app crash chỉ vì cái chuông thông báo.
+  const notifications = Array.isArray(data) ? data : [];
 
   const markReadMutation = useMutation({
     mutationFn: (id: string) => apiClient.post(`/notifications/${id}/read`),

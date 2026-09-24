@@ -11,6 +11,7 @@ import { AIResultCard } from '@/components/shared/AIResultCard';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { ReasonDialog } from '@/components/shared/ReasonDialog';
+import { StartConversationDialog } from '@/components/shared/StartConversationDialog';
 import { FormField } from '@/components/shared/FormField';
 import { TagInput } from '@/components/shared/TagInput';
 import { ScheduleInput } from '@/components/shared/ScheduleInput';
@@ -36,7 +37,7 @@ import {
   Send,
   ShieldAlert,
 } from 'lucide-react';
-import type { Group, GroupMember, GroupJoinRequest, AiMemberSuggestion } from '@/types/entities';
+import type { Group, GroupMember, GroupJoinRequest, AiMemberSuggestion, User } from '@/types/entities';
 
 interface GroupDetailData extends Group {
   members: GroupMember[];
@@ -100,6 +101,26 @@ export const GroupManagePage: React.FC = () => {
   // Modal States
   const [removeMemberId, setRemoveMemberId] = useState<string | null>(null);
   const [isCloseGroupOpen, setIsCloseGroupOpen] = useState(false);
+  const [directChatTarget, setDirectChatTarget] = useState<User | null>(null);
+  const [isDirectChatOpen, setIsDirectChatOpen] = useState(false);
+
+  const handleOpenDirectChat = async (userId: string) => {
+    try {
+      const targetUser = await apiClient.get<User>(`/users/${userId}`);
+      setDirectChatTarget(targetUser);
+      setIsDirectChatOpen(true);
+    } catch {
+      setDirectChatTarget({
+        id: userId,
+        fullName: 'Sinh viên tiềm năng',
+        school: 'Đại học FPT',
+        roles: ['student'],
+        status: 'active',
+        createdAt: new Date().toISOString(),
+      } as User);
+      setIsDirectChatOpen(true);
+    }
+  };
 
   const group = groupQuery.data;
 
@@ -302,7 +323,8 @@ export const GroupManagePage: React.FC = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => navigate('/chats')}
+                            title="Nhắn tin trực tiếp"
+                            onClick={() => handleOpenDirectChat(sug.userId)}
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
                           </Button>
@@ -442,6 +464,17 @@ export const GroupManagePage: React.FC = () => {
               setIsCloseGroupOpen(false);
               navigate('/groups/me');
             }}
+          />
+
+          {/* Start Direct Conversation Dialog */}
+          <StartConversationDialog
+            open={isDirectChatOpen}
+            onOpenChange={setIsDirectChatOpen}
+            targetUser={directChatTarget}
+            contextType="group_suggestion"
+            contextId={group.id}
+            contextLabel={`Về lời mời tham gia nhóm ${group.name}`}
+            onSuccess={(conversationId) => navigate(`/chats/${conversationId}`)}
           />
         </div>
       )}

@@ -16,7 +16,7 @@ async function enableMocking() {
   });
 }
 
-enableMocking().then(() => {
+function renderApp() {
   const rootElement = document.getElementById('root');
   if (!rootElement) return;
 
@@ -27,4 +27,12 @@ enableMocking().then(() => {
       </AppProviders>
     </React.StrictMode>
   );
-});
+}
+
+// Không để lỗi khởi động MSW (SW bị chặn, mất mạng...) làm treo cả app ở màn
+// hình trắng im lặng — vẫn render UI, chỉ log cảnh báo để dev biết mock đang tắt.
+enableMocking()
+  .catch((err) => {
+    console.warn('[MSW] Không khởi động được mock worker, API call sẽ lỗi:', err);
+  })
+  .finally(renderApp);

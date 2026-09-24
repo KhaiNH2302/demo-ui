@@ -391,12 +391,13 @@ export interface Notification {
 
 export interface Conversation {
   id: string;
-  kind: 'swap' | 'mentoring' | 'club';
+  kind: 'swap' | 'mentoring' | 'club' | 'group' | 'direct';
   refId: string;
   title?: string;
   participantIds: string[];
   lastMessage?: string;
   lastMessageAt?: string;
+  archived?: boolean;
 }
 
 export interface Message {
