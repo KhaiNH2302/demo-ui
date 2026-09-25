@@ -15,9 +15,10 @@ export interface ActionItem {
 export interface ActionStripProps {
   items: ActionItem[];
   className?: string;
+  showLabel?: boolean;
 }
 
-export const ActionStrip: React.FC<ActionStripProps> = ({ items, className }) => {
+export const ActionStrip: React.FC<ActionStripProps> = ({ items, className, showLabel = true }) => {
   const navigate = useNavigate();
 
   if (!items || items.length === 0) return null;
@@ -51,11 +52,13 @@ export const ActionStrip: React.FC<ActionStripProps> = ({ items, className }) =>
 
   return (
     <div className={cn('space-y-2', className)}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-          Việc cần bạn xử lý
-        </span>
-      </div>
+      {showLabel && (
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+            Việc cần bạn xử lý
+          </span>
+        </div>
+      )}
 
       <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 no-scrollbar">
         {items.map((item) => {

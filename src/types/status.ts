@@ -19,7 +19,7 @@ export type UserAccountStatus = 'active' | 'locked' | 'unverified' | 'Active' | 
 export type SwapRequestStatus = 'Open' | 'Connected' | 'Cancelled' | 'open' | 'connected' | 'cancelled';
 export type SwapConnectionStatus = 'Pending' | 'Confirmed' | 'Rejected' | 'Cancelled' | 'pending' | 'confirmed' | 'rejected' | 'cancelled';
 
-export type PostType = 'question' | 'experience' | 'document';
+export type PostType = 'discussion' | 'question' | 'document' | 'experience';
 export type PostStatus = 'Published' | 'PendingReview' | 'Rejected' | 'Closed' | 'published' | 'pending_review' | 'rejected' | 'closed';
 
 export type JoinMode = 'direct' | 'approval';

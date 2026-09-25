@@ -1,26 +1,29 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { PageHeader } from '@/components/shared/PageHeader';
+import { ContextHeader } from '@/components/shared/ContextHeader';
 import { ConversationList } from '@/components/shared/ConversationList';
 import { ChatWindow } from '@/components/shared/ChatWindow';
+import { NewMessageDialog } from './components/NewMessageDialog';
 import { QueryBoundary } from '@/components/shared/QueryBoundary';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { MessageSquare } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { MessageSquare, SquarePen } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
-import { queryKeys } from '@/lib/queryKeys';
 import type { Conversation } from '@/types/entities';
 
 export default function ChatsPage() {
-  const { conversationId } = useParams<{ conversationId?: string }>();
+  const { conversationId, id } = useParams<{ conversationId?: string; id?: string }>();
+  const currentParamId = conversationId || id;
   const navigate = useNavigate();
 
+  const [newMessageDialogOpen, setNewMessageDialogOpen] = useState<boolean>(false);
+  const [selectedId, setSelectedId] = useState<string | undefined>(currentParamId);
+
   const conversationsQuery = useQuery<Conversation[]>({
-    queryKey: queryKeys.chat.conversations,
+    queryKey: ['chat', 'conversations'],
     queryFn: () => apiClient.get('/conversations'),
   });
-
-  const [selectedId, setSelectedId] = useState<string | undefined>(conversationId);
 
   const handleSelect = (conv: Conversation) => {
     setSelectedId(conv.id);
@@ -28,60 +31,107 @@ export default function ChatsPage() {
   };
 
   return (
-    <div className="space-y-4 h-[calc(100vh-8.5rem)] flex flex-col">
-      <PageHeader
-        title="Tin nhắn kết nối"
-        description="Trao đổi trực tiếp sau khi kết nối đổi lớp, mentoring hoặc thảo luận CLB"
-      />
-
+    <div className="h-full w-full flex flex-col bg-white">
       <QueryBoundary
         query={conversationsQuery}
         isEmpty={(data) => data.length === 0}
         empty={
-          <EmptyState
-            icon={MessageSquare}
-            title="Chưa có cuộc trò chuyện nào"
-            description="Tin nhắn sẽ tự động kích hoạt khi bạn kết nối Đổi lớp thành công, Mentoring được chấp nhận hoặc tham gia CLB."
-          />
+          <div className="h-full flex flex-col justify-center items-center p-6">
+            <EmptyState
+              icon={MessageSquare}
+              title="Chưa có cuộc trò chuyện nào"
+              description="Hãy bắt đầu gửi tin nhắn trao đổi hoặc lời mời trò chuyện với các bạn sinh viên!"
+              actionLabel="Tạo tin nhắn mới"
+              onAction={() => setNewMessageDialogOpen(true)}
+            />
+            <NewMessageDialog
+              open={newMessageDialogOpen}
+              onOpenChange={setNewMessageDialogOpen}
+            />
+          </div>
         }
       >
         {(conversations) => {
-          const activeConvId = conversationId || selectedId || conversations[0]?.id;
+          const activeConvId =
+            currentParamId || selectedId || (window.innerWidth >= 768 ? conversations[0]?.id : undefined);
           const activeConv = conversations.find((c) => c.id === activeConvId);
 
           return (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 min-h-0 bg-white rounded-xl border border-neutral-200 shadow-xs overflow-hidden">
-              {/* Left col: List */}
-              <div className="md:col-span-1 border-r border-neutral-200 flex flex-col h-full bg-white">
-                <div className="p-3 border-b border-neutral-100 bg-neutral-50/60 font-semibold text-xs text-neutral-700">
-                  Hộp thoại ({conversations.length})
+            <div className="flex flex-col h-full">
+              {/* ContextHeader on mobile when viewing a single conversation */}
+              {currentParamId && activeConv && (
+                <div className="md:hidden">
+                  <ContextHeader
+                    backHref="/chats"
+                    title={activeConv.title || 'Hội thoại'}
+                    avatar={{
+                      src: activeConv.avatarUrl,
+                      name: activeConv.title || 'Chat',
+                    }}
+                  />
                 </div>
-                <ConversationList
-                  items={conversations}
-                  activeId={activeConvId}
-                  onSelect={handleSelect}
-                  className="flex-1"
-                />
+              )}
+
+              {/* Full-bleed Messenger Web Layout */}
+              <div className="flex flex-1 min-h-0 bg-white border-none overflow-hidden">
+                {/* Left Column: Conversation Directory (width 320px) */}
+                <div
+                  className={`w-full md:w-80 shrink-0 border-r border-neutral-200 flex flex-col h-full bg-white ${
+                    currentParamId ? 'hidden md:flex' : 'flex'
+                  }`}
+                >
+                  <ConversationList
+                    items={conversations}
+                    activeId={activeConvId}
+                    onSelect={handleSelect}
+                    onNewMessage={() => setNewMessageDialogOpen(true)}
+                    className="flex-1"
+                  />
+                </div>
+
+                {/* Center + Right Column: Chat Window & Info Sidebar */}
+                <div
+                  className={`flex-1 h-full flex flex-col min-w-0 ${
+                    !currentParamId ? 'hidden md:flex' : 'flex'
+                  }`}
+                >
+                  {activeConv ? (
+                    <ChatWindow
+                      conversationId={activeConv.id}
+                      conversation={activeConv}
+                      className="border-0 rounded-none h-full"
+                    />
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center p-8 bg-neutral-50/50 space-y-3">
+                      <div className="w-16 h-16 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center shadow-xs">
+                        <MessageSquare size={32} />
+                      </div>
+                      <div className="text-center">
+                        <h4 className="text-base font-bold text-neutral-900">
+                          Chọn một cuộc trò chuyện
+                        </h4>
+                        <p className="text-xs text-neutral-500 mt-1 max-w-sm">
+                          Chọn từ danh sách bên trái hoặc tạo tin nhắn mới để bắt đầu trao đổi.
+                        </p>
+                      </div>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => setNewMessageDialogOpen(true)}
+                        leftIcon={<SquarePen size={15} />}
+                      >
+                        Soạn tin nhắn mới
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Right col: Window */}
-              <div className="md:col-span-2 h-full flex flex-col">
-                {activeConv ? (
-                  <ChatWindow
-                    conversationId={activeConv.id}
-                    conversation={activeConv}
-                    className="border-0 rounded-none h-full"
-                  />
-                ) : (
-                  <div className="h-full flex items-center justify-center p-8">
-                    <EmptyState
-                      icon={MessageSquare}
-                      title="Chọn một cuộc trò chuyện"
-                      description="Chọn từ danh sách bên trái để xem nội dung tin nhắn."
-                    />
-                  </div>
-                )}
-              </div>
+              {/* New Message Dialog */}
+              <NewMessageDialog
+                open={newMessageDialogOpen}
+                onOpenChange={setNewMessageDialogOpen}
+              />
             </div>
           );
         }}

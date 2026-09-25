@@ -1,13 +1,97 @@
+:root {
+  /* Brand */
+  --color-brand-50:  #eef4ff;
+  --color-brand-100: #dce8ff;
+  --color-brand-300: #93b4ff;
+  --color-brand-500: #3366ff;
+  --color-brand-600: #2952d9;
+  --color-brand-700: #1f3fad;
+
+  /* Accent */
+  --color-accent-50:  #fdf2f8;
+  --color-accent-300: #f472b6;
+  --color-accent-500: #ec4899;
+  --color-accent-600: #db2777;
+  --color-accent-700: #be185d;
+
+  /* Neutral */
+  --color-neutral-0:   #ffffff;
+  --color-neutral-50:  #f8fafc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0f172a;
+
+  /* UI Aliases */
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-subtle: #e2e8f0;
+  --surface-card: #ffffff;
+  --surface-muted: #f8fafc;
+
+  /* 5 Semantic Tiers */
+  --color-tier-neutral-bg:     #f1f5f9;
+  --color-tier-neutral-text:   #475569;
+  --color-tier-neutral-border: #e2e8f0;
+  --color-tier-neutral-dot:    #94a3b8;
+
+  --color-tier-pending-bg:     #e8effe;
+  --color-tier-pending-text:   #2952d9;
+  --color-tier-pending-border: #c7d7fb;
+  --color-tier-pending-dot:    #3366ff;
+
+  --color-tier-attention-bg:     #fef6e7;
+  --color-tier-attention-text:   #92620a;
+  --color-tier-attention-border: #f9e3b3;
+  --color-tier-attention-dot:    #d9910b;
+
+  --color-tier-success-bg:     #e7f7ee;
+  --color-tier-success-text:   #16794a;
+  --color-tier-success-border: #bfead2;
+  --color-tier-success-dot:    #1fa15c;
+
+  --color-tier-danger-bg:      #fdecec;
+  --color-tier-danger-text:    #b3261e;
+  --color-tier-danger-border:  #f7c9c7;
+  --color-tier-danger-dot:     #dc3c33;
+
+  /* Status Aliases */
+  --status-pending-bg: #e8effe;
+  --status-pending-fg: #2952d9;
+  --status-pending-border: #c7d7fb;
+  --status-attention-bg: #fef6e7;
+  --status-attention-fg: #92620a;
+  --status-attention-border: #f9e3b3;
+  --status-success-bg: #e7f7ee;
+  --status-success-fg: #16794a;
+  --status-success-border: #bfead2;
+  --status-danger-bg: #fdecec;
+  --status-danger-fg: #b3261e;
+  --status-danger-border: #f7c9c7;
+}
+
 @theme {
   /* Brand */
   --color-brand-50:  #eef4ff;
   --color-brand-100: #dce8ff;
   --color-brand-300: #93b4ff;
-  --color-brand-500: #3366ff;   /* primary chính, dùng cho nút/link chính */
+  --color-brand-500: #3366ff;
   --color-brand-600: #2952d9;
   --color-brand-700: #1f3fad;
 
-  /* Neutral (nền, text, border) */
+  /* Accent */
+  --color-accent-50:  #fdf2f8;
+  --color-accent-300: #f472b6;
+  --color-accent-500: #ec4899;
+  --color-accent-600: #db2777;
+  --color-accent-700: #be185d;
+
+  /* Neutral */
   --color-neutral-0:   #ffffff;
   --color-neutral-50:  #f8fafc;
   --color-neutral-100: #f1f5f9;
@@ -21,30 +105,30 @@
   --color-neutral-900: #0f172a;
 
   /* 5 Semantic Tiers */
-  --color-tier-neutral-bg:     var(--color-neutral-100);
-  --color-tier-neutral-text:   var(--color-neutral-600);
-  --color-tier-neutral-border: var(--color-neutral-200);
-  --color-tier-neutral-dot:    var(--color-neutral-400);
+  --color-tier-neutral-bg:     var(--color-tier-neutral-bg);
+  --color-tier-neutral-text:   var(--color-tier-neutral-text);
+  --color-tier-neutral-border: var(--color-tier-neutral-border);
+  --color-tier-neutral-dot:    var(--color-tier-neutral-dot);
 
-  --color-tier-pending-bg:     #e8effe;   /* xanh dương nhạt */
-  --color-tier-pending-text:   #2952d9;
-  --color-tier-pending-border: #c7d7fb;
-  --color-tier-pending-dot:    #3366ff;
+  --color-tier-pending-bg:     var(--color-tier-pending-bg);
+  --color-tier-pending-text:   var(--color-tier-pending-text);
+  --color-tier-pending-border: var(--color-tier-pending-border);
+  --color-tier-pending-dot:    var(--color-tier-pending-dot);
 
-  --color-tier-attention-bg:     #fef6e7; /* vàng hổ phách */
-  --color-tier-attention-text:   #92620a;
-  --color-tier-attention-border: #f9e3b3;
-  --color-tier-attention-dot:    #d9910b;
+  --color-tier-attention-bg:     var(--color-tier-attention-bg);
+  --color-tier-attention-text:   var(--color-tier-attention-text);
+  --color-tier-attention-border: var(--color-tier-attention-border);
+  --color-tier-attention-dot:    var(--color-tier-attention-dot);
 
-  --color-tier-success-bg:     #e7f7ee;  /* xanh lá */
-  --color-tier-success-text:   #16794a;
-  --color-tier-success-border: #bfead2;
-  --color-tier-success-dot:    #1fa15c;
+  --color-tier-success-bg:     var(--color-tier-success-bg);
+  --color-tier-success-text:   var(--color-tier-success-text);
+  --color-tier-success-border: var(--color-tier-success-border);
+  --color-tier-success-dot:    var(--color-tier-success-dot);
 
-  --color-tier-danger-bg:      #fdecec;  /* đỏ */
-  --color-tier-danger-text:    #b3261e;
-  --color-tier-danger-border:  #f7c9c7;
-  --color-tier-danger-dot:     #dc3c33;
+  --color-tier-danger-bg:      var(--color-tier-danger-bg);
+  --color-tier-danger-text:    var(--color-tier-danger-text);
+  --color-tier-danger-border:  var(--color-tier-danger-border);
+  --color-tier-danger-dot:     var(--color-tier-danger-dot);
 
   /* Radius */
   --radius-sm: 0.375rem;
@@ -64,3 +148,4 @@
   --z-dialog: 51;
   --z-toast: 60;
 }
+

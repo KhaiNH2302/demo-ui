@@ -8,16 +8,22 @@ import { ClubWorkspaceShell } from './layouts/ClubWorkspaceShell';
 import { AdminShell } from './layouts/AdminShell';
 import { ProtectedRoute } from './ProtectedRoute';
 
-// Auth Pages
+// Public & Auth Pages
+import LandingPage from '@/features/landing/LandingPage';
 import LoginPage from '@/features/auth/LoginPage';
 import RegisterPage from '@/features/auth/RegisterPage';
 import VerifyEmailPage from '@/features/auth/VerifyEmailPage';
 import ForgotPasswordPage from '@/features/auth/ForgotPasswordPage';
 import OnboardingPage from '@/features/auth/OnboardingPage';
+import TermsPage from '@/features/legal/TermsPage';
+import PrivacyPage from '@/features/legal/PrivacyPage';
+import HelpPage from '@/features/help/HelpPage';
 
 // Common Pages
 import DashboardPage from '@/features/common/DashboardPage';
 import DiscoverPage from '@/features/discover/DiscoverPage';
+import MyHubPage from '@/features/me/MyHubPage';
+import SettingsPage from '@/features/settings/SettingsPage';
 import ErrorPage from '@/features/common/ErrorPage';
 
 // Profile
@@ -80,6 +86,7 @@ import MentoringPostDetailPage from '@/features/mentoring/MentoringPostDetailPag
 import MyMentoringRequestsPage from '@/features/mentoring/MyMentoringRequestsPage';
 
 // FE-05: Mentoring (Mentor Center)
+import MentorCenterShell from '@/features/mentor/MentorCenterShell';
 import MentorProfilePage from '@/features/mentor/MentorProfilePage';
 import MentorPostsPage from '@/features/mentor/MentorPostsPage';
 import MentorRequestsPage from '@/features/mentor/MentorRequestsPage';
@@ -99,7 +106,12 @@ import AuditLogsPage from '@/features/admin/AuditLogsPage';
 import KitchenSinkPage from '@/features/dev/KitchenSinkPage';
 
 export const router = createBrowserRouter([
-  // Public & Auth Routes
+  // Public Landing & Legal Routes (Accessible without login)
+  { path: '/welcome', element: <LandingPage /> },
+  { path: '/terms', element: <TermsPage /> },
+  { path: '/privacy', element: <PrivacyPage /> },
+
+  // Auth Routes
   {
     element: <AuthLayout />,
     children: [
@@ -111,7 +123,7 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // Main App Routes (AppShell)
+  // Main App Routes (AppShell) — Protected
   {
     path: '/',
     element: (
@@ -122,6 +134,9 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'discover', element: <DiscoverPage /> },
+      { path: 'me', element: <MyHubPage /> },
+      { path: 'settings', element: <SettingsPage /> },
+      { path: 'help', element: <HelpPage /> },
       { path: 'profile/me', element: <ProfilePage /> },
       { path: 'users/:id', element: <PublicProfilePage /> },
       { path: 'notifications', element: <NotificationsPage /> },
@@ -149,7 +164,7 @@ export const router = createBrowserRouter([
       { path: 'groups/me', element: <MyGroupsPage /> },
       { path: 'groups/:id/manage', element: <GroupManagePage /> },
 
-      // FE-04: Clubs (Discovery)
+      // FE-04: Clubs (Discovery & Applications)
       { path: 'clubs', element: <ClubsListPage /> },
       { path: 'clubs/register', element: <RegisterClubPage /> },
       { path: 'clubs/:id', element: <ClubProfilePage /> },
@@ -164,14 +179,19 @@ export const router = createBrowserRouter([
       { path: 'mentoring/posts/:id', element: <MentoringPostDetailPage /> },
       { path: 'mentoring/requests', element: <MyMentoringRequestsPage /> },
 
-      // FE-05: Mentoring (Mentor Center)
-      { path: 'mentor/profile', element: <MentorProfilePage /> },
-      { path: 'mentor/posts', element: <MentorPostsPage /> },
-      { path: 'mentor/requests', element: <MentorRequestsPage /> },
+      // FE-05: Mentoring (Mentor Center) — Nested in MentorCenterShell
+      {
+        path: 'mentor',
+        element: <MentorCenterShell />,
+        children: [
+          { index: true, element: <Navigate to="profile" replace /> },
+          { path: 'profile', element: <MentorProfilePage /> },
+          { path: 'posts', element: <MentorPostsPage /> },
+          { path: 'requests', element: <MentorRequestsPage /> },
+        ],
+      },
 
-      // FE-04: Club Workspace (ClubWorkspaceShell) — LỒNG bên trong AppShell,
-      // để IconRailNav/Topbar/BottomTabBar không bao giờ biến mất (xem
-      // design-system/03-patterns.md § 7.5 và § 9). Không tách thành route gốc riêng.
+      // FE-04: Club Workspace (ClubWorkspaceShell) — Nested in AppShell
       {
         path: 'clubs/:clubId/workspace',
         element: <ClubWorkspaceShell />,
@@ -204,7 +224,7 @@ export const router = createBrowserRouter([
   {
     path: '/admin',
     element: (
-      <ProtectedRoute requireRoles={['SystemAdmin', 'SchoolAdmin']}>
+      <ProtectedRoute requireRoles={['system_admin', 'school_admin', 'SystemAdmin', 'SchoolAdmin']}>
         <AdminShell />
       </ProtectedRoute>
     ),
@@ -227,3 +247,5 @@ export const router = createBrowserRouter([
   { path: '/500', element: <ErrorPage code={500} /> },
   { path: '*', element: <ErrorPage code={404} /> },
 ]);
+
+export default router;

@@ -8,6 +8,7 @@ export interface CoverHeaderProps {
   subtitle?: string;
   badge?: React.ReactNode;
   actions?: React.ReactNode;
+  children?: React.ReactNode;
   className?: string;
 }
 
@@ -18,6 +19,7 @@ export const CoverHeader: React.FC<CoverHeaderProps> = ({
   subtitle,
   badge,
   actions,
+  children,
   className,
 }) => {
   return (
@@ -59,6 +61,7 @@ export const CoverHeader: React.FC<CoverHeaderProps> = ({
                 {badge}
               </div>
               {subtitle && <p className="text-sm text-neutral-500 mt-0.5">{subtitle}</p>}
+              {children && <div className="mt-2">{children}</div>}
             </div>
           </div>
 

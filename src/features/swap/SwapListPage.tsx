@@ -88,9 +88,9 @@ export default function SwapListPage() {
                       <Badge tier="brand" size="sm" className="mb-2">
                         {item.offeringId.toUpperCase()}
                       </Badge>
-                      <CardTitle className="text-base font-bold">
+                      <CardTitle className="text-base font-bold flex items-center gap-1.5">
                         {item.currentClassCode}{' '}
-                        <span className="text-brand-500 font-normal">➔</span>{' '}
+                        <ArrowRight size={14} className="text-brand-600 shrink-0" />{' '}
                         {item.targetClassCode}
                       </CardTitle>
                     </div>

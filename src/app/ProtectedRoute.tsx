@@ -21,6 +21,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const location = useLocation();
 
   if (!user) {
+    if (location.pathname === '/') {
+      return <Navigate to="/welcome" replace />;
+    }
     return <Navigate to={`/login?redirectTo=${encodeURIComponent(location.pathname)}`} replace />;
   }
 

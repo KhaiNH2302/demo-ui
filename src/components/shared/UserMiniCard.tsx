@@ -47,14 +47,14 @@ export const UserMiniCard: React.FC<UserMiniCardProps> = ({
       <div className="min-w-0">
         <div
           className={cn(
-            'font-medium text-[var(--text-main)] truncate',
+            'font-medium text-neutral-900 truncate',
             size === 'sm' ? 'text-xs' : 'text-sm'
           )}
         >
           {fullName}
         </div>
         {displaySubtitle && (
-          <div className="text-xs text-[var(--text-muted)] truncate">{displaySubtitle}</div>
+          <div className="text-xs text-neutral-500 truncate">{displaySubtitle}</div>
         )}
       </div>
       {action && <div className="ml-auto shrink-0">{action}</div>}

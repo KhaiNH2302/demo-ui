@@ -71,13 +71,13 @@ export const SendSwapConnectionDialog: React.FC<SendSwapConnectionDialogProps> =
           <div className="flex justify-between items-center">
             <span className="text-neutral-500 font-medium">Lớp của bạn:</span>
             <span className="font-bold text-neutral-900">
-              {myRequest.currentClassCode} ➔ {myRequest.targetClassCode}
+              {myRequest.currentClassCode} → {myRequest.targetClassCode}
             </span>
           </div>
           <div className="flex justify-between items-center pt-2 border-t border-neutral-200/60">
             <span className="text-neutral-500 font-medium">Lớp đối tác:</span>
             <span className="font-bold text-brand-700">
-              {partnerRequest.currentClassCode} ➔ {partnerRequest.targetClassCode}
+              {partnerRequest.currentClassCode} → {partnerRequest.targetClassCode}
             </span>
           </div>
         </div>

@@ -112,14 +112,14 @@ export const SwapConnectionReviewSheet: React.FC<SwapConnectionReviewSheetProps>
                 <div className="rounded-lg bg-neutral-50 p-3 border border-neutral-100">
                   <span className="text-neutral-500 block mb-1">Bên gửi lời mời:</span>
                   <div className="font-bold text-neutral-900 text-sm">
-                    {requestA?.currentClassCode || 'Lớp hiện tại'} ➔ {requestA?.targetClassCode || 'Lớp muốn đổi'}
+                    {requestA?.currentClassCode || 'Lớp hiện tại'} → {requestA?.targetClassCode || 'Lớp muốn đổi'}
                   </div>
                 </div>
 
                 <div className="rounded-lg bg-brand-50/50 p-3 border border-brand-100">
                   <span className="text-brand-700 block mb-1">Lớp của bạn:</span>
                   <div className="font-bold text-brand-900 text-sm">
-                    {requestB?.currentClassCode || 'Lớp hiện tại'} ➔ {requestB?.targetClassCode || 'Lớp muốn đổi'}
+                    {requestB?.currentClassCode || 'Lớp hiện tại'} → {requestB?.targetClassCode || 'Lớp muốn đổi'}
                   </div>
                 </div>
               </div>

@@ -1,0 +1,401 @@
+import React, { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import {
+  User,
+  Shield,
+  Bell,
+  Palette,
+  KeyRound,
+  Check,
+  Globe,
+  Eye,
+} from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
+import { FormField } from '@/components/shared/FormField';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { Switch } from '@/components/ui/Switch';
+import { useToast } from '@/components/ui/Toast';
+import { useAuthStore } from '@/store/authStore';
+import { cn } from '@/lib/cn';
+
+type SettingsTab = 'account' | 'privacy' | 'notifications' | 'appearance';
+
+export const SettingsPage: React.FC = () => {
+  const { user, logout } = useAuthStore();
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<SettingsTab>('account');
+
+  // Privacy State
+  const [privacy, setPrivacy] = useState({
+    swapMatching: true,
+    groupMatching: true,
+    mentoringMatching: true,
+    profileVisibility: 'school', // 'school' | 'connected'
+  });
+
+  // Notification Preferences (8 Sources x 2 Channels)
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    swap: { inApp: true, email: true },
+    group: { inApp: true, email: true },
+    club: { inApp: true, email: false },
+    event: { inApp: true, email: false },
+    role: { inApp: true, email: true },
+    finance: { inApp: true, email: true },
+    mentoring: { inApp: true, email: true },
+    moderation: { inApp: true, email: true },
+  });
+
+  // Password Form State
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Appearance State
+  const [fontSize, setFontSize] = useState<'default' | 'large'>('default');
+
+  const handleTogglePrivacy = (key: keyof typeof privacy, value: any) => {
+    setPrivacy((prev) => ({ ...prev, [key]: value }));
+    toast({ variant: 'success', title: 'Đã lưu cài đặt quyền riêng tư' });
+  };
+
+  const handleToggleNotification = (
+    module: keyof typeof notificationPrefs,
+    channel: 'inApp' | 'email',
+    val: boolean
+  ) => {
+    setNotificationPrefs((prev) => ({
+      ...prev,
+      [module]: { ...prev[module], [channel]: val },
+    }));
+    toast({ variant: 'success', title: 'Đã cập nhật kênh nhận thông báo' });
+  };
+
+  const handleChangePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      toast({ variant: 'error', title: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({ variant: 'error', title: 'Mật khẩu xác nhận không khớp' });
+      return;
+    }
+    toast({ variant: 'success', title: 'Đổi mật khẩu thành công' });
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
+  const navItems: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
+    { id: 'account', label: 'Tài khoản & Bảo mật', icon: KeyRound },
+    { id: 'privacy', label: 'Quyền riêng tư & Matching', icon: Shield },
+    { id: 'notifications', label: 'Thông báo & Kênh gửi', icon: Bell },
+    { id: 'appearance', label: 'Giao diện & Ngôn ngữ', icon: Palette },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Cài đặt hệ thống"
+        description="Tùy chỉnh tài khoản, quyền riêng tư dữ liệu, kênh nhận thông báo và giao diện cá nhân."
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
+        {/* Left Navigation Menu */}
+        <aside className="space-y-1 bg-white p-2 rounded-xl border border-neutral-200">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id)}
+                className={cn(
+                  'w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors text-left cursor-pointer',
+                  isActive
+                    ? 'bg-brand-50 text-brand-600 font-semibold'
+                    : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+                )}
+              >
+                <Icon size={16} className={isActive ? 'text-brand-600' : 'text-neutral-500'} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </aside>
+
+        {/* Right Content Area */}
+        <div className="md:col-span-3 space-y-6">
+          {/* 1. Account Section */}
+          {activeTab === 'account' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Tài khoản & Bảo mật</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4 max-w-md">
+                  <FormField label="Email trường (Cố định, không thể thay đổi)">
+                    <Input value={user?.email || ''} disabled className="bg-neutral-100" />
+                  </FormField>
+
+                  <div className="pt-2 border-t border-neutral-100 space-y-4">
+                    <h4 className="text-xs font-bold text-neutral-900">Đổi mật khẩu</h4>
+                    <form onSubmit={handleChangePassword} className="space-y-3">
+                      <FormField label="Mật khẩu hiện tại" required>
+                        <Input
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="••••••••"
+                          required
+                        />
+                      </FormField>
+
+                      <FormField label="Mật khẩu mới (≥ 6 ký tự)" required>
+                        <Input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="••••••••"
+                          required
+                        />
+                      </FormField>
+
+                      <FormField label="Xác nhận mật khẩu mới" required>
+                        <Input
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="••••••••"
+                          required
+                        />
+                      </FormField>
+
+                      <Button type="submit" size="sm" className="mt-1">
+                        Cập nhật mật khẩu
+                      </Button>
+                    </form>
+                  </div>
+
+                  <div className="pt-4 border-t border-neutral-100 space-y-2">
+                    <h4 className="text-xs font-bold text-neutral-900">Phiên đăng nhập</h4>
+                    <p className="text-xs text-neutral-500">
+                      Đăng xuất khỏi tất cả các thiết bị khác đang duy trì phiên làm việc.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toast({ variant: 'success', title: 'Đã đăng xuất các thiết bị khác' })}
+                    >
+                      Đăng xuất các thiết bị khác
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 2. Privacy Section */}
+          {activeTab === 'privacy' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Quyền riêng tư & Thuật toán Matching</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5 divide-y divide-neutral-100">
+                <div className="flex items-center justify-between pt-1">
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-semibold text-neutral-800">
+                      Cho phép dùng dữ liệu cho Đổi lớp (Class Swap)
+                    </p>
+                    <p className="text-[11px] text-neutral-500">
+                      Dùng mã lớp và lịch rảnh để tính điểm đối ứng với các bạn học khác.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={privacy.swapMatching}
+                    onCheckedChange={(checked) => handleTogglePrivacy('swapMatching', checked)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-4">
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-semibold text-neutral-800">
+                      Cho phép gợi ý tham gia Nhóm học tập (Group Matching)
+                    </p>
+                    <p className="text-[11px] text-neutral-500">
+                      Hiển thị hồ sơ kỹ năng của bạn khi chủ nhóm tìm kiếm thành viên.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={privacy.groupMatching}
+                    onCheckedChange={(checked) => handleTogglePrivacy('groupMatching', checked)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-4">
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-semibold text-neutral-800">
+                      Cho phép gợi ý Mentor phù hợp (Mentoring Matching)
+                    </p>
+                    <p className="text-[11px] text-neutral-500">
+                      Gợi ý Mentor dựa trên môn học và nội dung bạn cần hỗ trợ.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={privacy.mentoringMatching}
+                    onCheckedChange={(checked) => handleTogglePrivacy('mentoringMatching', checked)}
+                  />
+                </div>
+
+                <div className="pt-4 space-y-2">
+                  <p className="text-xs font-semibold text-neutral-800">Phạm vi hiển thị hồ sơ</p>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2.5 text-xs text-neutral-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="visibility"
+                        value="school"
+                        checked={privacy.profileVisibility === 'school'}
+                        onChange={() => handleTogglePrivacy('profileVisibility', 'school')}
+                        className="text-brand-600 focus:ring-brand-500"
+                      />
+                      <span>Mọi sinh viên cùng trường đều có thể xem hồ sơ công khai của tôi</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 text-xs text-neutral-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="visibility"
+                        value="connected"
+                        checked={privacy.profileVisibility === 'connected'}
+                        onChange={() => handleTogglePrivacy('profileVisibility', 'connected')}
+                        className="text-brand-600 focus:ring-brand-500"
+                      />
+                      <span>Chỉ những người đã kết nối (cùng nhóm, cùng CLB, đã đổi lớp/mentor)</span>
+                    </label>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 3. Notifications Section */}
+          {activeTab === 'notifications' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Tùy chọn nhận thông báo theo tính năng</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-xs text-neutral-500">
+                  Chọn kênh thông báo bạn muốn nhận cho từng loại hoạt động trên hệ thống.
+                </p>
+
+                <div className="border border-neutral-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-neutral-50 border-b border-neutral-200 text-neutral-700 font-semibold">
+                      <tr>
+                        <th className="p-3">Loại thông báo</th>
+                        <th className="p-3 text-center w-28">Trong ứng dụng</th>
+                        <th className="p-3 text-center w-28">Qua Email</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {[
+                        { key: 'swap', label: 'Lời mời đổi lớp & xác nhận' },
+                        { key: 'group', label: 'Yêu cầu tham gia nhóm học tập' },
+                        { key: 'club', label: 'Tin tức & đợt tuyển Câu lạc bộ' },
+                        { key: 'event', label: 'Lịch sự kiện & điểm danh' },
+                        { key: 'mentoring', label: 'Yêu cầu hỗ trợ Mentoring' },
+                        { key: 'finance', label: 'Duyệt quỹ & giao dịch tài chính CLB' },
+                        { key: 'moderation', label: 'Kết quả kiểm duyệt nội dung (Bắt buộc)' },
+                      ].map((row) => {
+                        const isMandatory = row.key === 'moderation';
+                        const current = notificationPrefs[row.key as keyof typeof notificationPrefs];
+                        return (
+                          <tr key={row.key} className="hover:bg-neutral-50/50">
+                            <td className="p-3 text-neutral-800 font-medium">{row.label}</td>
+                            <td className="p-3 text-center">
+                              <Switch
+                                checked={current.inApp}
+                                disabled={isMandatory}
+                                onCheckedChange={(val) =>
+                                  handleToggleNotification(row.key as any, 'inApp', val)
+                                }
+                              />
+                            </td>
+                            <td className="p-3 text-center">
+                              <Switch
+                                checked={current.email}
+                                onCheckedChange={(val) =>
+                                  handleToggleNotification(row.key as any, 'email', val)
+                                }
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 4. Appearance Section */}
+          {activeTab === 'appearance' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Giao diện & Ngôn ngữ</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2 max-w-sm">
+                  <FormField label="Ngôn ngữ giao diện">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between p-3 rounded-lg border border-brand-500 bg-brand-50/40">
+                        <span className="text-xs font-semibold text-neutral-900">Tiếng Việt (Mặc định)</span>
+                        <Check size={16} className="text-brand-600" />
+                      </div>
+                      <div className="flex items-center justify-between p-3 rounded-lg border border-neutral-200 bg-neutral-100 opacity-60">
+                        <span className="text-xs text-neutral-600">English (Sắp ra mắt)</span>
+                      </div>
+                    </div>
+                  </FormField>
+                </div>
+
+                <div className="space-y-2 max-w-sm pt-2 border-t border-neutral-100">
+                  <FormField label="Kích thước chữ">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={fontSize === 'default' ? 'primary' : 'outline'}
+                        onClick={() => setFontSize('default')}
+                      >
+                        Mặc định (14px)
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={fontSize === 'large' ? 'primary' : 'outline'}
+                        onClick={() => {
+                          setFontSize('large');
+                          toast({ title: 'Đã điều chỉnh cỡ chữ lớn' });
+                        }}
+                      >
+                        Lớn (16px)
+                      </Button>
+                    </div>
+                  </FormField>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SettingsPage;

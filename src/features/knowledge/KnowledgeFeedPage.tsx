@@ -1,212 +1,248 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { PageHeader } from '@/components/shared/PageHeader';
-import { FilterBar } from '@/components/shared/FilterBar';
-import { SearchInput } from '@/components/shared/SearchInput';
-import { UserMiniCard } from '@/components/shared/UserMiniCard';
-import { QueryBoundary } from '@/components/shared/QueryBoundary';
-import { EmptyState } from '@/components/shared/EmptyState';
-import { Card, CardContent } from '@/components/ui/Card';
+import { useSearchParams, useNavigate, Navigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ContextHeader } from '@/components/shared/ContextHeader';
+import { ThreadComposer } from '@/components/shared/ThreadComposer';
+import { ThreadCard } from '@/components/shared/ThreadCard';
+import { ReportPostDialog } from './ReportPostDialog';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { Select } from '@/components/ui/Select';
-import {
-  BookOpen,
-  Plus,
-  MessageSquare,
-  Paperclip,
-  HelpCircle,
-  Lightbulb,
-  FileText,
-} from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
 import { apiClient } from '@/lib/apiClient';
-import { queryKeys } from '@/lib/queryKeys';
-import { formatRelativeTime } from '@/lib/format';
-import { seedUsers } from '@/mocks/data/users';
+import { cn } from '@/lib/cn';
 import type { KnowledgePost, PostType } from '@/types/entities';
 
-const typeOptions = [
-  { value: '', label: 'Tất cả loại bài' },
-  { value: 'experience', label: '💡 Kinh nghiệm học tập' },
-  { value: 'question', label: '❓ Câu hỏi & Thảo luận' },
-  { value: 'document', label: '📄 Tài liệu học phần' },
-];
-
-const subjectOptions = [
-  { value: '', label: 'Tất cả môn học' },
-  { value: 'CSD201', label: 'CSD201 (Cấu trúc dữ liệu)' },
-  { value: 'PRJ301', label: 'PRJ301 (Java Web)' },
-  { value: 'SWP391', label: 'SWP391 (Đồ án phần mềm)' },
-  { value: 'DBI202', label: 'DBI202 (Cơ sở dữ liệu)' },
-];
-
-const typeIcons: Record<PostType, React.ReactNode> = {
-  experience: <Lightbulb size={16} className="text-amber-500" />,
-  question: <HelpCircle size={16} className="text-blue-500" />,
-  document: <FileText size={16} className="text-emerald-500" />,
-};
-
-const typeLabels: Record<PostType, string> = {
-  experience: 'Kinh nghiệm',
-  question: 'Câu hỏi',
-  document: 'Tài liệu',
+const SUBJECT_NAMES: Record<string, string> = {
+  CSD201: 'Cấu trúc dữ liệu & Giải thuật',
+  PRJ301: 'Java Web Application',
+  SWP391: 'Dự án Phát triển Phần mềm',
+  DBI202: 'Hệ Quản trị Cơ sở dữ liệu',
+  MAS291: 'Xác suất & Thống kê',
+  PRN231: 'Lập trình .NET & Web API',
 };
 
 export default function KnowledgeFeedPage() {
-  const [keyword, setKeyword] = useState('');
-  const [selectedType, setSelectedType] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const subject = searchParams.get('subject') || '';
+  const tag = searchParams.get('tag') || '';
+  const q = searchParams.get('q') || '';
+  const sort = searchParams.get('sort') || 'hot';
+  const type = searchParams.get('type') || 'all';
+
+  const [reportPostId, setReportPostId] = useState<string | null>(null);
+  const [deletePostId, setDeletePostId] = useState<string | null>(null);
+  const [isFollowing, setIsFollowing] = useState<boolean>(true);
+
+  // If no subject, tag, or q is specified, redirect to Home Feed (C6) per spec
+  if (!subject && !tag && !q && sort !== 'unanswered') {
+    return <Navigate to="/" replace />;
+  }
+
+  const subjectTitle = subject
+    ? `${subject} · ${SUBJECT_NAMES[subject] || 'Chủ đề học tập'}`
+    : tag
+    ? `#${tag}`
+    : q
+    ? `Tìm kiếm: "${q}"`
+    : 'Câu hỏi chưa có trả lời';
 
   const postsQuery = useQuery<KnowledgePost[]>({
-    queryKey: queryKeys.knowledge.feed({ q: keyword, type: selectedType, subject: selectedSubject }),
+    queryKey: ['knowledge', 'topic', { subject, tag, q, sort, type }],
     queryFn: () =>
       apiClient.get('/posts', {
         params: {
-          q: keyword || undefined,
-          type: selectedType || undefined,
-          subject: selectedSubject || undefined,
+          subject: subject || undefined,
+          tag: tag || undefined,
+          q: q || undefined,
+          sort: sort || undefined,
+          type: type !== 'all' ? type : undefined,
         },
       }),
   });
 
-  const handleClearFilters = () => {
-    setKeyword('');
-    setSelectedType('');
-    setSelectedSubject('');
+  const likeMutation = useMutation({
+    mutationFn: ({ id, liked }: { id: string; liked: boolean }) =>
+      liked ? apiClient.post(`/posts/${id}/like`) : apiClient.delete(`/posts/${id}/like`),
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: ({ id, saved }: { id: string; saved: boolean }) =>
+      saved ? apiClient.post(`/posts/${id}/save`) : apiClient.delete(`/posts/${id}/save`),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/posts/${id}`),
+    onSuccess: () => {
+      toast({ variant: 'default', title: 'Đã xóa bài viết' });
+      queryClient.invalidateQueries({ queryKey: ['knowledge', 'topic'] });
+      setDeletePostId(null);
+    },
+  });
+
+  const handleFollowToggle = async () => {
+    if (!subject) return;
+    const nextState = !isFollowing;
+    setIsFollowing(nextState);
+    if (nextState) {
+      await apiClient.post(`/subjects/${subject}/follow`);
+      toast({ variant: 'success', title: `Đang theo dõi môn ${subject}` });
+    } else {
+      await apiClient.delete(`/subjects/${subject}/follow`);
+      toast({ variant: 'default', title: `Đã bỏ theo dõi môn ${subject}` });
+    }
   };
 
+  const setSort = (val: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('sort', val);
+    setSearchParams(next);
+  };
+
+  const setTypeFilter = (val: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (val === 'all') next.delete('type');
+    else next.set('type', val);
+    setSearchParams(next);
+  };
+
+  const posts = postsQuery.data || [];
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Kho kiến thức & Tài liệu học tập"
-        description="Nơi sinh viên chia sẻ kinh nghiệm học tập, đặt câu hỏi thắc mắc và trao đổi tài liệu môn học"
+    <div className="max-w-2xl mx-auto space-y-5 pb-12">
+      {/* ContextHeader */}
+      <ContextHeader
+        backHref="/"
+        title={subjectTitle}
         actions={
-          <div className="flex items-center gap-2">
-            <Link to="/knowledge/me">
-              <Button variant="outline" size="sm">
-                Bài viết của tôi
-              </Button>
-            </Link>
-            <Link to="/knowledge/new">
-              <Button size="sm" leftIcon={<Plus size={16} />}>
-                Đăng bài mới
-              </Button>
-            </Link>
-          </div>
+          subject ? (
+            <Button
+              size="sm"
+              variant={isFollowing ? 'outline' : 'primary'}
+              onClick={handleFollowToggle}
+              className="text-xs h-8"
+            >
+              {isFollowing ? 'Đang theo dõi' : 'Theo dõi môn'}
+            </Button>
+          ) : undefined
         }
       />
 
-      <FilterBar
-        onClear={handleClearFilters}
-        showClear={!!keyword || !!selectedType || !!selectedSubject}
-      >
-        <SearchInput
-          initialValue={keyword}
-          onSearch={setKeyword}
-          placeholder="Tìm theo tiêu đề, nội dung..."
+      {/* Meta Stats line */}
+      <div className="flex items-center justify-between text-xs text-neutral-400 px-1">
+        <span>{posts.length} thread · 34 người theo dõi</span>
+      </div>
+
+      {/* Sort SegmentedControl */}
+      <div className="flex items-center justify-between gap-2 border-b border-neutral-100 pb-2">
+        <SegmentedControl
+          options={[
+            { value: 'hot', label: 'Nổi bật' },
+            { value: 'new', label: 'Mới nhất' },
+            { value: 'unanswered', label: 'Chưa có trả lời' },
+          ]}
+          value={sort}
+          onValueChange={setSort}
+          size="sm"
         />
-        <div className="w-48">
-          <Select
-            options={typeOptions}
-            value={selectedType}
-            onValueChange={setSelectedType}
-          />
-        </div>
-        <div className="w-52">
-          <Select
-            options={subjectOptions}
-            value={selectedSubject}
-            onValueChange={setSelectedSubject}
-          />
-        </div>
-      </FilterBar>
+      </div>
 
-      <QueryBoundary
-        query={postsQuery}
-        isEmpty={(data) => data.length === 0}
-        empty={
-          <EmptyState
-            icon={BookOpen}
-            title="Không tìm thấy bài viết phù hợp"
-            description="Hãy thử tìm kiếm với từ khóa khác hoặc là người đầu tiên đăng bài chia sẻ kiến thức!"
-            actionLabel="Đăng bài ngay"
-            onAction={() => navigate('/knowledge/new')}
-          />
-        }
-      >
-        {(posts) => (
-          <div className="space-y-4">
-            {posts.map((post) => {
-              const author = seedUsers.find((u) => u.id === post.authorId) || {
-                id: post.authorId,
-                fullName: 'Sinh viên SCS',
-                school: 'Đại học FPT',
-              };
+      {/* Type Filter Chips */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs">
+        {[
+          { value: 'all', label: 'Tất cả' },
+          { value: 'discussion', label: 'Chia sẻ' },
+          { value: 'question', label: 'Hỏi đáp' },
+          { value: 'document', label: 'Tài liệu' },
+        ].map((t) => (
+          <button
+            key={t.value}
+            type="button"
+            onClick={() => setTypeFilter(t.value)}
+            className={cn(
+              'px-3 py-1 rounded-full border transition-all cursor-pointer font-medium',
+              type === t.value
+                ? 'bg-brand-50 text-brand-700 border-brand-300'
+                : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-              return (
-                <Card
-                  key={post.id}
-                  onClick={() => navigate(`/knowledge/${post.id}`)}
-                  className="p-5 hover:border-brand-300 transition-all cursor-pointer shadow-xs"
-                >
-                  <CardContent className="p-0 space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Badge tier="neutral" size="sm" className="gap-1 font-medium bg-neutral-100">
-                          {typeIcons[post.type]}
-                          <span>{typeLabels[post.type]}</span>
-                        </Badge>
-                        {post.subject && (
-                          <Badge tier="brand" size="sm">
-                            {post.subject}
-                          </Badge>
-                        )}
-                      </div>
-                      <span className="text-[11px] text-neutral-400">
-                        {formatRelativeTime(post.createdAt)}
-                      </span>
-                    </div>
+      {/* Thread Composer with prefilled subject */}
+      <ThreadComposer
+        defaultSubject={subject || 'General'}
+        onPosted={(newPost) => {
+          queryClient.setQueryData<KnowledgePost[]>(
+            ['knowledge', 'topic', { subject, tag, q, sort, type }],
+            (prev = []) => [newPost, ...prev]
+          );
+        }}
+      />
 
-                    <div>
-                      <h3 className="text-base font-bold text-neutral-900 leading-snug hover:text-brand-600 transition-colors">
-                        {post.title}
-                      </h3>
-                      <p className="text-xs text-neutral-600 line-clamp-2 mt-1 leading-relaxed">
-                        {post.contentMd.replace(/[#*`_]/g, '')}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      {post.tags.map((tag) => (
-                        <span key={tag} className="text-[11px] text-neutral-500 bg-neutral-100 rounded px-2 py-0.5">
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center justify-between pt-3 border-t border-neutral-100 text-xs text-neutral-500">
-                      <UserMiniCard user={author} size="sm" linkToProfile={false} />
-
-                      <div className="flex items-center gap-3 shrink-0">
-                        {post.attachments && post.attachments.length > 0 && (
-                          <span className="flex items-center gap-1 text-[11px] text-neutral-500">
-                            <Paperclip size={13} /> {post.attachments.length} tệp
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1 text-[11px] text-neutral-500 font-medium">
-                          <MessageSquare size={13} /> {post.commentCount} phản hồi
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+      {/* Thread list */}
+      <div className="space-y-1">
+        {postsQuery.isLoading ? (
+          <div className="space-y-4 pt-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex gap-3 py-4 border-b border-neutral-100 animate-pulse">
+                <div className="w-10 h-10 rounded-full bg-neutral-200 shrink-0" />
+                <div className="flex-1 space-y-2.5">
+                  <div className="h-4 bg-neutral-200 rounded w-1/3" />
+                  <div className="h-3.5 bg-neutral-100 rounded w-full" />
+                  <div className="h-3.5 bg-neutral-100 rounded w-4/5" />
+                </div>
+              </div>
+            ))}
           </div>
+        ) : posts.length === 0 ? (
+          <div className="text-center py-12 text-neutral-400 bg-neutral-50 rounded-xl border border-neutral-200 p-6 space-y-2">
+            <p className="text-sm font-medium text-neutral-700">Chưa có bài viết nào trong chủ đề này.</p>
+            <p className="text-xs text-neutral-500">Hãy là người đầu tiên đặt câu hỏi hoặc chia sẻ tài liệu!</p>
+          </div>
+        ) : (
+          posts.map((post) => (
+            <ThreadCard
+              key={post.id}
+              post={post}
+              variant="feed"
+              onLikeToggle={(id, liked) => likeMutation.mutate({ id, liked })}
+              onSaveToggle={(id, saved) => saveMutation.mutate({ id, saved })}
+              onDelete={(id) => setDeletePostId(id)}
+              onReport={(id) => setReportPostId(id)}
+            />
+          ))
         )}
-      </QueryBoundary>
+      </div>
+
+      {/* Report Post Dialog */}
+      {reportPostId && (
+        <ReportPostDialog
+          open={!!reportPostId}
+          onOpenChange={(open) => !open && setReportPostId(null)}
+          postId={reportPostId}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={!!deletePostId}
+        onOpenChange={(open) => !open && setDeletePostId(null)}
+        title="Xóa bài viết"
+        description="Bạn có chắc chắn muốn xóa bài viết này không? Hành động này không thể hoàn tác."
+        danger={true}
+        confirmLabel="Xóa bài viết"
+        loading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (deletePostId) deleteMutation.mutate(deletePostId);
+        }}
+      />
     </div>
   );
 }

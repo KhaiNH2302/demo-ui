@@ -60,6 +60,7 @@ export const AdminUserDetailPage: React.FC = () => {
           <PageHeader
             title={`Hồ sơ người dùng: ${user.fullName}`}
             description={`Email: ${user.email} • ID: ${user.id}`}
+            backHref="/admin/users"
             breadcrumbs={[
               { label: 'Admin Portal', href: '/admin' },
               { label: 'Người dùng', href: '/admin/users' },

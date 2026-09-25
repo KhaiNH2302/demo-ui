@@ -64,8 +64,8 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             </IconButton>
           )}
           <div>
-            <h1 className="text-2xl font-bold text-[var(--text-main)] tracking-tight">{title}</h1>
-            {description && <p className="text-xs text-[var(--text-muted)] mt-0.5">{description}</p>}
+            <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">{title}</h1>
+            {description && <p className="text-xs text-neutral-500 mt-0.5">{description}</p>}
           </div>
         </div>
 

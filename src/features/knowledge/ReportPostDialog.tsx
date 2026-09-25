@@ -25,24 +25,38 @@ const reportReasons = [
 export interface ReportPostDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  postId: string;
+  postId?: string;
+  target?: { type: 'post' | 'comment'; id: string };
 }
 
 export const ReportPostDialog: React.FC<ReportPostDialogProps> = ({
   open,
   onOpenChange,
   postId,
+  target,
 }) => {
   const [reason, setReason] = useState(reportReasons[0]);
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  const targetType = target?.type || 'post';
+  const targetId = target?.id || postId || '';
+
   const handleReport = async () => {
+    if (!targetId) return;
     setLoading(true);
     try {
-      await apiClient.post(`/posts/${postId}/report`, { reason, note });
-      toast({ variant: 'success', title: 'Đã gửi báo cáo vi phạm thành công', description: 'Đội ngũ kiểm duyệt sẽ xử lý trong thời gian sớm nhất.' });
+      if (targetType === 'comment') {
+        await apiClient.post(`/comments/${targetId}/report`, { reason, note });
+      } else {
+        await apiClient.post(`/posts/${targetId}/report`, { reason, note });
+      }
+      toast({
+        variant: 'success',
+        title: 'Đã gửi báo cáo vi phạm, cảm ơn bạn',
+        description: 'Đội ngũ kiểm duyệt sẽ xử lý trong thời gian sớm nhất.',
+      });
       onOpenChange(false);
       setNote('');
     } catch {
@@ -56,7 +70,9 @@ export const ReportPostDialog: React.FC<ReportPostDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Báo cáo vi phạm bài viết</DialogTitle>
+          <DialogTitle>
+            {targetType === 'comment' ? 'Báo cáo vi phạm bình luận' : 'Báo cáo vi phạm bài viết'}
+          </DialogTitle>
           <DialogDescription>
             Hãy chọn lý do chính xác giúp ban quản trị kiểm duyệt và giữ gìn môi trường học tập lành mạnh.
           </DialogDescription>

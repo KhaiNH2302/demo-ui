@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Plus, Search, LogOut, User, GraduationCap, ShieldCheck, Flag, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Plus,
+  Search,
+  LogOut,
+  User,
+  LayoutList,
+  GraduationCap,
+  ShieldCheck,
+  Settings,
+  LifeBuoy,
+} from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { QuickCreateSheet } from './QuickCreateSheet';
 import {
@@ -39,7 +49,7 @@ export const Topbar: React.FC = () => {
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
             <input
               type="text"
-              placeholder="Tìm bạn học, môn học, nhóm, CLB hoặc Mentor..."
+              placeholder="Tìm nhóm, CLB, Mentor, bài viết…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-10 w-full rounded-full border border-neutral-200 bg-neutral-100/80 pl-9.5 pr-4 text-xs text-neutral-800 placeholder:text-neutral-400 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 transition-all"
@@ -55,7 +65,7 @@ export const Topbar: React.FC = () => {
             onClick={() => setIsQuickCreateOpen(true)}
             className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-brand-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-brand-600 active:scale-95 transition-all cursor-pointer"
           >
-            <Plus size={16} strokeWidth={2.5} />
+            <Plus size={16} strokeWidth={2.25} />
             <span>Tạo mới</span>
           </button>
 
@@ -64,7 +74,10 @@ export const Topbar: React.FC = () => {
 
           {/* User Profile Avatar Dropdown */}
           <DropdownMenu>
-            <DropdownMenuTrigger className="rounded-full focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 cursor-pointer">
+            <DropdownMenuTrigger
+              aria-label="Menu tài khoản"
+              className="rounded-full focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 cursor-pointer"
+            >
               <Avatar
                 src={user?.avatarUrl}
                 name={user?.fullName || 'User'}
@@ -78,37 +91,61 @@ export const Topbar: React.FC = () => {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
 
+              {/* Group 1: Hồ sơ & Của tôi */}
               <DropdownMenuItem onClick={() => navigate('/profile/me')} className="cursor-pointer">
                 <User size={15} className="mr-2 text-neutral-500" />
-                <span>Hồ sơ & Tiêu chí matching</span>
+                <span>Hồ sơ</span>
               </DropdownMenuItem>
 
-              <DropdownMenuItem onClick={() => navigate('/applications')} className="cursor-pointer">
-                <Flag size={15} className="mr-2 text-neutral-500" />
-                <span>Đơn ứng tuyển CLB</span>
+              <DropdownMenuItem onClick={() => navigate('/me')} className="cursor-pointer">
+                <LayoutList size={15} className="mr-2 text-neutral-500" />
+                <span>Của tôi</span>
               </DropdownMenuItem>
 
-              {isMentor && (
+              <DropdownMenuSeparator />
+
+              {/* Group 2: Role-based shortcuts */}
+              {isMentor ? (
                 <DropdownMenuItem onClick={() => navigate('/mentor/profile')} className="cursor-pointer">
-                  <GraduationCap size={15} className="mr-2 text-purple-600" />
+                  <GraduationCap size={15} className="mr-2 text-neutral-500" />
                   <span>Mentor Center</span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={() => navigate('/mentor/profile')} className="cursor-pointer">
+                  <GraduationCap size={15} className="mr-2 text-neutral-500" />
+                  <span>Trở thành Mentor</span>
                 </DropdownMenuItem>
               )}
 
               {isAdmin && (
                 <DropdownMenuItem onClick={() => navigate('/admin')} className="cursor-pointer">
-                  <ShieldCheck size={15} className="mr-2 text-rose-600" />
-                  <span>Quản trị viên (Admin Portal)</span>
+                  <ShieldCheck size={15} className="mr-2 text-neutral-500" />
+                  <span>Quản trị</span>
                 </DropdownMenuItem>
               )}
 
               <DropdownMenuSeparator />
+
+              {/* Group 3: Settings & Help */}
+              <DropdownMenuItem onClick={() => navigate('/settings')} className="cursor-pointer">
+                <Settings size={15} className="mr-2 text-neutral-500" />
+                <span>Cài đặt</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem onClick={() => navigate('/help')} className="cursor-pointer">
+                <LifeBuoy size={15} className="mr-2 text-neutral-500" />
+                <span>Trợ giúp</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              {/* Group 4: Logout */}
               <DropdownMenuItem
                 onClick={() => {
                   logout();
                   navigate('/login');
                 }}
-                className="text-rose-600 hover:bg-rose-50 cursor-pointer focus:text-rose-600"
+                className="text-tier-danger-text hover:bg-tier-danger-bg cursor-pointer focus:text-tier-danger-text"
               >
                 <LogOut size={15} className="mr-2" />
                 <span>Đăng xuất</span>
@@ -122,3 +159,5 @@ export const Topbar: React.FC = () => {
     </>
   );
 };
+
+export default Topbar;

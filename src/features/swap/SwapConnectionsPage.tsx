@@ -80,7 +80,7 @@ export default function SwapConnectionsPage() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-neutral-900">
-                          {reqA?.offeringId?.toUpperCase() || 'Môn học'}: {reqA?.currentClassCode} ➔ {reqA?.targetClassCode}
+                          {reqA?.offeringId?.toUpperCase() || 'Môn học'}: {reqA?.currentClassCode} → {reqA?.targetClassCode}
                         </span>
                         <StatusBadge group="swapConnection" value={conn.status} />
                       </div>
@@ -88,7 +88,7 @@ export default function SwapConnectionsPage() {
                         Thời gian: {formatDateTime(conn.createdAt)}
                       </p>
                       {conn.cancelReason && (
-                        <p className="text-[11px] text-[#b3261e]">Lý do: {conn.cancelReason}</p>
+                        <p className="text-[11px] text-tier-danger-text">Lý do: {conn.cancelReason}</p>
                       )}
                     </div>
 

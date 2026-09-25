@@ -27,7 +27,7 @@ const subjectOptions = [
 ];
 
 const postFormSchema = z.object({
-  type: z.enum(['experience', 'question', 'document']),
+  type: z.enum(['experience', 'question', 'document', 'discussion']),
   title: z.string().min(5, 'Tiêu đề bài viết phải từ 5 ký tự trở lên'),
   contentMd: z.string().min(20, 'Nội dung bài viết phải từ 20 ký tự trở lên'),
   subject: z.string().optional(),
@@ -115,17 +115,17 @@ export default function KnowledgePostFormPage() {
         <Card className="p-8 text-center shadow-lg">
           <div className="flex flex-col items-center">
             {isPending ? (
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#fef6e7] text-[#d9910b] mb-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-tier-attention-bg text-tier-attention-dot mb-4">
                 <Clock size={36} />
               </div>
             ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#e7f7ee] text-[#16794a] mb-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-tier-success-bg text-tier-success-dot mb-4">
                 <CheckCircle2 size={36} />
               </div>
             )}
 
             <h2 className="text-xl font-bold text-neutral-900">
-              {isPending ? '⏳ Bài viết đang chờ kiểm duyệt' : '🎉 Bài viết đã được đăng thành công!'}
+              {isPending ? 'Bài viết đang chờ kiểm duyệt' : 'Bài viết đã được đăng thành công'}
             </h2>
 
             <p className="text-xs text-neutral-600 mt-2 max-w-md leading-relaxed">
@@ -177,15 +177,15 @@ export default function KnowledgePostFormPage() {
               >
                 <label className="flex items-center gap-2 p-3 rounded-lg border border-neutral-200 hover:bg-neutral-50 cursor-pointer">
                   <RadioGroupItem value="experience" />
-                  <span className="text-xs font-medium">💡 Kinh nghiệm</span>
+                  <span className="text-xs font-medium">Kinh nghiệm</span>
                 </label>
                 <label className="flex items-center gap-2 p-3 rounded-lg border border-neutral-200 hover:bg-neutral-50 cursor-pointer">
                   <RadioGroupItem value="question" />
-                  <span className="text-xs font-medium">❓ Câu hỏi</span>
+                  <span className="text-xs font-medium">Câu hỏi</span>
                 </label>
                 <label className="flex items-center gap-2 p-3 rounded-lg border border-neutral-200 hover:bg-neutral-50 cursor-pointer">
                   <RadioGroupItem value="document" />
-                  <span className="text-xs font-medium">📄 Tài liệu</span>
+                  <span className="text-xs font-medium">Tài liệu</span>
                 </label>
               </RadioGroup>
             </FormField>

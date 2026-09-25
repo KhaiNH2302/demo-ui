@@ -73,7 +73,7 @@ export default function SwapDetailPage() {
           <div className="space-y-6">
             <PageHeader
               title={`Yêu cầu đổi lớp môn ${req.offeringId.toUpperCase()}`}
-              description={`Mã lớp: ${req.currentClassCode} ➔ ${req.targetClassCode}`}
+              description={`Mã lớp: ${req.currentClassCode} → ${req.targetClassCode}`}
               backHref="/swap"
               actions={
                 req.status === 'Open' && (

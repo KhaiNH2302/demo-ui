@@ -117,7 +117,7 @@ export default function SwapNewPage() {
                   <p>{errorMessage}</p>
                   {duplicateReqId && (
                     <Link to={`/swap/${duplicateReqId}`} className="font-bold underline mt-1 block">
-                      Xem yêu cầu đang mở của bạn tại đây ➔
+                      Xem yêu cầu đang mở của bạn tại đây →
                     </Link>
                   )}
                 </div>

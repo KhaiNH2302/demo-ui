@@ -53,7 +53,7 @@ export default function SwapMatchPage() {
 
       <PageHeader
         title={`Tìm đối tác đổi lớp — ${myReq?.offeringId.toUpperCase() || 'Môn học'}`}
-        description={`Lớp của bạn: ${myReq?.currentClassCode || ''} ➔ Muốn đổi sang: ${myReq?.targetClassCode || ''}`}
+        description={`Lớp của bạn: ${myReq?.currentClassCode || ''} → Muốn đổi sang: ${myReq?.targetClassCode || ''}`}
         backHref={`/swap/${id}`}
       />
 
@@ -108,7 +108,7 @@ export default function SwapMatchPage() {
                         <CardHeader className="p-0 pb-3">
                           <div className="flex items-center justify-between w-full">
                             <div className="font-bold text-sm text-neutral-900">
-                              Lớp đối tác: {partnerReq.currentClassCode} ➔ {partnerReq.targetClassCode}
+                              Lớp đối tác: {partnerReq.currentClassCode} → {partnerReq.targetClassCode}
                             </div>
                             {isPerfect && (
                               <Badge tier="success" size="sm" dot>
@@ -172,7 +172,7 @@ export default function SwapMatchPage() {
                     <CardHeader className="p-0 pb-2">
                       <div className="flex items-center justify-between w-full">
                         <div className="font-bold text-sm text-neutral-900">
-                          Mã lớp: {partnerReq.currentClassCode} ➔ {partnerReq.targetClassCode}
+                          Mã lớp: {partnerReq.currentClassCode} → {partnerReq.targetClassCode}
                         </div>
                         {isPerfect && (
                           <Badge tier="success" size="sm" dot>

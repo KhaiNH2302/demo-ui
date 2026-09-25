@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { FormField } from '@/components/shared/FormField';
+import { Zap } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { apiClient, type ApiError } from '@/lib/apiClient';
 import { seedUsers } from '@/mocks/data/users';
@@ -131,7 +132,9 @@ export default function LoginPage() {
       {/* Seed Accounts Panel for Dev */}
       {import.meta.env.DEV && (
         <Card className="border-brand-200 bg-brand-50/20 p-4">
-          <h4 className="text-xs font-bold text-neutral-800 mb-2">⚡ Tài khoản Demo (Click để đăng nhập nhanh):</h4>
+          <h4 className="text-xs font-bold text-neutral-800 mb-2 flex items-center gap-1.5">
+            <Zap size={14} className="text-brand-600" /> Tài khoản Demo (Click để đăng nhập nhanh):
+          </h4>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <Button
               type="button"

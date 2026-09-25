@@ -1,9 +1,26 @@
+import type { LucideIcon } from 'lucide-react';
+import { Repeat2, GraduationCap, Building2, UsersRound, MessageCircle } from 'lucide-react';
 import type { SemanticTier } from '@/types/status';
+import type { Conversation } from '@/types/entities';
 
 export interface StatusMetaItem {
   tier: SemanticTier;
   label: string;
 }
+
+/**
+ * Nguồn duy nhất cho icon + nhãn của loại hội thoại (badge nguồn trong Chat).
+ * Dùng icon lucide đơn sắc — KHÔNG dùng emoji (🔄🎓🏛️👥💬) vì emoji render khác
+ * nhau theo từng hệ điều hành và không tô màu theo token được.
+ * Xem quy tắc: specs/ui/design-system/00-tokens.md § 8.1
+ */
+export const conversationKindMeta: Record<Conversation['kind'], { icon: LucideIcon; label: string }> = {
+  swap: { icon: Repeat2, label: 'Đổi lớp' },
+  mentoring: { icon: GraduationCap, label: 'Mentoring' },
+  club: { icon: Building2, label: 'CLB' },
+  group: { icon: UsersRound, label: 'Nhóm' },
+  direct: { icon: MessageCircle, label: 'Trực tiếp' },
+};
 
 export const statusMeta = {
   swapRequest: {

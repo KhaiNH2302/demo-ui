@@ -25,10 +25,10 @@ import type { Group, AiGroupMatch, ScheduleSlot } from '@/types/entities';
 
 const purposeOptions = [
   { value: '', label: 'Tất cả mục đích' },
-  { value: 'Học tập', label: '📚 Học tập' },
-  { value: 'Dự án', label: '💻 Đồ án / Dự án' },
-  { value: 'Kỹ năng', label: '🎯 Rèn luyện kỹ năng' },
-  { value: 'Sở thích', label: '🎨 Sở thích & Giao lưu' },
+  { value: 'Học tập', label: 'Học tập' },
+  { value: 'Dự án', label: 'Đồ án / Dự án' },
+  { value: 'Kỹ năng', label: 'Rèn luyện kỹ năng' },
+  { value: 'Sở thích', label: 'Sở thích & Giao lưu' },
 ];
 
 export default function GroupsFindPage() {

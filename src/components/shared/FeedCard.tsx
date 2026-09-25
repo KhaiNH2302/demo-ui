@@ -1,44 +1,54 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Sparkles, Calendar, BookOpen, Users, Repeat2, GraduationCap } from 'lucide-react';
+import { Avatar } from '@/components/ui/Avatar';
+import { Sparkles } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 export type FeedCardKind = 'knowledge' | 'group-suggestion' | 'event' | 'swap-match' | 'mentor-post';
+export type FeedCardVariant = 'post' | 'suggestion';
+
+const kindDefaultVariant: Record<FeedCardKind, FeedCardVariant> = {
+  knowledge: 'post',
+  event: 'post',
+  'group-suggestion': 'suggestion',
+  'swap-match': 'suggestion',
+  'mentor-post': 'suggestion',
+};
+
+export interface FeedCardAuthor {
+  name: string;
+  avatarUrl?: string;
+  subtitle?: string;
+  time?: string;
+}
 
 export interface FeedCardProps {
   kind: FeedCardKind;
-  context?: string;
-  badgeText?: string;
-  badgeVariant?: 'neutral' | 'pending' | 'attention' | 'success' | 'danger' | 'brand';
-  header?: React.ReactNode;
+  /** 'post' = nội dung cộng đồng thật, header giống bài đăng (avatar+tên+giờ).
+   *  'suggestion' = gốc gợi ý AI, chỉ 1 dòng nhỏ "✨ ...", không chiếm header.
+   *  Mặc định suy ra từ `kind` nếu không truyền. */
+  variant?: FeedCardVariant;
+  /** Dùng khi variant='post' — header trông như 1 bài đăng thật, không phải hàng hệ thống. */
+  author?: FeedCardAuthor;
+  /** Dùng khi variant='suggestion' — dòng nhỏ phía trên, KHÔNG phải badge to. */
+  aiTag?: string;
   children?: React.ReactNode;
   actions?: React.ReactNode;
   onClick?: () => void;
   className?: string;
 }
 
-const kindIcons: Record<FeedCardKind, { icon: React.ComponentType<{ size?: number }>; color: string; label: string }> = {
-  knowledge: { icon: BookOpen, color: 'text-amber-600 bg-amber-50', label: 'Tài liệu & Kinh nghiệm' },
-  'group-suggestion': { icon: Users, color: 'text-emerald-600 bg-emerald-50', label: 'Gợi ý nhóm học tập' },
-  event: { icon: Calendar, color: 'text-indigo-600 bg-indigo-50', label: 'Sự kiện CLB sắp tới' },
-  'swap-match': { icon: Repeat2, color: 'text-blue-600 bg-blue-50', label: 'Khớp lịch đổi lớp mới' },
-  'mentor-post': { icon: GraduationCap, color: 'text-purple-600 bg-purple-50', label: 'Bài hướng dẫn Mentoring' },
-};
-
 export const FeedCard: React.FC<FeedCardProps> = ({
   kind,
-  context,
-  badgeText,
-  badgeVariant = 'brand',
-  header,
+  variant,
+  author,
+  aiTag,
   children,
   actions,
   onClick,
   className,
 }) => {
-  const meta = kindIcons[kind] || kindIcons.knowledge;
-  const Icon = meta.icon;
+  const resolvedVariant = variant || kindDefaultVariant[kind] || 'post';
 
   return (
     <Card
@@ -49,24 +59,29 @@ export const FeedCard: React.FC<FeedCardProps> = ({
         className
       )}
     >
-      {/* Context Top Line */}
-      <div className="flex items-center justify-between border-b border-neutral-100 bg-neutral-50/70 px-5 py-2.5 text-xs">
-        <div className="flex items-center gap-2">
-          <div className={cn('flex h-6 w-6 items-center justify-center rounded-md text-xs font-semibold', meta.color)}>
-            <Icon size={14} />
+      <CardContent className="p-5 space-y-3">
+        {/* Header: 2 kiểu hoàn toàn khác nhau — không dùng chung 1 "thanh phân loại"
+            cho cả nội dung cộng đồng thật lẫn gợi ý hệ thống, đó chính là điều khiến
+            feed trước đây đọc như 1 danh sách thông báo thay vì bảng tin. */}
+        {resolvedVariant === 'post' && author ? (
+          <div className="flex items-center gap-2.5">
+            <Avatar src={author.avatarUrl} name={author.name} size="md" />
+            <div className="min-w-0">
+              <h4 className="text-sm font-bold text-neutral-900 truncate">{author.name}</h4>
+              {(author.subtitle || author.time) && (
+                <p className="text-[11px] text-neutral-400 truncate">
+                  {[author.subtitle, author.time].filter(Boolean).join(' • ')}
+                </p>
+              )}
+            </div>
           </div>
-          <span className="font-semibold text-neutral-700">{context || meta.label}</span>
-        </div>
+        ) : resolvedVariant === 'suggestion' ? (
+          <div className="flex items-center gap-1.5 text-xs font-medium text-accent-700">
+            <Sparkles size={13} />
+            <span>{aiTag || 'Gợi ý bởi AI'}</span>
+          </div>
+        ) : null}
 
-        {badgeText && (
-          <Badge variant={badgeVariant} size="sm">
-            {badgeText}
-          </Badge>
-        )}
-      </div>
-
-      <CardContent className="p-5 space-y-3.5">
-        {header}
         {children}
       </CardContent>
 
@@ -78,3 +93,5 @@ export const FeedCard: React.FC<FeedCardProps> = ({
     </Card>
   );
 };
+
+export default FeedCard;

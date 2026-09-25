@@ -124,21 +124,27 @@ export interface AiSwapMatch {
   reasons: string[];
 }
 
-// FE-02 Knowledge
+// FE-02 Knowledge (Threads model)
 export interface KnowledgePost {
   id: string;
   authorId: string;
   type: PostType;
-  title: string;
+  title?: string;
   contentMd: string;
   content?: string;
   subject?: string;
   subjectCode?: string;
   tags: string[];
+  images?: string[];
   attachments: { name: string; url: string; size: number }[];
   visibility: 'school' | 'cross_school';
   status: PostStatus;
   rejectReason?: string;
+  likesCount?: number;
+  likedByMe?: boolean;
+  savedByMe?: boolean;
+  isSolved?: boolean;
+  acceptedCommentId?: string;
   commentCount: number;
   createdAt: string;
   updatedAt: string;
@@ -149,12 +155,17 @@ export interface Comment {
   postId: string;
   authorId: string;
   content: string;
+  parentId?: string;
+  likesCount?: number;
+  likedByMe?: boolean;
+  isAcceptedAnswer?: boolean;
   createdAt: string;
 }
 
 export interface ViolationReport {
   id: string;
-  postId: string;
+  postId?: string;
+  commentId?: string;
   reporterId: string;
   reason: string;
   details?: string;
@@ -395,9 +406,21 @@ export interface Conversation {
   refId: string;
   title?: string;
   participantIds: string[];
+  avatarUrl?: string;
   lastMessage?: string;
   lastMessageAt?: string;
+  unreadCount?: number;
+  requestStatus?: 'pending' | 'accepted' | 'declined' | 'blocked';
+  requestedBy?: string;
+  pinned?: boolean;
   archived?: boolean;
+}
+
+export interface MessageAttachment {
+  name: string;
+  url: string;
+  size?: number;
+  type?: string;
 }
 
 export interface Message {
@@ -405,6 +428,12 @@ export interface Message {
   conversationId: string;
   senderId: string;
   content: string;
+  type?: 'text' | 'image' | 'file' | 'link' | 'like';
+  images?: string[];
+  attachments?: MessageAttachment[];
+  reactions?: Record<string, string[]>;
+  replyToMessageId?: string;
+  status?: 'sending' | 'sent' | 'read';
   createdAt: string;
 }
 
