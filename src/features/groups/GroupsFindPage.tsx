@@ -66,7 +66,7 @@ export default function GroupsFindPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Tìm nhóm học tập & Đồ án"
+        title="Tìm nhóm kết nối & Đồ án"
         description="Tìm kiếm bạn đồng hành làm đồ án SWP/Capstone hoặc nhóm rèn luyện kỹ năng với thuật toán ghép nối AI"
         actions={
           <div className="flex items-center gap-2">

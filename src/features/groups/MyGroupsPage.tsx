@@ -68,7 +68,7 @@ export const MyGroupsPage: React.FC = () => {
             {ownedGroupsQuery.data && ownedGroupsQuery.data.length === 0 ? (
               <EmptyState
                 title="Chưa quản lý nhóm nào"
-                description="Bạn chưa tạo nhóm học tập hay làm đồ án nào. Hãy bắt đầu ngay!"
+                description="Bạn chưa tạo nhóm kết nối hay làm đồ án nào. Hãy bắt đầu ngay!"
                 action={
                   <Button onClick={() => navigate('/groups/new')}>
                     <Plus className="w-4 h-4 mr-1.5" /> Tạo nhóm mới
@@ -121,7 +121,7 @@ export const MyGroupsPage: React.FC = () => {
             {memberGroupsQuery.data && memberGroupsQuery.data.length === 0 ? (
               <EmptyState
                 title="Chưa tham gia nhóm nào"
-                description="Khám phá các nhóm học tập và dự án phù hợp với kỹ năng của bạn"
+                description="Khám phá các nhóm kết nối và dự án phù hợp với kỹ năng của bạn"
                 action={
                   <Button onClick={() => navigate('/groups')}>
                     Tìm nhóm phù hợp

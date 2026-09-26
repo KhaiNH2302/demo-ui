@@ -71,7 +71,7 @@ export const DiscoverCarousel: React.FC<DiscoverCarouselProps> = ({
                       {item.title}
                     </h4>
                     <span className="text-[10px] text-neutral-500 truncate block">
-                      {item.subtitle || (item.type === 'group' ? 'Nhóm học tập' : 'Mentor')}
+                      {item.subtitle || (item.type === 'group' ? 'Nhóm kết nối' : 'Mentor')}
                     </span>
                   </div>
                 </div>

@@ -223,7 +223,7 @@ export const SettingsPage: React.FC = () => {
                 <div className="flex items-center justify-between pt-4">
                   <div className="space-y-0.5">
                     <p className="text-xs font-semibold text-neutral-800">
-                      Cho phép gợi ý tham gia Nhóm học tập (Group Matching)
+                      Cho phép gợi ý tham gia Nhóm kết nối (Group Matching)
                     </p>
                     <p className="text-[11px] text-neutral-500">
                       Hiển thị hồ sơ kỹ năng của bạn khi chủ nhóm tìm kiếm thành viên.
@@ -304,7 +304,7 @@ export const SettingsPage: React.FC = () => {
                     <tbody className="divide-y divide-neutral-100">
                       {[
                         { key: 'swap', label: 'Lời mời đổi lớp & xác nhận' },
-                        { key: 'group', label: 'Yêu cầu tham gia nhóm học tập' },
+                        { key: 'group', label: 'Yêu cầu tham gia nhóm kết nối' },
                         { key: 'club', label: 'Tin tức & đợt tuyển Câu lạc bộ' },
                         { key: 'event', label: 'Lịch sự kiện & điểm danh' },
                         { key: 'mentoring', label: 'Yêu cầu hỗ trợ Mentoring' },

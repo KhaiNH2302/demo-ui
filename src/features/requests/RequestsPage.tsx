@@ -75,7 +75,7 @@ export const RequestsPage: React.FC = () => {
   const modules = [
     { key: 'all', label: 'Tất cả loại yêu cầu' },
     { key: 'swap', label: 'Đổi lớp' },
-    { key: 'group', label: 'Nhóm học tập' },
+    { key: 'group', label: 'Nhóm kết nối' },
     { key: 'mentoring', label: 'Mentoring' },
     { key: 'club', label: 'Câu lạc bộ' },
     { key: 'chat', label: 'Lời mời trò chuyện' },

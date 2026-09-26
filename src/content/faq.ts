@@ -9,7 +9,7 @@ export const faqCategories = [
   { key: 'account', label: 'Tài khoản & Xác minh' },
   { key: 'swap', label: 'Đổi lớp học phần' },
   { key: 'knowledge', label: 'Chia sẻ kiến thức' },
-  { key: 'groups', label: 'Tìm nhóm học tập' },
+  { key: 'groups', label: 'Tìm nhóm kết nối' },
   { key: 'clubs', label: 'Câu lạc bộ' },
   { key: 'mentoring', label: 'Mentoring' },
 ] as const;

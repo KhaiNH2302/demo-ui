@@ -223,7 +223,7 @@ export default function DiscoverPage() {
         <div>
           <h1 className="text-2xl font-bold text-neutral-900">Khám phá cơ hội mới</h1>
           <p className="text-sm text-neutral-500 mt-1">
-            Tìm kiếm nhóm học tập, câu lạc bộ, Mentor và các chủ đề môn học sôi nổi trong toàn trường.
+            Tìm kiếm nhóm kết nối, câu lạc bộ, Mentor và các chủ đề môn học sôi nổi trong toàn trường.
           </p>
         </div>
 
@@ -440,7 +440,7 @@ export default function DiscoverPage() {
                     <Sparkles size={18} className="text-accent-600" /> Dành cho bạn
                   </h3>
                   <p className="text-xs text-neutral-500">
-                    Gợi ý nhóm học tập & Mentor được cá nhân hóa theo kỹ năng và môn học của bạn.
+                    Gợi ý nhóm kết nối & Mentor được cá nhân hóa theo kỹ năng và môn học của bạn.
                   </p>
                 </div>
               </div>

@@ -45,7 +45,7 @@ export const QuickCreateSheet: React.FC<QuickCreateSheetProps> = ({ open, onOpen
       action: () => navigate('/swap/new'),
     },
     {
-      title: 'Tạo nhóm học tập',
+      title: 'Tạo nhóm kết nối',
       description: 'Lập nhóm làm đồ án SWP391, Capstone hoặc ôn thi',
       icon: UsersRound,
       action: () => navigate('/groups/new'),

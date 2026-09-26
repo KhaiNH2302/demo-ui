@@ -190,7 +190,7 @@ export const MyHubPage: React.FC = () => {
                     <ArrowRight size={16} className="text-neutral-400" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-neutral-900">Nhóm học tập</h3>
+                    <h3 className="text-sm font-bold text-neutral-900">Nhóm kết nối</h3>
                     <p className="text-xs text-neutral-500 mt-1">
                       Quản lý {data.counts.groupsOwned} nhóm • Tham gia {data.counts.groupsJoined} nhóm
                     </p>

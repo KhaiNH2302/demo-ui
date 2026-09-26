@@ -36,7 +36,7 @@ export const LandingPage: React.FC = () => {
     },
     {
       icon: UsersRound,
-      name: 'Tìm nhóm học tập',
+      name: 'Tìm nhóm kết nối',
       desc: 'Ghép nhóm đồ án, Capstone hoặc luyện thi theo đúng kỹ năng và thời gian rảnh rỗi.',
     },
     {
@@ -65,7 +65,7 @@ export const LandingPage: React.FC = () => {
     {
       num: '03',
       title: 'Nhận gợi ý và kết nối',
-      desc: 'Khám phá đối tác đổi lớp, nhóm học tập và Mentor phù hợp với tỷ lệ ghép nối cao nhất.',
+      desc: 'Khám phá đối tác đổi lớp, nhóm kết nối và Mentor phù hợp với tỷ lệ ghép nối cao nhất.',
     },
   ];
 

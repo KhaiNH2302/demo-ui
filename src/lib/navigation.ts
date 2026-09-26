@@ -9,7 +9,6 @@ import {
   Repeat2,
   Building2,
   CalendarDays,
-  UserSearch,
   Compass,
   Inbox,
   BadgeCheck,
@@ -28,7 +27,6 @@ export type NavKey =
   | 'swap'
   | 'clubs'
   | 'events'
-  | 'people'
   | 'opportunities'
   | 'requests'
   | 'mentor'
@@ -92,7 +90,7 @@ export const NAV_SECTIONS: NavSectionConfig[] = [
       },
       {
         key: 'groups',
-        label: 'Nhóm học tập',
+        label: 'Nhóm kết nối',
         href: '/groups',
         icon: UsersRound,
         badge: (c) => c?.pendingGroupJoinRequests || null,
@@ -122,12 +120,6 @@ export const NAV_SECTIONS: NavSectionConfig[] = [
         href: '/events',
         icon: CalendarDays,
         badge: (c) => c?.todayRegisteredEvents || null,
-      },
-      {
-        key: 'people',
-        label: 'Kết nối sinh viên',
-        href: '/people',
-        icon: UserSearch,
       },
       {
         key: 'opportunities',
@@ -204,7 +196,7 @@ export function getActiveNavKey(pathname: string): NavKey | null {
     return 'mentoring';
   }
 
-  // 6. Nhóm học tập
+  // 6. Nhóm kết nối
   if (pathname.startsWith('/groups')) {
     return 'groups';
   }
@@ -237,11 +229,6 @@ export function getActiveNavKey(pathname: string): NavKey | null {
     return 'events';
   }
 
-  // 12. Kết nối sinh viên
-  if (pathname.startsWith('/people') || pathname.startsWith('/users/')) {
-    return 'people';
-  }
-
   // 13. Cơ hội
   if (pathname.startsWith('/opportunities')) {
     return 'opportunities';
@@ -270,7 +257,6 @@ export function getActiveMobileTab(pathname: string): 'home' | 'knowledge' | 'ch
     pathname.startsWith('/swap') ||
     pathname.startsWith('/clubs') ||
     pathname.startsWith('/events') ||
-    pathname.startsWith('/people') ||
     pathname.startsWith('/opportunities') ||
     pathname.startsWith('/requests') ||
     pathname.startsWith('/mentor') ||

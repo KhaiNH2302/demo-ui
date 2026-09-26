@@ -127,7 +127,7 @@ export const SystemSettingsPage: React.FC = () => {
 
                 <div className="flex items-center justify-between p-3 bg-[var(--surface-muted)] rounded-lg">
                   <div>
-                    <div className="font-semibold text-sm">Gợi ý thành viên & nhóm học tập (Group AI Match)</div>
+                    <div className="font-semibold text-sm">Gợi ý thành viên & nhóm kết nối (Group AI Match)</div>
                     <span className="text-xs text-[var(--text-muted)]">Phân tích kỹ năng, đề tài và lịch rảnh biểu đồ</span>
                   </div>
                   <Switch

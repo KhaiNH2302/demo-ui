@@ -74,7 +74,7 @@ export default function OnboardingPage() {
         <CardHeader className="text-center pb-4">
           <CardTitle className="text-2xl font-bold text-neutral-900">Thiết lập hồ sơ sinh viên</CardTitle>
           <CardDescription>
-            Điền các thông tin cơ bản giúp hệ thống AI gợi ý đối tác đổi lớp, nhóm học tập và Mentor phù hợp nhất
+            Điền các thông tin cơ bản giúp hệ thống AI gợi ý đối tác đổi lớp, nhóm kết nối và Mentor phù hợp nhất
           </CardDescription>
           <div className="pt-6 pb-2">
             <Stepper steps={steps} current={currentStep} />

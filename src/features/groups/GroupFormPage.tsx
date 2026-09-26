@@ -82,7 +82,7 @@ export default function GroupFormPage() {
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <PageHeader
-        title="Tạo nhóm học tập & Đồ án mới"
+        title="Tạo nhóm kết nối & Đồ án mới"
         description="Thiết lập thông tin nhóm và tiêu chí để tìm kiếm các thành viên phù hợp"
         backHref="/groups"
       />

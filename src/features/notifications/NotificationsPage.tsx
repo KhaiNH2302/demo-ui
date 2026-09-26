@@ -16,7 +16,7 @@ import type { Notification } from '@/types/entities';
 const sourceOptions = [
   { value: '', label: 'Tất cả nguồn' },
   { value: 'Swap', label: 'Đổi lớp' },
-  { value: 'GroupJoin', label: 'Nhóm học tập' },
+  { value: 'GroupJoin', label: 'Nhóm kết nối' },
   { value: 'ClubApplication', label: 'Đơn CLB' },
   { value: 'ClubEvent', label: 'Sự kiện CLB' },
   { value: 'ClubRole', label: 'Vai trò CLB' },
@@ -71,7 +71,7 @@ export default function NotificationsPage() {
     <div className="space-y-6 max-w-4xl mx-auto">
       <PageHeader
         title="Thông báo của bạn"
-        description="Theo dõi cập nhật từ các yêu cầu đổi lớp, ứng tuyển CLB, nhóm học tập và hoạt động Mentoring"
+        description="Theo dõi cập nhật từ các yêu cầu đổi lớp, ứng tuyển CLB, nhóm kết nối và hoạt động Mentoring"
       />
 
       <FilterBar

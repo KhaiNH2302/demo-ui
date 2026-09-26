@@ -236,7 +236,7 @@ export const newModulesHandlers = [
       {
         id: 'req_02',
         module: 'group',
-        moduleLabel: 'Nhóm học tập',
+        moduleLabel: 'Nhóm kết nối',
         title: 'Yêu cầu gia nhập nhóm SWP391_G04',
         fromUser: { id: 'usr_student_06', fullName: 'Lê Hoàng Minh', avatarUrl: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150' },
         createdAt: '2026-09-25T10:15:00Z',

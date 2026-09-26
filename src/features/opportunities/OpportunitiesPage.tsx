@@ -74,7 +74,7 @@ export const OpportunitiesPage: React.FC = () => {
         variant="band"
         icon={Compass}
         title="Cơ hội trong SCS"
-        description="Tổng hợp các đợt tuyển thành viên CLB, nhóm học tập tìm người và Mentor nhận mentee trong trường"
+        description="Tổng hợp các đợt tuyển thành viên CLB, nhóm kết nối tìm người và Mentor nhận mentee trong trường"
       />
 
       {/* Featured Spotlight Banner */}

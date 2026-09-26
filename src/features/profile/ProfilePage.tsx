@@ -223,7 +223,7 @@ function ProfileView({
             <div className="space-y-1">
               <CardTitle>Tiêu chí ghép nối (AI Matching Criteria)</CardTitle>
               <p className="text-xs text-neutral-500">
-                Dữ liệu này dùng để gợi ý nhóm học tập, Mentor và đối tác đổi lớp.{' '}
+                Dữ liệu này dùng để gợi ý nhóm kết nối, Mentor và đối tác đổi lớp.{' '}
                 <Link to="/settings" className="text-brand-600 font-semibold hover:underline">
                   Quản lý quyền riêng tư dữ liệu tại Cài đặt →
                 </Link>

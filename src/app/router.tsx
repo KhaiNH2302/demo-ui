@@ -25,7 +25,6 @@ import SearchPage from '@/features/search/SearchPage';
 import OpportunitiesPage from '@/features/opportunities/OpportunitiesPage';
 import EventsPage from '@/features/events/EventsPage';
 import EventDetailPage from '@/features/events/EventDetailPage';
-import PeoplePage from '@/features/people/PeoplePage';
 import RequestsPage from '@/features/requests/RequestsPage';
 import SettingsPage from '@/features/settings/SettingsPage';
 import ErrorPage from '@/features/common/ErrorPage';
@@ -151,7 +150,6 @@ export const router = createBrowserRouter([
       { path: 'opportunities', element: <OpportunitiesPage /> },
       { path: 'events', element: <EventsPage /> },
       { path: 'events/:id', element: <EventDetailPage /> },
-      { path: 'people', element: <PeoplePage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'help', element: <HelpPage /> },
       { path: 'profile/me', element: <ProfilePage /> },
