@@ -3,10 +3,14 @@ import * as AvatarPrimitive from '@radix-ui/react-avatar';
 import { cn } from '@/lib/cn';
 
 const avatarSizes = {
-  sm: 'h-6 w-6 text-[10px]',
-  md: 'h-8 w-8 text-xs',
-  lg: 'h-10 w-10 text-sm',
-  xl: 'h-16 w-16 text-lg',
+  xs: 'h-6 w-6 text-xs',
+  sm: 'h-8 w-8 text-xs',
+  header: 'h-9 w-9 text-xs',
+  md: 'h-10 w-10 text-sm',
+  lg: 'h-12 w-12 text-base',
+  xl: 'h-14 w-14 text-lg',
+  '2xl': 'h-24 w-24 text-2xl',
+  '3xl': 'h-[120px] w-[120px] text-3xl',
 };
 
 const bgPalette = [
@@ -38,7 +42,7 @@ function getBgColor(name?: string) {
 export interface AvatarProps extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root> {
   src?: string;
   name?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'xs' | 'sm' | 'header' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
 }
 
 export const Avatar = React.forwardRef<

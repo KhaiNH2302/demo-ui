@@ -19,10 +19,14 @@ import TermsPage from '@/features/legal/TermsPage';
 import PrivacyPage from '@/features/legal/PrivacyPage';
 import HelpPage from '@/features/help/HelpPage';
 
-// Common Pages
+// Common & Global Navigation Pages (26/09/2026 specs)
 import DashboardPage from '@/features/common/DashboardPage';
-import DiscoverPage from '@/features/discover/DiscoverPage';
-import MyHubPage from '@/features/me/MyHubPage';
+import SearchPage from '@/features/search/SearchPage';
+import OpportunitiesPage from '@/features/opportunities/OpportunitiesPage';
+import EventsPage from '@/features/events/EventsPage';
+import EventDetailPage from '@/features/events/EventDetailPage';
+import PeoplePage from '@/features/people/PeoplePage';
+import RequestsPage from '@/features/requests/RequestsPage';
 import SettingsPage from '@/features/settings/SettingsPage';
 import ErrorPage from '@/features/common/ErrorPage';
 
@@ -42,7 +46,7 @@ import SwapMatchPage from '@/features/swap/SwapMatchPage';
 import SwapConnectionsPage from '@/features/swap/SwapConnectionsPage';
 
 // FE-02: Knowledge Sharing
-import KnowledgeFeedPage from '@/features/knowledge/KnowledgeFeedPage';
+import KnowledgeHubPage from '@/features/knowledge/KnowledgeHubPage';
 import KnowledgePostFormPage from '@/features/knowledge/KnowledgePostFormPage';
 import KnowledgePostDetailPage from '@/features/knowledge/KnowledgePostDetailPage';
 import MyPostsPage from '@/features/knowledge/MyPostsPage';
@@ -85,6 +89,11 @@ import MentorDetailPage from '@/features/mentoring/MentorDetailPage';
 import MentoringPostDetailPage from '@/features/mentoring/MentoringPostDetailPage';
 import MyMentoringRequestsPage from '@/features/mentoring/MyMentoringRequestsPage';
 
+// FE-05: Mentoring Application Flow (MR0 - MR3)
+import MentorApplyIntroPage from '@/features/mentor/MentorApplyIntroPage';
+import MentorApplyFormPage from '@/features/mentor/MentorApplyFormPage';
+import MentorApplyReviewPage from '@/features/mentor/MentorApplyReviewPage';
+
 // FE-05: Mentoring (Mentor Center)
 import MentorCenterShell from '@/features/mentor/MentorCenterShell';
 import MentorProfilePage from '@/features/mentor/MentorProfilePage';
@@ -97,6 +106,8 @@ import AdminUsersPage from '@/features/admin/AdminUsersPage';
 import AdminUserDetailPage from '@/features/admin/AdminUserDetailPage';
 import ModerationPage from '@/features/admin/ModerationPage';
 import AdminClubsPage from '@/features/admin/AdminClubsPage';
+import AdminMentorApplicationsPage from '@/features/admin/AdminMentorApplicationsPage';
+import AdminMentorApplicationDetailPage from '@/features/admin/AdminMentorApplicationDetailPage';
 import MasterDataPage from '@/features/admin/MasterDataPage';
 import SystemSettingsPage from '@/features/admin/SystemSettingsPage';
 import AdminManagementPage from '@/features/admin/AdminManagementPage';
@@ -133,8 +144,14 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <DashboardPage /> },
-      { path: 'discover', element: <DiscoverPage /> },
-      { path: 'me', element: <MyHubPage /> },
+      { path: 'search', element: <SearchPage /> },
+      { path: 'discover', element: <Navigate to="/knowledge" replace /> },
+      { path: 'me', element: <Navigate to="/requests" replace /> },
+      { path: 'requests', element: <RequestsPage /> },
+      { path: 'opportunities', element: <OpportunitiesPage /> },
+      { path: 'events', element: <EventsPage /> },
+      { path: 'events/:id', element: <EventDetailPage /> },
+      { path: 'people', element: <PeoplePage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'help', element: <HelpPage /> },
       { path: 'profile/me', element: <ProfilePage /> },
@@ -151,7 +168,7 @@ export const router = createBrowserRouter([
       { path: 'swap/connections', element: <SwapConnectionsPage /> },
 
       // FE-02: Knowledge
-      { path: 'knowledge', element: <KnowledgeFeedPage /> },
+      { path: 'knowledge', element: <KnowledgeHubPage /> },
       { path: 'knowledge/new', element: <KnowledgePostFormPage /> },
       { path: 'knowledge/:id', element: <KnowledgePostDetailPage /> },
       { path: 'knowledge/:id/edit', element: <KnowledgePostFormPage /> },
@@ -179,10 +196,19 @@ export const router = createBrowserRouter([
       { path: 'mentoring/posts/:id', element: <MentoringPostDetailPage /> },
       { path: 'mentoring/requests', element: <MyMentoringRequestsPage /> },
 
-      // FE-05: Mentoring (Mentor Center) — Nested in MentorCenterShell
+      // FE-05: Mentor Application Flow (MR0 - MR3)
+      { path: 'mentor/apply', element: <MentorApplyIntroPage /> },
+      { path: 'mentor/apply/form', element: <MentorApplyFormPage /> },
+      { path: 'mentor/apply/review', element: <MentorApplyReviewPage /> },
+
+      // FE-05: Mentoring (Mentor Center) — Nested in MentorCenterShell (Only for approved mentors)
       {
         path: 'mentor',
-        element: <MentorCenterShell />,
+        element: (
+          <ProtectedRoute requireRoles={['mentor', 'Mentor']}>
+            <MentorCenterShell />
+          </ProtectedRoute>
+        ),
         children: [
           { index: true, element: <Navigate to="profile" replace /> },
           { path: 'profile', element: <MentorProfilePage /> },
@@ -234,6 +260,8 @@ export const router = createBrowserRouter([
       { path: 'users/:id', element: <AdminUserDetailPage /> },
       { path: 'moderation', element: <ModerationPage /> },
       { path: 'clubs', element: <AdminClubsPage /> },
+      { path: 'mentor-applications', element: <AdminMentorApplicationsPage /> },
+      { path: 'mentor-applications/:id', element: <AdminMentorApplicationDetailPage /> },
       { path: 'master-data', element: <MasterDataPage /> },
       { path: 'settings', element: <SystemSettingsPage /> },
       { path: 'admins', element: <AdminManagementPage /> },

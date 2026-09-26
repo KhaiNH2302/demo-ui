@@ -9,7 +9,11 @@ import { queryKeys } from '@/lib/queryKeys';
 import { apiClient } from '@/lib/apiClient';
 import type { Notification } from '@/types/entities';
 
-export const NotificationBell: React.FC = () => {
+export interface NotificationBellProps {
+  variant?: 'light' | 'onDark';
+}
+
+export const NotificationBell: React.FC<NotificationBellProps> = ({ variant = 'light' }) => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -41,15 +45,28 @@ export const NotificationBell: React.FC = () => {
     navigate(item.linkTo);
   };
 
+  const isOnDark = variant === 'onDark';
+
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
       <PopoverPrimitive.Trigger asChild>
         <div className="relative inline-block">
-          <IconButton variant="ghost" size="sm" aria-label="Thông báo" className="text-neutral-600 hover:text-neutral-900">
+          <IconButton
+            variant="ghost"
+            size="sm"
+            aria-label="Thông báo"
+            className={isOnDark ? 'text-white/90 hover:text-white hover:bg-white/10' : 'text-neutral-600 hover:text-neutral-900'}
+          >
             <Bell size={20} />
           </IconButton>
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#dc3c33] px-1 text-[10px] font-bold text-white shadow-sm pointer-events-none">
+            <span
+              className={
+                isOnDark
+                  ? 'absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#dc3c33] px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-brand-600 pointer-events-none'
+                  : 'absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#dc3c33] px-1 text-[10px] font-bold text-white shadow-sm pointer-events-none'
+              }
+            >
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}

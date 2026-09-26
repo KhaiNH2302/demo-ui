@@ -97,6 +97,15 @@ export const statusMeta = {
     Open:     { tier: 'pending', label: 'Chưa xử lý' },
     Resolved: { tier: 'success', label: 'Đã xử lý' },
   },
+  mentorApplication: {
+    Draft:         { tier: 'neutral',   label: 'Bản nháp' },
+    Submitted:     { tier: 'pending',   label: 'Đã nộp' },
+    UnderReview:   { tier: 'pending',   label: 'Đang xét duyệt' },
+    NeedsMoreInfo: { tier: 'attention', label: 'Cần bổ sung' },
+    Approved:      { tier: 'success',   label: 'Đã duyệt' },
+    Rejected:      { tier: 'danger',    label: 'Không được duyệt' },
+    Withdrawn:     { tier: 'neutral',   label: 'Đã rút' },
+  },
 } as const;
 
 export type StatusGroup = keyof typeof statusMeta;

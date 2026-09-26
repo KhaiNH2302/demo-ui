@@ -364,30 +364,46 @@ export const SettingsPage: React.FC = () => {
                   </FormField>
                 </div>
 
-                <div className="space-y-2 max-w-sm pt-2 border-t border-neutral-100">
-                  <FormField label="Kích thước chữ">
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={fontSize === 'default' ? 'primary' : 'outline'}
-                        onClick={() => setFontSize('default')}
-                      >
-                        Mặc định (14px)
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={fontSize === 'large' ? 'primary' : 'outline'}
-                        onClick={() => {
-                          setFontSize('large');
-                          toast({ title: 'Đã điều chỉnh cỡ chữ lớn' });
-                        }}
-                      >
-                        Lớn (16px)
-                      </Button>
+                <div className="space-y-4 max-w-lg pt-4 border-t border-neutral-100">
+                  <FormField label="Kích thước chữ toàn hệ thống" helperText="Tùy chỉnh cỡ chữ áp dụng tức thì cho mọi màn hình và chức năng.">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { key: 'sm', label: 'Nhỏ', desc: '14px (Chữ thân 13px)' },
+                        { key: 'md', label: 'Vừa (Mặc định)', desc: '16px (Chữ thân 15px)' },
+                        { key: 'lg', label: 'Lớn', desc: '18px (Chữ thân 17px)' },
+                        { key: 'xl', label: 'Rất lớn', desc: '20px (Chữ thân 19px)' },
+                      ].map((item) => {
+                        const currentScale = (localStorage.getItem('scs_font_scale') as any) || 'md';
+                        const isCurrent = currentScale === item.key;
+                        return (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => {
+                              document.documentElement.setAttribute('data-font-scale', item.key);
+                              localStorage.setItem('scs_font_scale', item.key);
+                              toast({ title: `Đã đổi cỡ chữ: ${item.label}` });
+                            }}
+                            className={`p-3 rounded-xl border text-left transition-all ${
+                              isCurrent
+                                ? 'bg-brand-50 border-brand-500 text-brand-700 font-bold shadow-xs'
+                                : 'bg-white border-neutral-200 hover:border-neutral-300 text-neutral-700'
+                            }`}
+                          >
+                            <span className="text-xs font-bold block">{item.label}</span>
+                            <span className="text-[10px] text-neutral-400 block mt-0.5">{item.desc}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </FormField>
+
+                  <div className="p-4 rounded-xl bg-neutral-50 border border-neutral-200 text-neutral-700">
+                    <span className="text-xs font-semibold text-neutral-900 block mb-1">Xem trước trực quan:</span>
+                    <p className="text-sm leading-relaxed">
+                      Đây là đoạn văn bản mẫu để bạn kiểm tra cỡ chữ hiển thị trên giao diện của SCS.
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>

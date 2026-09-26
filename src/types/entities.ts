@@ -4,6 +4,7 @@ import type {
   SwapRequestStatus,
   SwapConnectionStatus,
   PostType,
+  PostCategory,
   PostStatus,
   JoinMode,
   JoinRequestStatus,
@@ -16,9 +17,11 @@ import type {
   TaskStatus,
   TxType,
   ExpenseStatus,
+  MentorApplicationStatus,
   MentoringRequestStatus,
   SupportMode,
   NotificationSource,
+  FontSizeScale,
 } from './status';
 
 export type {
@@ -27,6 +30,7 @@ export type {
   SwapRequestStatus,
   SwapConnectionStatus,
   PostType,
+  PostCategory,
   PostStatus,
   JoinMode,
   JoinRequestStatus,
@@ -39,9 +43,11 @@ export type {
   TaskStatus,
   TxType,
   ExpenseStatus,
+  MentorApplicationStatus,
   MentoringRequestStatus,
   SupportMode,
   NotificationSource,
+  FontSizeScale,
 };
 
 export type ClubRole = 'lead' | 'vice' | 'treasurer' | 'manager' | 'member' | MembershipRole;
@@ -447,6 +453,103 @@ export interface AuditLog {
   createdAt: string;
 }
 
+// FE-05 Mentoring Application (26/09/2026 specs)
+export interface MentorApplication {
+  id: string;
+  userId: string;
+  status: MentorApplicationStatus;
+  personal: {
+    avatarUrl: string;
+    phone?: string;
+    currentRole: 'student' | 'alumni' | 'lecturer' | 'professional';
+    yearOrGraduation: string;
+    workplace?: string;
+    position?: string;
+  };
+  education: {
+    major: string;
+    gpa?: number;
+    gpaScale?: 4 | 10;
+    gpaPublic: boolean;
+    strongSubjects: { code: string; grade?: string }[];
+  };
+  experiences: {
+    type: 'internship' | 'job' | 'project' | 'ta' | 'club';
+    title: string;
+    org: string;
+    role: string;
+    from: string;
+    to?: string;
+    description: string;
+  }[];
+  skills: { name: string; level?: 'basic' | 'good' | 'expert' }[];
+  achievements: { name: string; issuer: string; year: number; url?: string; fileUrl?: string }[];
+  focus: {
+    areas: string[];
+    subjects: string[];
+    targetAudience: string[];
+    maxMentees: number;
+  };
+  about: {
+    headline: string;
+    bio: string;
+    motivation: string;
+  };
+  availability: {
+    slots: ScheduleSlot[];
+    modes: ('online' | 'offline' | 'chat')[];
+    location?: string;
+    sessionMinutes: 30 | 45 | 60 | 90;
+  };
+  evidence: {
+    cvUrl: string;
+    portfolioUrls: string[];
+    otherFiles: { name: string; url: string }[];
+  };
+  agreed: boolean;
+  reviewerId?: string;
+  reviewNote?: string;
+  flaggedSections?: string[];
+  rejectReasonCode?: string;
+  history: { status: MentorApplicationStatus; at: string; by?: string; note?: string }[];
+  createdAt: string;
+  submittedAt?: string;
+  decidedAt?: string;
+}
+
+// Module Opportunity (O1)
+export interface Opportunity {
+  id: string;
+  type: 'club' | 'group' | 'mentor';
+  title: string;
+  subtitle: string;
+  organizationName: string;
+  avatarUrl?: string;
+  coverUrl?: string;
+  field: string;
+  deadline?: string;
+  spotsLeft?: number;
+  tags: string[];
+  linkTo: string;
+  isUrgent?: boolean;
+  isFeatured?: boolean;
+  createdAt: string;
+}
+
+// Global Nav Counters (GET /nav/counters)
+export interface NavCounters {
+  unreadNotifications: number;
+  unreadMessages: number;
+  pendingMessageRequests: number;
+  pendingGroupJoinRequests: number;
+  pendingSwapInvites: number;
+  pendingRequestsTotal: number;
+  pendingMentoringRequests: number;
+  todayRegisteredEvents: number;
+  clubsWithNewActivity: string[];
+  mentorApplicationStatus?: MentorApplicationStatus;
+}
+
 export interface SystemSettings {
   aiEnabledModules: {
     swap: boolean;
@@ -472,6 +575,10 @@ export interface SystemSettings {
     showProfilePublicly: boolean;
     allowMatching: boolean;
   };
+  appearance?: {
+    fontScale: 'sm' | 'md' | 'lg' | 'xl';
+  };
   autoModerationThreshold: number; // 0 to 100
   moderationThreshold?: number;
 }
+

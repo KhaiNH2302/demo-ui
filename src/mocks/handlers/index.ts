@@ -9,6 +9,7 @@ import { groupHandlers } from './groups';
 import { clubHandlers } from './clubs';
 import { mentoringHandlers } from './mentoring';
 import { adminHandlers } from './admin';
+import { newModulesHandlers } from './newModules';
 
 export const handlers = [
   ...authHandlers,
@@ -22,4 +23,5 @@ export const handlers = [
   ...clubHandlers,
   ...mentoringHandlers,
   ...adminHandlers,
+  ...newModulesHandlers,
 ];

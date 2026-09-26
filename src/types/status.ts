@@ -20,6 +20,17 @@ export type SwapRequestStatus = 'Open' | 'Connected' | 'Cancelled' | 'open' | 'c
 export type SwapConnectionStatus = 'Pending' | 'Confirmed' | 'Rejected' | 'Cancelled' | 'pending' | 'confirmed' | 'rejected' | 'cancelled';
 
 export type PostType = 'discussion' | 'question' | 'document' | 'experience';
+export type PostCategory =
+  | 'knowledge'
+  | 'study_experience'
+  | 'internship'
+  | 'interview'
+  | 'document'
+  | 'tips'
+  | 'career'
+  | 'project'
+  | 'qa'
+  | 'mentor_senior';
 export type PostStatus = 'Published' | 'PendingReview' | 'Rejected' | 'Closed' | 'published' | 'pending_review' | 'rejected' | 'closed';
 
 export type JoinMode = 'direct' | 'approval';
@@ -35,6 +46,15 @@ export type TaskStatus = 'Todo' | 'InProgress' | 'Done' | 'todo' | 'in_progress'
 export type TxType = 'Income' | 'Expense' | 'income' | 'expense';
 export type ExpenseStatus = 'PendingApproval' | 'Approved' | 'Rejected' | 'pending_approval' | 'approved' | 'rejected';
 
+export type MentorApplicationStatus =
+  | 'Draft'
+  | 'Submitted'
+  | 'UnderReview'
+  | 'NeedsMoreInfo'
+  | 'Approved'
+  | 'Rejected'
+  | 'Withdrawn';
+
 export type MentoringRequestStatus = 'PENDING_MENTOR_RESPONSE' | 'ACCEPTED' | 'REJECTED' | 'pending' | 'accepted' | 'rejected';
 export type SupportMode = 'online' | 'offline' | 'chat' | 'Online' | 'Offline' | 'Chat';
 
@@ -47,6 +67,11 @@ export type NotificationSource =
   | 'ClubFinance'
   | 'Mentoring'
   | 'Moderation'
+  | 'ThreadReply'
+  | 'MessageRequest'
+  | 'Follow'
+  | 'MentorApplication'
+  | 'EventReminder'
   | 'swap'
   | 'group_join'
   | 'club_application'
@@ -57,3 +82,6 @@ export type NotificationSource =
   | 'moderation';
 
 export type SemanticTier = 'neutral' | 'pending' | 'attention' | 'success' | 'danger' | 'brand';
+
+export type FontSizeScale = 'sm' | 'md' | 'lg' | 'xl';
+

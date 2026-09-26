@@ -1,4 +1,5 @@
 import React from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { IconButton } from '@/components/ui/IconButton';
@@ -12,6 +13,8 @@ export interface BreadcrumbItem {
 export interface PageHeaderProps {
   title: string;
   description?: string;
+  variant?: 'plain' | 'band';
+  icon?: LucideIcon;
   breadcrumb?: BreadcrumbItem[];
   breadcrumbs?: BreadcrumbItem[];
   actions?: React.ReactNode;
@@ -22,6 +25,8 @@ export interface PageHeaderProps {
 export const PageHeader: React.FC<PageHeaderProps> = ({
   title,
   description,
+  variant = 'plain',
+  icon: Icon,
   breadcrumb,
   breadcrumbs,
   actions,
@@ -30,6 +35,54 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
 }) => {
   const navigate = useNavigate();
   const activeBreadcrumbs = breadcrumb || breadcrumbs;
+
+  if (variant === 'band') {
+    return (
+      <div
+        className={cn(
+          'bg-white border-b border-neutral-200 px-4 sm:px-6 md:px-8 py-5 -mx-4 sm:-mx-6 md:-mx-8 -mt-6 mb-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4',
+          className
+        )}
+      >
+        <div className="flex items-center gap-3.5">
+          {backHref && (
+            <IconButton
+              variant="ghost"
+              size="sm"
+              aria-label="Quay lại"
+              onClick={() => (backHref === '-1' ? navigate(-1) : navigate(backHref))}
+              className="text-neutral-500 hover:text-neutral-900 -ml-1"
+            >
+              <ArrowLeft size={18} />
+            </IconButton>
+          )}
+
+          {Icon && (
+            <div className="h-11 w-11 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center shrink-0 shadow-xs ring-1 ring-brand-100">
+              <Icon size={24} />
+            </div>
+          )}
+
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight leading-tight">
+              {title}
+            </h1>
+            {description && (
+              <p className="text-xs sm:text-sm text-neutral-500 mt-0.5 leading-snug">
+                {description}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {actions && (
+          <div className="flex items-center gap-2.5 shrink-0 self-start md:self-auto">
+            {actions}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={cn('flex flex-col gap-2 mb-6', className)}>
@@ -74,3 +127,5 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
     </div>
   );
 };
+
+export default PageHeader;

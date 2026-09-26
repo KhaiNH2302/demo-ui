@@ -1,149 +1,146 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Home, Repeat2, Plus, MessageCircle, LayoutList } from 'lucide-react';
+import { Home, BookOpen, Plus, MessageCircle, Menu } from 'lucide-react';
 import { QuickCreateSheet } from './QuickCreateSheet';
-import { getActiveNavKey } from '@/lib/navigation';
+import { AppSidebar } from './AppSidebar';
+import { Sheet, SheetContent } from '@/components/ui/Sheet';
+import { getActiveMobileTab } from '@/lib/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
+import type { NavCounters } from '@/types/entities';
 import { cn } from '@/lib/cn';
 
-interface NavCounters {
-  unreadMessages: number;
-  pendingSwapInvites: number;
-  myActionItems: number;
-  unreadNotifications: number;
-}
-
 export const BottomTabBar: React.FC = () => {
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const location = useLocation();
-  const activeKey = getActiveNavKey(location.pathname, true);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [sidebarSheetOpen, setSidebarSheetOpen] = useState(false);
 
-  const { data: counters } = useQuery({
+  const activeTab = getActiveMobileTab(location.pathname);
+
+  // Counters for badges
+  const { data: counters } = useQuery<NavCounters>({
     queryKey: ['nav', 'counters'],
-    queryFn: async () => {
-      try {
-        const res = await apiClient.get<NavCounters>('/nav/counters');
-        return res;
-      } catch {
-        return { unreadMessages: 0, pendingSwapInvites: 0, myActionItems: 0, unreadNotifications: 0 };
-      }
-    },
+    queryFn: () => apiClient.get('/nav/counters'),
     refetchInterval: 30000,
   });
 
-  const tabs: (
-    | {
-        key: 'home' | 'swap' | 'chats' | 'me';
-        to: string;
-        label: string;
-        icon: React.ElementType;
-        badgeType?: 'dot' | 'count';
-        badgeValue?: number;
-        isAction?: false;
-      }
-    | {
-        isAction: true;
-        label: string;
-        icon: React.ElementType;
-        key?: undefined;
-        to?: undefined;
-        badgeType?: undefined;
-        badgeValue?: undefined;
-      }
-  )[] = [
-    {
-      key: 'home',
-      to: '/',
-      label: 'Trang chủ',
-      icon: Home,
-    },
-    {
-      key: 'swap',
-      to: '/swap',
-      label: 'Đổi lớp',
-      icon: Repeat2,
-      badgeType: 'dot',
-      badgeValue: counters?.pendingSwapInvites || 0,
-    },
-    {
-      isAction: true,
-      label: 'Tạo mới',
-      icon: Plus,
-    },
-    {
-      key: 'chats',
-      to: '/chats',
-      label: 'Tin nhắn',
-      icon: MessageCircle,
-      badgeType: 'count',
-      badgeValue: counters?.unreadMessages || 0,
-    },
-    {
-      key: 'me',
-      to: '/me',
-      label: 'Của tôi',
-      icon: LayoutList,
-      badgeType: 'count',
-      badgeValue: counters?.myActionItems || 0,
-    },
-  ];
+  const unreadMessagesCount = (counters?.unreadMessages || 0) + (counters?.pendingMessageRequests || 0);
+
+  // Total badge count for Menu (notifications, groups, swap, mentoring, requests)
+  const menuBadgeCount =
+    (counters?.unreadNotifications || 0) +
+    (counters?.pendingGroupJoinRequests || 0) +
+    (counters?.pendingRequestsTotal || 0) +
+    (counters?.pendingMentoringRequests || 0) +
+    (counters?.todayRegisteredEvents || 0);
 
   return (
     <>
       <nav
-        aria-label="Điều hướng dưới cùng trên di động"
-        className="fixed bottom-0 inset-x-0 z-30 md:hidden flex items-center justify-around border-t border-neutral-200 bg-white/95 px-2 py-1.5 backdrop-blur-md shadow-lg select-none"
+        aria-label="Điều hướng chính di động"
+        className="fixed bottom-0 left-0 right-0 z-30 flex h-16 items-center justify-around border-t border-neutral-200 bg-white/95 px-2 backdrop-blur-md md:hidden shadow-lg"
       >
-        {tabs.map((tab, idx) => {
-          if (tab.isAction) {
-            return (
-              <button
-                key="action-create"
-                type="button"
-                aria-label="Tạo mới"
-                onClick={() => setIsCreateOpen(true)}
-                className="group -mt-4 flex flex-col items-center justify-center focus:outline-none focus:ring-2 focus:ring-brand-500/40 rounded-full cursor-pointer"
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-500 text-white shadow-md ring-4 ring-white active:scale-95 transition-transform">
-                  <Plus size={24} strokeWidth={2.25} />
-                </div>
-                <span className="text-[10px] font-semibold text-brand-600 mt-0.5">Tạo mới</span>
-              </button>
-            );
+        {/* 1. Trang chủ */}
+        <NavLink
+          to="/"
+          className={() =>
+            cn(
+              'flex flex-1 flex-col items-center justify-center py-1 text-[11px] font-medium transition-colors select-none',
+              activeTab === 'home' ? 'text-brand-600 font-bold' : 'text-neutral-500 hover:text-neutral-900'
+            )
           }
+        >
+          <Home size={20} className={activeTab === 'home' ? 'text-brand-600' : 'text-neutral-500'} />
+          <span className="mt-1">Trang chủ</span>
+        </NavLink>
 
-          const Icon = tab.icon;
-          const isActive = activeKey === tab.key;
+        {/* 2. Kiến thức */}
+        <NavLink
+          to="/knowledge"
+          className={() =>
+            cn(
+              'flex flex-1 flex-col items-center justify-center py-1 text-[11px] font-medium transition-colors select-none',
+              activeTab === 'knowledge' ? 'text-brand-600 font-bold' : 'text-neutral-500 hover:text-neutral-900'
+            )
+          }
+        >
+          <BookOpen size={20} className={activeTab === 'knowledge' ? 'text-brand-600' : 'text-neutral-500'} />
+          <span className="mt-1">Kiến thức</span>
+        </NavLink>
 
-          return (
-            <NavLink
-              key={tab.to || idx}
-              to={tab.to!}
-              aria-label={tab.label}
-              className={cn(
-                'relative flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-colors cursor-pointer min-w-[56px] focus:outline-none focus:ring-2 focus:ring-brand-500/40',
-                isActive ? 'text-brand-600 font-semibold' : 'text-neutral-500 hover:text-neutral-800'
-              )}
-            >
-              <div className="relative">
-                <Icon size={20} strokeWidth={1.75} />
-                {tab.badgeType === 'dot' && (tab.badgeValue ?? 0) > 0 && (
-                  <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-accent-500 ring-2 ring-white" />
-                )}
-                {tab.badgeType === 'count' && (tab.badgeValue ?? 0) > 0 && (
-                  <span className="absolute -top-1.5 -right-2 flex min-w-3.5 h-3.5 items-center justify-center rounded-full bg-tier-danger-dot px-1 text-[9px] font-bold text-white ring-2 ring-white">
-                    {(tab.badgeValue ?? 0) > 9 ? '9+' : tab.badgeValue}
-                  </span>
-                )}
-              </div>
-              <span className="text-[10px] tracking-tight mt-0.5">{tab.label}</span>
-            </NavLink>
-          );
-        })}
+        {/* 3. Nút Tạo mới ở giữa (nhô cao 8px) */}
+        <div className="flex flex-1 items-center justify-center">
+          <button
+            type="button"
+            onClick={() => setQuickCreateOpen(true)}
+            aria-label="Tạo mới nhanh"
+            className="-mt-5 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-white shadow-md transition-transform active:scale-95 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
+          >
+            <Plus size={24} strokeWidth={2.5} />
+          </button>
+        </div>
+
+        {/* 4. Tin nhắn */}
+        <NavLink
+          to="/chats"
+          className={() =>
+            cn(
+              'relative flex flex-1 flex-col items-center justify-center py-1 text-[11px] font-medium transition-colors select-none',
+              activeTab === 'chats' ? 'text-brand-600 font-bold' : 'text-neutral-500 hover:text-neutral-900'
+            )
+          }
+        >
+          <div className="relative">
+            <MessageCircle size={20} className={activeTab === 'chats' ? 'text-brand-600' : 'text-neutral-500'} />
+            {unreadMessagesCount > 0 && (
+              <span className="absolute -top-1 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-tier-danger-dot px-1 text-[10px] font-bold text-white shadow-sm ring-1 ring-white">
+                {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+              </span>
+            )}
+          </div>
+          <span className="mt-1">Tin nhắn</span>
+        </NavLink>
+
+        {/* 5. Menu (mở full sidebar dạng Sheet) */}
+        <button
+          type="button"
+          onClick={() => setSidebarSheetOpen(true)}
+          className={cn(
+            'relative flex flex-1 flex-col items-center justify-center py-1 text-[11px] font-medium transition-colors select-none',
+            activeTab === 'menu' ? 'text-brand-600 font-bold' : 'text-neutral-500 hover:text-neutral-900'
+          )}
+        >
+          <div className="relative">
+            <Menu size={20} className={activeTab === 'menu' ? 'text-brand-600' : 'text-neutral-500'} />
+            {menuBadgeCount > 0 && (
+              <span className="absolute -top-1 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-tier-danger-dot px-1 text-[10px] font-bold text-white shadow-sm ring-1 ring-white">
+                {menuBadgeCount > 9 ? '9+' : menuBadgeCount}
+              </span>
+            )}
+          </div>
+          <span className="mt-1">Menu</span>
+        </button>
       </nav>
 
-      <QuickCreateSheet open={isCreateOpen} onOpenChange={setIsCreateOpen} />
+      {/* Quick Create Dialog Sheet */}
+      <QuickCreateSheet open={quickCreateOpen} onOpenChange={setQuickCreateOpen} />
+
+      {/* Mobile Sidebar Sheet */}
+      <Sheet open={sidebarSheetOpen} onOpenChange={setSidebarSheetOpen}>
+        <SheetContent side="left" className="p-0 w-[85%] sm:max-w-sm">
+          <div className="h-full flex flex-col pt-3">
+            <div className="px-4 pb-2 border-b border-neutral-100 flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-brand-600 text-white flex items-center justify-center font-bold text-sm">
+                S
+              </div>
+              <span className="font-bold text-base text-neutral-900">SCS Menu</span>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <AppSidebar variant="sheet" onNavigate={() => setSidebarSheetOpen(false)} />
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 };

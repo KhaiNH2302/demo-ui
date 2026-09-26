@@ -6,6 +6,7 @@ import {
   Users,
   CheckSquare,
   Building2,
+  GraduationCap,
   Database,
   Sliders,
   UserCheck,
@@ -34,6 +35,7 @@ export const AdminShell: React.FC = () => {
     { to: '/admin/users', label: 'Quản lý người dùng', icon: Users },
     { to: '/admin/moderation', label: 'Kiểm duyệt nội dung', icon: CheckSquare },
     { to: '/admin/clubs', label: 'Duyệt CLB', icon: Building2 },
+    { to: '/admin/mentor-applications', label: 'Duyệt Mentor', icon: GraduationCap },
     { to: '/admin/master-data', label: 'Dữ liệu danh mục', icon: Database },
     { to: '/admin/settings', label: 'Cấu hình hệ thống', icon: Sliders },
     ...(isSystemAdmin ? [{ to: '/admin/admins', label: 'Phân quyền quản trị', icon: UserCheck }] : []),
@@ -96,7 +98,7 @@ export const AdminShell: React.FC = () => {
       {/* Main layout */}
       <div className="flex flex-1">
         {/* Sidebar Desktop */}
-        <aside className="hidden lg:flex w-64 flex-col justify-between border-r border-neutral-200 bg-white p-4 shrink-0 shadow-xs">
+        <aside className="hidden lg:flex w-64 flex-col justify-between border-r border-neutral-200 bg-white p-4 shrink-0 shadow-xs sticky top-16 h-[calc(100vh-4rem)] self-start overflow-y-auto">
           <nav className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
