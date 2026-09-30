@@ -135,12 +135,12 @@ export const newModulesHandlers = [
           href: '/groups/grp_01',
         },
         {
-          id: 'clb_01',
+          id: 'club_01',
           kind: 'club',
           name: 'F-Code Club',
           roleLabel: 'Đại diện CLB',
           hasUnread: true,
-          href: '/clubs/clb_01',
+          href: '/clubs/club_01',
         },
       ],
     });

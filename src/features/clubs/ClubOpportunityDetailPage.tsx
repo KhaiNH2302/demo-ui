@@ -59,8 +59,23 @@ export const ClubOpportunityDetailPage: React.FC = () => {
     },
   });
 
-  if (isLoading || !opp) {
+  if (isLoading) {
     return <Card className="h-80 animate-pulse bg-neutral-100" />;
+  }
+
+  if (!opp) {
+    return (
+      <Card className="p-8 text-center space-y-3">
+        <p className="text-sm font-medium text-neutral-700">
+          Không tìm thấy thông tin cơ hội Câu lạc bộ này.
+        </p>
+        <Link to="/clubs">
+          <Button variant="secondary" size="sm">
+            Quay lại Kết nối CLB
+          </Button>
+        </Link>
+      </Card>
+    );
   }
 
   const isRep = isRepresentativeOf(opp.clubId);

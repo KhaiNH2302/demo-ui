@@ -16,6 +16,9 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
   error?: boolean;
 }
 
+const WRAPPER_CLASS_RE =
+  /^(?:(?:sm|md|lg|xl|2xl):)?(?:w-|min-w-|max-w-|flex-|shrink|grow|basis-|col-|self-|m[trblxy]?-)/;
+
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   (
     {
@@ -37,8 +40,12 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       onChange?.(e);
     };
 
+    const tokens = (className || '').split(/\s+/).filter(Boolean);
+    const wrapperClasses = tokens.filter((t) => WRAPPER_CLASS_RE.test(t)).join(' ');
+    const selectClasses = tokens.filter((t) => !WRAPPER_CLASS_RE.test(t)).join(' ');
+
     return (
-      <div className="relative w-full">
+      <div className={cn('relative w-full', wrapperClasses)}>
         <select
           ref={ref}
           value={value ?? ''}
@@ -49,7 +56,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             'flex h-10 w-full appearance-none rounded-md border border-neutral-300 bg-white px-3 py-2 pr-8 text-sm text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:border-brand-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:opacity-75 transition-colors cursor-pointer',
             !value && placeholder && 'text-neutral-400',
             error && 'border-[#dc3c33] focus-visible:ring-[#dc3c33]/30 focus-visible:border-[#dc3c33]',
-            className
+            selectClasses
           )}
           {...props}
         >
@@ -72,7 +79,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             : children}
         </select>
         <ChevronDown
-          className="pointer-events-none absolute right-2.5 top-3 text-neutral-400"
+          className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400"
           size={16}
         />
       </div>

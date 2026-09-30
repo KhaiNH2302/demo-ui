@@ -24,7 +24,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
   myResponseId,
 }) => {
   const isFull = opportunity.used >= opportunity.quota;
-  const href = `/opportunities/${opportunity.id}`;
+  const href = `/clubs/opportunities/${opportunity.id}`;
   const coverUrl =
     (opportunity as { coverImageUrl?: string; coverUrl?: string }).coverImageUrl ||
     (opportunity as { coverImageUrl?: string; coverUrl?: string }).coverUrl ||
@@ -58,7 +58,16 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
       capacity={opportunity.quota}
       actionSlot={
         myResponseStatus ? (
-          <StatusBadge group="opportunityResponse" status={myResponseStatus} />
+          <div className="flex items-center gap-2">
+            <StatusBadge group="opportunityResponse" status={myResponseStatus} />
+            {myResponseId && (
+              <Link to={`/clubs/registrations/${myResponseId}`}>
+                <Button variant="secondary" size="sm">
+                  Xem đơn
+                </Button>
+              </Link>
+            )}
+          </div>
         ) : myResponseId ? (
           <Link to={`/clubs/registrations/${myResponseId}`}>
             <Button variant="secondary" size="sm">

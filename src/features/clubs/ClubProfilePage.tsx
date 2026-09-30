@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  ArrowLeft,
   Edit3,
   ExternalLink,
   Flag,
@@ -103,8 +104,23 @@ export const ClubProfilePage: React.FC = () => {
     },
   });
 
-  if (isLoading || !club) {
+  if (isLoading) {
     return <Card className="h-72 animate-pulse bg-neutral-100" />;
+  }
+
+  if (!club) {
+    return (
+      <Card className="p-8 text-center space-y-3">
+        <p className="text-sm font-medium text-neutral-700">
+          Không tìm thấy thông tin Câu lạc bộ này.
+        </p>
+        <Link to="/clubs?tab=directory">
+          <Button variant="secondary" size="sm">
+            Quay lại Danh sách CLB
+          </Button>
+        </Link>
+      </Card>
+    );
   }
 
   const openOpps = (club.opportunities || []).filter((o) => o.status === 'Published');
@@ -123,6 +139,16 @@ export const ClubProfilePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <div>
+        <Link
+          to="/clubs?tab=directory"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Quay lại Danh sách CLB</span>
+        </Link>
+      </div>
+
       {/* CoverHeader giữ cho Trang CLB (CL2) theo 05-social-patterns.md #4 & #7 */}
       <CoverHeader
         coverUrl={club.coverImageUrl || club.coverUrl}
@@ -133,7 +159,7 @@ export const ClubProfilePage: React.FC = () => {
         } đại diện xác thực`}
         badge={<StatusBadge group="club" status={club.status || 'Active'} />}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {isRep && (
               <>
                 <Button

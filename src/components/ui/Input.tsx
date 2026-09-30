@@ -7,12 +7,19 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   rightIcon?: React.ReactNode;
 }
 
+const WRAPPER_CLASS_RE =
+  /^(?:(?:sm|md|lg|xl|2xl):)?(?:w-|min-w-|max-w-|flex-|shrink|grow|basis-|col-|self-|m[trblxy]?-)/;
+
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type = 'text', error, leftIcon, rightIcon, disabled, ...props }, ref) => {
+    const tokens = (className || '').split(/\s+/).filter(Boolean);
+    const wrapperClasses = tokens.filter((t) => WRAPPER_CLASS_RE.test(t)).join(' ');
+    const inputClasses = tokens.filter((t) => !WRAPPER_CLASS_RE.test(t)).join(' ');
+
     return (
-      <div className="relative flex items-center w-full">
+      <div className={cn('relative flex items-center w-full', wrapperClasses)}>
         {leftIcon && (
-          <div className="pointer-events-none absolute left-3 flex items-center text-neutral-400">
+          <div className="pointer-events-none absolute left-3 z-10 flex items-center text-neutral-400">
             {leftIcon}
           </div>
         )}
@@ -26,12 +33,12 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             leftIcon && 'pl-9',
             rightIcon && 'pr-9',
             error && 'border-[#dc3c33] focus-visible:ring-[#dc3c33]/30 focus-visible:border-[#dc3c33]',
-            className
+            inputClasses
           )}
           {...props}
         />
         {rightIcon && (
-          <div className="absolute right-3 flex items-center text-neutral-400">
+          <div className="absolute right-3 z-10 flex items-center text-neutral-400">
             {rightIcon}
           </div>
         )}

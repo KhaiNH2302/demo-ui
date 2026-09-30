@@ -95,23 +95,19 @@ export const ClubsExplorePage: React.FC = () => {
         description="Khám phá các sự kiện, đợt tuyển thành viên và cộng tác viên từ các Câu lạc bộ sinh viên trong trường."
         actions={
           !isGuest ? (
-            <div className="flex items-center gap-2">
-              {hasRepClub && (
-                <Link to="/clubs/manage/new">
-                  <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>
-                    Đăng cơ hội CLB
-                  </Button>
-                </Link>
-              )}
+            hasRepClub ? (
+              <Link to="/clubs/manage/new">
+                <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>
+                  Đăng cơ hội CLB
+                </Button>
+              </Link>
+            ) : (
               <Link to="/clubs/represent">
-                <Button
-                  variant={hasRepClub ? 'secondary' : 'primary'}
-                  leftIcon={<ShieldCheck className="h-4 w-4" />}
-                >
+                <Button variant="secondary" leftIcon={<ShieldCheck className="h-4 w-4" />}>
                   Yêu cầu đại diện CLB
                 </Button>
               </Link>
-            </div>
+            )
           ) : undefined
         }
       />
@@ -140,20 +136,19 @@ export const ClubsExplorePage: React.FC = () => {
         <TabsContent value="opportunities" className="space-y-5">
           {/* Filter Bar */}
           <Card className="p-4 flex flex-col md:flex-row items-stretch md:items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="h-4 w-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <div className="flex-1 min-w-0">
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Tìm kiếm sự kiện, tuyển thành viên, tên CLB..."
-                className="pl-9"
+                leftIcon={<Search className="h-4 w-4" />}
               />
             </div>
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
               <Select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-48"
+                className="w-full sm:w-48"
               >
                 <option value="all">Tất cả loại cơ hội</option>
                 <option value="Event">Sự kiện CLB</option>
@@ -164,7 +159,7 @@ export const ClubsExplorePage: React.FC = () => {
               <Select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="w-48"
+                className="w-full sm:w-52"
               >
                 <option value="all">Tất cả lĩnh vực</option>
                 {Object.entries(CATEGORY_LABELS).map(([k, label]) => (
@@ -253,6 +248,29 @@ export const ClubsExplorePage: React.FC = () => {
 
         {/* TAB 2: DANH SÁCH CLB (CL1b) */}
         <TabsContent value="directory" className="space-y-4">
+          <Card className="p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Tìm theo tên hoặc mã Câu lạc bộ..."
+                leftIcon={<Search className="h-4 w-4" />}
+              />
+            </div>
+            <Select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="w-full sm:w-56"
+            >
+              <option value="all">Tất cả lĩnh vực</option>
+              {Object.entries(CATEGORY_LABELS).map(([k, label]) => (
+                <option key={k} value={k}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </Card>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {loadingClubs ? (
               [1, 2, 3, 4].map((i) => (
@@ -324,6 +342,27 @@ export const ClubsExplorePage: React.FC = () => {
               ))
             )}
           </div>
+
+          {!isGuest && (
+            <Card className="p-4 bg-neutral-50 border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <ShieldCheck className="h-5 w-5 text-brand-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-sm font-semibold text-neutral-900">
+                    Bạn là Ban chủ nhiệm CLB nhưng chưa có quyền đăng cơ hội?
+                  </div>
+                  <p className="text-caption text-neutral-500">
+                    Gửi yêu cầu xác minh quyền đại diện hoặc đề xuất bổ sung CLB mới vào danh bạ trường.
+                  </p>
+                </div>
+              </div>
+              <Link to="/clubs/represent" className="shrink-0">
+                <Button variant="secondary" size="sm">
+                  Gửi yêu cầu xác minh →
+                </Button>
+              </Link>
+            </Card>
+          )}
         </TabsContent>
 
         {/* TAB 3: ĐĂNG KÝ CỦA TÔI (CL5) */}
@@ -380,7 +419,7 @@ export const ClubsExplorePage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2.5 shrink-0">
+                  <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
                     <StatusBadge group="opportunityResponse" status={resp.status} />
                     {resp.status === 'NeedsMoreInfo' ? (
                       <Link to={`/clubs/opportunities/${resp.opportunityId}/register`}>
@@ -404,21 +443,30 @@ export const ClubsExplorePage: React.FC = () => {
         {/* TAB 4: BÀI ĐĂNG CỦA TÔI (CL7 — Dành cho Đại diện CLB) */}
         {!isGuest && hasRepClub && (
           <TabsContent value="manage" className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
+            <Card className="p-4 bg-neutral-50 border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-card-title text-neutral-900">
                   Quản lý bài đăng cơ hội của CLB bạn đại diện
                 </h3>
                 <p className="text-caption text-neutral-500">
-                  Xem danh sách sinh viên đăng ký, phản hồi đơn và xuất danh sách tham gia
+                  Đang đại diện: <strong>{representedClubs.map((c) => c.name).join(', ')}</strong> · Xem danh sách sinh viên đăng ký, phản hồi đơn và xuất CSV
                 </p>
               </div>
-              <Link to="/clubs/manage/new">
-                <Button variant="primary" size="sm" leftIcon={<Plus className="h-4 w-4" />}>
-                  Đăng cơ hội mới
-                </Button>
-              </Link>
-            </div>
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                {representedClubs[0] && (
+                  <Link to={`/clubs/${representedClubs[0].clubId}`}>
+                    <Button variant="secondary" size="sm">
+                      Hồ sơ CLB
+                    </Button>
+                  </Link>
+                )}
+                <Link to="/clubs/represent">
+                  <Button variant="ghost" size="sm" leftIcon={<ShieldCheck className="h-4 w-4" />}>
+                    Đại diện CLB khác
+                  </Button>
+                </Link>
+              </div>
+            </Card>
 
             {myManagedOpps.length === 0 ? (
               <EmptyState

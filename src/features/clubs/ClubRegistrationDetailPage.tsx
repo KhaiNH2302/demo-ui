@@ -29,7 +29,11 @@ interface RegistrationDetailData extends OpportunityResponse {
 }
 
 export const ClubRegistrationDetailPage: React.FC = () => {
-  const { responseId } = useParams<{ responseId: string }>();
+  const { respId, responseId: paramResponseId } = useParams<{
+    respId?: string;
+    responseId?: string;
+  }>();
+  const responseId = respId || paramResponseId;
   const queryClient = useQueryClient();
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
@@ -64,8 +68,23 @@ export const ClubRegistrationDetailPage: React.FC = () => {
     },
   });
 
-  if (isLoading || !resp) {
+  if (isLoading) {
     return <Card className="h-72 animate-pulse bg-neutral-100" />;
+  }
+
+  if (!resp) {
+    return (
+      <Card className="p-8 text-center space-y-3">
+        <p className="text-sm font-medium text-neutral-700">
+          Không tìm thấy thông tin đơn đăng ký này.
+        </p>
+        <Link to="/clubs?tab=registrations">
+          <Button variant="secondary" size="sm">
+            Quay lại Đăng ký của tôi
+          </Button>
+        </Link>
+      </Card>
+    );
   }
 
   const canWithdraw =

@@ -36,11 +36,11 @@ export const CoverHeader: React.FC<CoverHeaderProps> = ({
       </div>
 
       {/* Header Info Area */}
-      <div className="px-6 pb-5 pt-0 relative">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-11 mb-3">
-          <div className="flex items-end gap-4">
+      <div className="px-6 pb-5 pt-3.5 relative">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 min-w-0">
             {/* Logo / Avatar Overlap (88px) */}
-            <div className="relative h-[88px] w-[88px] rounded-xl bg-white p-0.5 ring-4 ring-white shadow-sm shrink-0">
+            <div className="relative -mt-12 sm:-mt-11 h-[88px] w-[88px] rounded-xl bg-white p-0.5 ring-4 ring-white shadow-sm shrink-0">
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
@@ -54,7 +54,7 @@ export const CoverHeader: React.FC<CoverHeaderProps> = ({
               )}
             </div>
 
-            <div className="pb-0.5">
+            <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-page-title text-neutral-900">{title}</h1>
                 {badge}
@@ -63,10 +63,10 @@ export const CoverHeader: React.FC<CoverHeaderProps> = ({
             </div>
           </div>
 
-          {actions && <div className="flex items-center gap-2 shrink-0 pb-0.5 flex-wrap">{actions}</div>}
+          {actions && <div className="flex items-center gap-2 shrink-0 flex-wrap">{actions}</div>}
         </div>
 
-        {children && <div className="pt-2 border-t border-neutral-100">{children}</div>}
+        {children && <div className="pt-3 mt-2 border-t border-neutral-100">{children}</div>}
       </div>
     </div>
   );
