@@ -1,7 +1,4 @@
 import {
-  Home,
-  Bell,
-  MessageCircle,
   BookOpen,
   UsersRound,
   GraduationCap,
@@ -36,35 +33,6 @@ export interface NavSection {
 }
 
 export const NAV_SECTIONS: NavSection[] = [
-  {
-    items: [
-      {
-        key: 'home',
-        label: 'Trang chủ',
-        href: '/',
-        to: '/',
-        icon: Home,
-      },
-      {
-        key: 'notifications',
-        label: 'Thông báo',
-        href: '/notifications',
-        to: '/notifications',
-        icon: Bell,
-        badgeType: 'count',
-        badge: (c) => c.unreadNotifications || 0,
-      },
-      {
-        key: 'chats',
-        label: 'Tin nhắn',
-        href: '/chats',
-        to: '/chats',
-        icon: MessageCircle,
-        badgeType: 'count',
-        badge: (c) => (c.unreadMessages || 0) + (c.pendingMessageRequests || 0),
-      },
-    ],
-  },
   {
     title: 'HỌC TẬP',
     items: [
