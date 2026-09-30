@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ThreadComposer } from '@/components/shared/ThreadComposer';
-import { ThreadCard } from '@/components/shared/ThreadCard';
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { ThreadFeed } from '@/components/shared/ThreadFeed';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
-import { useToast } from '@/components/ui/Toast';
 import { apiClient } from '@/lib/apiClient';
 import { Plus, BookOpen, Bookmark } from 'lucide-react';
 import type { KnowledgePost } from '@/types/entities';
@@ -18,11 +16,9 @@ type TabStatus = 'published' | 'pending' | 'rejected' | 'saved';
 export default function MyPostsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<TabStatus>('published');
   const [editingPost, setEditingPost] = useState<KnowledgePost | null>(null);
-  const [deletePostId, setDeletePostId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState<boolean>(false);
 
   // My posts query
@@ -35,28 +31,6 @@ export default function MyPostsPage() {
   const savedPostsQuery = useQuery<KnowledgePost[]>({
     queryKey: ['knowledge', 'saved'],
     queryFn: () => apiClient.get('/posts/saved'),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiClient.delete(`/posts/${id}`),
-    onSuccess: () => {
-      toast({ variant: 'default', title: 'Đã xóa bài viết' });
-      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
-      setDeletePostId(null);
-    },
-  });
-
-  const likeMutation = useMutation({
-    mutationFn: ({ id, liked }: { id: string; liked: boolean }) =>
-      liked ? apiClient.post(`/posts/${id}/like`) : apiClient.delete(`/posts/${id}/like`),
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: ({ id, saved }: { id: string; saved: boolean }) =>
-      saved ? apiClient.post(`/posts/${id}/save`) : apiClient.delete(`/posts/${id}/save`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['knowledge', 'saved'] });
-    },
   });
 
   const allMyPosts = myPostsQuery.data || [];
@@ -107,65 +81,41 @@ export default function MyPostsPage() {
         fullWidth
       />
 
-      {/* Thread list */}
-      <div className="space-y-1">
-        {isLoading ? (
-          <div className="space-y-4 pt-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex gap-3 py-4 border-b border-neutral-100 animate-pulse">
-                <div className="w-10 h-10 rounded-full bg-neutral-200 shrink-0" />
-                <div className="flex-1 space-y-2.5">
-                  <div className="h-4 bg-neutral-200 rounded w-1/3" />
-                  <div className="h-3.5 bg-neutral-100 rounded w-full" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : displayedPosts.length === 0 ? (
-          <div className="text-center py-16 bg-neutral-50 rounded-xl border border-neutral-200 p-6 space-y-3">
-            {activeTab === 'saved' ? (
-              <>
-                <Bookmark size={32} className="mx-auto text-neutral-400" />
-                <p className="text-sm font-medium text-neutral-700">Bạn chưa lưu bài viết nào.</p>
-                <p className="text-xs text-neutral-500">
-                  Bấm biểu tượng lưu trên bất kỳ thread nào để xem lại tại đây.
-                </p>
-                <Button variant="outline" size="sm" onClick={() => navigate('/')}>
-                  Khám phá bảng tin
-                </Button>
-              </>
-            ) : (
-              <>
-                <BookOpen size={32} className="mx-auto text-neutral-400" />
-                <p className="text-sm font-medium text-neutral-700">
-                  {activeTab === 'pending'
-                    ? 'Không có bài viết nào đang chờ duyệt.'
-                    : activeTab === 'rejected'
-                    ? 'Không có bài viết nào bị từ chối.'
-                    : 'Bạn chưa đăng bài viết nào.'}
-                </p>
-                {activeTab === 'published' && (
-                  <Button size="sm" onClick={() => setShowCreateDialog(true)}>
-                    Đăng thread ngay
-                  </Button>
-                )}
-              </>
-            )}
-          </div>
-        ) : (
-          displayedPosts.map((post) => (
-            <ThreadCard
-              key={post.id}
-              post={post}
-              variant="feed"
-              onLikeToggle={(id, liked) => likeMutation.mutate({ id, liked })}
-              onSaveToggle={(id, saved) => saveMutation.mutate({ id, saved })}
-              onDelete={(id) => setDeletePostId(id)}
-              onEdit={(p) => setEditingPost(p)}
-            />
-          ))
-        )}
-      </div>
+      {/* ThreadFeed (K-U.2) */}
+      <ThreadFeed
+        posts={displayedPosts}
+        isLoading={isLoading}
+        skeletonCount={3}
+        paging="pages"
+        pageSize={20}
+        onEditPost={(p) => setEditingPost(p)}
+        emptyIcon={activeTab === 'saved' ? Bookmark : BookOpen}
+        emptyTitle={
+          activeTab === 'saved'
+            ? 'Bạn chưa lưu bài viết nào.'
+            : activeTab === 'pending'
+              ? 'Không có bài viết nào đang chờ duyệt.'
+              : activeTab === 'rejected'
+                ? 'Không có bài viết nào bị từ chối.'
+                : 'Bạn chưa đăng bài viết nào.'
+        }
+        emptyDescription={
+          activeTab === 'saved'
+            ? 'Bấm biểu tượng lưu trên bất kỳ thread nào để xem lại tại đây.'
+            : undefined
+        }
+        emptyAction={
+          activeTab === 'saved' ? (
+            <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+              Khám phá bảng tin
+            </Button>
+          ) : activeTab === 'published' ? (
+            <Button size="sm" onClick={() => setShowCreateDialog(true)}>
+              Đăng thread ngay
+            </Button>
+          ) : undefined
+        }
+      />
 
       {/* Create Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
@@ -203,20 +153,6 @@ export default function MyPostsPage() {
           </DialogContent>
         </Dialog>
       )}
-
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        open={!!deletePostId}
-        onOpenChange={(open) => !open && setDeletePostId(null)}
-        title="Xóa bài viết"
-        description="Bạn có chắc chắn muốn xóa bài viết này không? Dữ liệu và các thảo luận liên quan sẽ bị xóa vĩnh viễn."
-        danger={true}
-        confirmLabel="Xóa vĩnh viễn"
-        loading={deleteMutation.isPending}
-        onConfirm={() => {
-          if (deletePostId) deleteMutation.mutate(deletePostId);
-        }}
-      />
     </div>
   );
 }

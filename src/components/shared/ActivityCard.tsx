@@ -36,17 +36,18 @@ export interface ActivityCardProps {
   capacity?: number | null;
   benefitBadge?: string | null;
   actionSlot?: React.ReactNode;
+  density?: 'default' | 'compact';
   className?: string;
 }
 
 /**
  * Thẻ chung cho Cơ hội CLB & Chương trình Tình nguyện/Workshop
- * theo 05-social-patterns.md #5 và 04-reuse-plan.md § 2.2:
- * - Ảnh bìa 16:9 hoặc khối bg-neutral-100 + icon loại hoạt động (không gradient)
+ * theo 05-social-patterns.md #5, 04-reuse-plan.md § 2.2 và 03-knowledge.md § K-U.4:
+ * - Ảnh bìa 16:9 (thu thấp còn 120px khi density="compact") hoặc khối bg-neutral-100 + icon loại hoạt động (không gradient)
  * - Góc phải-dưới ảnh bìa hiện badge Images n nếu có gallery
  * - Có startAt -> DateBadge + tiêu đề 2 dòng + địa điểm
  * - Không có startAt (Recruitment) -> tiêu đề + dòng hạn chót
- * - Dòng cuối: 24/40 đã đăng ký + badge quyền lợi
+ * - Dòng cuối: 24/40 đã đăng ký + badge quyền lợi + 1 nút hành động
  */
 export const ActivityCard: React.FC<ActivityCardProps> = ({
   href,
@@ -62,9 +63,11 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   capacity,
   benefitBadge,
   actionSlot,
+  density = 'default',
   className,
 }) => {
   const deadlineInfo = formatDeadline(deadlineAt);
+  const isCompact = density === 'compact';
 
   return (
     <div
@@ -74,7 +77,13 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
       )}
     >
       <div>
-        <Link to={href} className="block relative aspect-video bg-neutral-100 overflow-hidden">
+        <Link
+          to={href}
+          className={cn(
+            'block relative bg-neutral-100 overflow-hidden',
+            isCompact ? 'h-[120px]' : 'aspect-video',
+          )}
+        >
           {coverImageUrl ? (
             <img
               src={coverImageUrl}
@@ -121,10 +130,10 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
           )}
         </Link>
 
-        <div className="p-4 space-y-2.5">
+        <div className={cn(isCompact ? 'p-3.5 space-y-2' : 'p-4 space-y-2.5')}>
           <div className="flex items-start gap-3">
             {startAt && <DateBadge date={startAt} size="sm" />}
-            <div className="min-w-0 flex-1 space-y-1">
+            <div className="min-w-0 flex-1 space-y-0.5">
               <p className="text-xs text-neutral-500 truncate">{organizer.name}</p>
               <Link
                 to={href}
@@ -159,7 +168,12 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         </div>
       </div>
 
-      <div className="px-4 py-3 border-t border-neutral-100 flex items-center justify-between gap-2 text-xs">
+      <div
+        className={cn(
+          'border-t border-neutral-100 flex items-center justify-between gap-2 text-xs',
+          isCompact ? 'px-3.5 py-2.5' : 'px-4 py-3',
+        )}
+      >
         <div className="flex items-center gap-1.5 text-neutral-600">
           <Users className="h-3.5 w-3.5 text-neutral-400" />
           <span className="tabular-nums">

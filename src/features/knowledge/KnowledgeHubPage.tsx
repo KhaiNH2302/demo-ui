@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   Plus,
   SlidersHorizontal,
@@ -7,15 +7,6 @@ import {
   Check,
   SearchX,
   HelpCircle,
-  BookOpen,
-  Briefcase,
-  MessagesSquare,
-  FileText,
-  Zap,
-  TrendingUp,
-  FolderGit2,
-  BadgeCheck,
-  Lightbulb,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
@@ -25,16 +16,12 @@ import { Select } from '@/components/ui/Select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { Badge } from '@/components/ui/Badge';
 import { ThreadComposer } from '@/components/shared/ThreadComposer';
-import { KnowledgeListItem } from '@/components/shared/KnowledgeListItem';
-import { ReportDialog } from '@/components/shared/ReportDialog';
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton';
-import { EmptyState } from '@/components/shared/EmptyState';
+import { ThreadFeed } from '@/components/shared/ThreadFeed';
 import { LimitNotice } from '@/components/shared/LimitNotice';
 import { useToast } from '@/components/ui/Toast';
-import { useAuthStore } from '@/store/authStore';
 import { useViewer } from '@/lib/viewer';
 import { useGuardedAction } from '@/lib/guestGate';
+import { formatRelativeTime } from '@/lib/format';
 import type { KnowledgePost } from '@/types/entities';
 
 const CATEGORY_OPTIONS = [
@@ -86,10 +73,9 @@ export const KnowledgeHubPage: React.FC = () => {
   const hasFile = searchParams.get('hasFile') === 'true';
 
   const [composerOpen, setComposerOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState<KnowledgePost | null>(null);
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
   const [followModalOpen, setFollowModalOpen] = useState(false);
-  const [reportPost, setReportPost] = useState<KnowledgePost | null>(null);
-  const [deletePostId, setDeletePostId] = useState<string | null>(null);
 
   // 1. Fetch Followed Subjects
   const { data: followedSubjectsRes } = useQuery<{ data: string[] } | string[]>({
@@ -161,37 +147,12 @@ export const KnowledgeHubPage: React.FC = () => {
   const displayedPosts = canBrowse ? rawPosts : rawPosts.slice(0, 3);
   const totalCount = (postsRes as any)?.meta?.total ?? rawPosts.length;
 
-  const likeMutation = useMutation({
-    mutationFn: ({ id, liked }: { id: string; liked: boolean }) =>
-      liked ? apiClient.post(`/posts/${id}/like`) : apiClient.delete(`/posts/${id}/like`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['knowledge', 'posts'] });
-    },
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: ({ id, saved }: { id: string; saved: boolean }) =>
-      saved ? apiClient.post(`/posts/${id}/save`) : apiClient.delete(`/posts/${id}/save`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['knowledge', 'posts'] });
-    },
-  });
-
   const followSubjectMutation = useMutation({
     mutationFn: ({ code, follow }: { code: string; follow: boolean }) =>
       follow ? apiClient.post(`/subjects/${code}/follow`) : apiClient.delete(`/subjects/${code}/follow`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subjects', 'following'] });
       toast({ title: 'Đã cập nhật theo dõi môn học' });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiClient.delete(`/posts/${id}`),
-    onSuccess: () => {
-      toast({ title: 'Đã xóa bài viết thành công' });
-      queryClient.invalidateQueries({ queryKey: ['knowledge', 'posts'] });
-      setDeletePostId(null);
     },
   });
 
@@ -453,50 +414,97 @@ export const KnowledgeHubPage: React.FC = () => {
 
       {/* 4. Main Layout (2-Column when canBrowse, 1-Column when Guest) */}
       <div className={canBrowse ? 'grid grid-cols-1 xl:grid-cols-12 gap-8 items-start' : 'space-y-6'}>
-        {/* Main Post List Column */}
+        {/* Main Post List Column (ThreadFeed + ThreadCard per K-U & K0) */}
         <div className={canBrowse ? 'xl:col-span-8 space-y-4' : 'space-y-6'}>
-          {isLoading ? (
-            <LoadingSkeleton count={canBrowse ? 6 : 3} />
-          ) : displayedPosts.length === 0 ? (
-            <div className="py-12 text-center space-y-3">
-              <SearchX size={32} className="mx-auto text-neutral-300" />
-              <p className="text-sm font-medium text-neutral-700">
-                {searchQuery
-                  ? `Không có bài nào khớp với từ khóa "${searchQuery}"`
-                  : 'Chưa có bài viết nào trong mục này.'}
-              </p>
-              {canCompose && (
-                <div className="pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setComposerOpen(true)}
-                  >
-                    Đặt câu hỏi cho chủ đề này
-                  </Button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="divide-y divide-neutral-100">
-              {displayedPosts.map((post) => (
-                <KnowledgeListItem
-                  key={post.id}
-                  post={post}
-                  showBookmark={canBrowse}
-                  onLikeToggle={(id, liked) => likeMutation.mutate({ id, liked })}
-                  onSaveToggle={(id, saved) => saveMutation.mutate({ id, saved })}
-                />
-              ))}
-            </div>
-          )}
+          <ThreadFeed
+            posts={displayedPosts}
+            isLoading={isLoading}
+            skeletonCount={canBrowse ? 6 : 3}
+            paging={canBrowse ? 'pages' : 'none'}
+            pageSize={20}
+            total={totalCount}
+            onEditPost={(p) => setEditingPost(p)}
+            emptyIcon={SearchX}
+            emptyTitle={
+              searchQuery
+                ? `Không có bài nào khớp với từ khóa "${searchQuery}"`
+                : 'Chưa có bài viết nào trong mục này.'
+            }
+            emptyAction={
+              canCompose ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setComposerOpen(true)}
+                >
+                  Đặt câu hỏi cho chủ đề này
+                </Button>
+              ) : undefined
+            }
+            renderInsert={
+              canBrowse && activeTab === 'discover' && unansweredQuestions.length > 0
+                ? (afterIndex) => {
+                    if (afterIndex !== 2) return null;
+                    return (
+                      <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 my-3 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <HelpCircle size={15} className="text-brand-600" />
+                            <h4 className="text-xs font-semibold text-neutral-900">
+                              Các bạn đang cần giúp · {followedSubjects[0] || 'CSD201'}
+                            </h4>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setParam('sort', 'unanswered')}
+                            className="text-xs font-medium text-brand-600 hover:underline cursor-pointer"
+                          >
+                            Xem tất cả →
+                          </button>
+                        </div>
 
-          {!canBrowse && (
-            <LimitNotice
-              remaining={Math.max(12, totalCount - 3)}
-              noun="bài viết"
-            />
-          )}
+                        <div className="space-y-2">
+                          {unansweredQuestions.slice(0, 2).map((q) => (
+                            <Link
+                              key={q.id}
+                              to={`/knowledge/${q.id}`}
+                              className="p-3 rounded-md bg-white border border-neutral-200 hover:border-neutral-300 transition-colors flex items-center justify-between gap-3"
+                            >
+                              <div className="min-w-0 flex-1 space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <Badge tier="neutral" size="sm">
+                                    {q.subject || 'CSD201'}
+                                  </Badge>
+                                  <span className="text-xs text-neutral-500">
+                                    chưa có trả lời · {formatRelativeTime(q.createdAt)}
+                                  </span>
+                                </div>
+                                <p className="text-xs font-semibold text-neutral-900 line-clamp-1">
+                                  {q.title || q.contentMd.split('\n')[0]}
+                                </p>
+                              </div>
+                              <span className="text-xs font-medium text-brand-600 shrink-0">
+                                Trả lời
+                              </span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                : undefined
+            }
+            footerSlot={
+              !canBrowse ? (
+                <div className="pt-4">
+                  <LimitNotice
+                    remaining={Math.max(12, totalCount - 3)}
+                    noun="bài viết"
+                  />
+                </div>
+              ) : undefined
+            }
+          />
         </div>
 
         {/* 5. Sticky Sidebar Column (280px / 4 cols) — shown when canBrowse */}
@@ -613,6 +621,31 @@ export const KnowledgeHubPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Post Dialog */}
+      {editingPost && (
+        <Dialog open={!!editingPost} onOpenChange={(open) => !open && setEditingPost(null)}>
+          <DialogContent className="max-w-xl p-0 overflow-hidden">
+            <div className="p-4 border-b border-neutral-100 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-neutral-900">
+                Chỉnh sửa bài viết
+              </h2>
+            </div>
+            <div className="p-4">
+              <ThreadComposer
+                post={editingPost}
+                variant="sheet"
+                onPosted={() => {
+                  setEditingPost(null);
+                  queryClient.invalidateQueries({ queryKey: ['knowledge', 'posts'] });
+                  toast({ title: 'Đã cập nhật bài viết' });
+                }}
+                onCancel={() => setEditingPost(null)}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* Follow Subjects Modal */}
       <Dialog open={followModalOpen} onOpenChange={setFollowModalOpen}>
         <DialogContent className="max-w-md p-6 space-y-4">
@@ -651,32 +684,6 @@ export const KnowledgeHubPage: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Report Dialog */}
-      {reportPost && (
-        <ReportDialog
-          open={!!reportPost}
-          onOpenChange={(open) => !open && setReportPost(null)}
-          targetType="post"
-          targetId={reportPost.id}
-          targetTitle={reportPost.title || reportPost.contentMd.split('\n')[0]}
-          targetAuthorName={reportPost.authorName || 'Sinh viên'}
-          contentSnapshot={reportPost.contentMd?.slice(0, 100)}
-        />
-      )}
-
-      {/* Confirm Delete Dialog */}
-      {deletePostId && (
-        <ConfirmDialog
-          open={!!deletePostId}
-          onOpenChange={(open) => !open && setDeletePostId(null)}
-          title="Xóa bài viết?"
-          description="Hành động này không thể hoàn tác. Bài viết và toàn bộ bình luận sẽ bị gỡ bỏ."
-          confirmLabel="Xóa bài viết"
-          danger
-          onConfirm={() => deleteMutation.mutate(deletePostId)}
-        />
-      )}
     </div>
   );
 };

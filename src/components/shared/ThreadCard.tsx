@@ -33,6 +33,7 @@ import type { KnowledgePost } from '@/types/entities';
 export interface ThreadCardProps {
   post: KnowledgePost;
   variant?: 'feed' | 'detail' | 'reply';
+  density?: 'default' | 'compact';
   showThreadLine?: boolean;
   onOpen?: () => void;
   onLikeToggle?: (postId: string, liked: boolean) => void;
@@ -47,6 +48,7 @@ export interface ThreadCardProps {
 export const ThreadCard: React.FC<ThreadCardProps> = ({
   post,
   variant = 'feed',
+  density = 'default',
   showThreadLine = false,
   onOpen,
   onLikeToggle,
@@ -145,13 +147,15 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
     }
   };
 
+  const isCompact = density === 'compact';
   const isLongContent = remainingLines.length > 280 || lines.length > 6;
 
   return (
     <div
       onClick={handleCardClick}
       className={cn(
-        'group flex gap-3.5 py-4 border-b border-neutral-100 transition-colors',
+        'group flex gap-3.5 border-b border-neutral-100 transition-colors',
+        isCompact ? 'py-3 gap-3' : 'py-4',
         variant === 'feed' && 'cursor-pointer hover:bg-neutral-50/60 -mx-3 px-3 rounded-lg',
         className
       )}
@@ -165,7 +169,7 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
             avatarUrl: author.avatarUrl,
           }}
           linkToProfile
-          size={variant === 'reply' ? 'sm' : 'md'}
+          size={variant === 'reply' || isCompact ? 'sm' : 'md'}
         />
         {showThreadLine && (
           <div className="w-0.5 flex-1 bg-neutral-200 mt-2 rounded-full min-h-[24px]" />
@@ -173,7 +177,7 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
       </div>
 
       {/* Right Content Column */}
-      <div className="flex-1 min-w-0 space-y-2">
+      <div className={cn('flex-1 min-w-0', isCompact ? 'space-y-1.5' : 'space-y-2')}>
         {/* Moderation Banners */}
         {isPending && (
           <div className="bg-tier-attention-bg border border-tier-attention-border rounded-lg px-3 py-2 text-xs text-tier-attention-text flex items-center justify-between">
@@ -237,55 +241,57 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
           </div>
 
           {/* Menu ⋮ */}
-          <div onClick={(e) => e.stopPropagation()}>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors cursor-pointer"
-                  aria-label="Tùy chọn bài viết"
-                >
-                  <MoreHorizontal size={16} />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {isMine ? (
-                  <>
-                    <DropdownMenuItem
-                      onClick={() => (onEdit ? onEdit(post) : navigate(`/knowledge/${post.id}`))}
-                    >
-                      <Pencil size={14} /> Chỉnh sửa
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleShare}>
-                      <Share2 size={14} /> Sao chép liên kết
-                    </DropdownMenuItem>
-                    {onDelete && (
-                      <DropdownMenuItem danger onClick={() => onDelete(post.id)}>
-                        <Trash2 size={14} /> Xóa bài viết
+          {!isCompact && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors cursor-pointer"
+                    aria-label="Tùy chọn bài viết"
+                  >
+                    <MoreHorizontal size={16} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {isMine ? (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => (onEdit ? onEdit(post) : navigate(`/knowledge/${post.id}`))}
+                      >
+                        <Pencil size={14} /> Chỉnh sửa
                       </DropdownMenuItem>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <DropdownMenuItem onClick={(e) => handleSave(e as unknown as React.MouseEvent)}>
-                      <Bookmark size={14} /> {saved ? 'Bỏ lưu bài viết' : 'Lưu bài viết'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={(e) => handleShare(e as unknown as React.MouseEvent)}>
-                      <Share2 size={14} /> Sao chép liên kết
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      danger
-                      onClick={guard('report', () =>
-                        onReport ? onReport(post.id) : navigate(`/knowledge/${post.id}`)
+                      <DropdownMenuItem onClick={handleShare}>
+                        <Share2 size={14} /> Sao chép liên kết
+                      </DropdownMenuItem>
+                      {onDelete && (
+                        <DropdownMenuItem danger onClick={() => onDelete(post.id)}>
+                          <Trash2 size={14} /> Xóa bài viết
+                        </DropdownMenuItem>
                       )}
-                    >
-                      <Flag size={14} /> Báo cáo vi phạm
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                    </>
+                  ) : (
+                    <>
+                      <DropdownMenuItem onClick={(e) => handleSave(e as unknown as React.MouseEvent)}>
+                        <Bookmark size={14} /> {saved ? 'Bỏ lưu bài viết' : 'Lưu bài viết'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => handleShare(e as unknown as React.MouseEvent)}>
+                        <Share2 size={14} /> Sao chép liên kết
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        danger
+                        onClick={guard('report', () =>
+                          onReport ? onReport(post.id) : navigate(`/knowledge/${post.id}`)
+                        )}
+                      >
+                        <Flag size={14} /> Báo cáo vi phạm
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
 
         {/* Type and Subject Badges */}
@@ -323,9 +329,14 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
         )}
 
         {/* Post Content */}
-        <div className="space-y-1.5 text-xs sm:text-sm text-neutral-800 leading-relaxed">
+        <div className="space-y-1 text-xs sm:text-sm text-neutral-800 leading-relaxed">
           {firstLine && (
-            <p className="font-semibold text-neutral-900 text-sm sm:text-base leading-snug">
+            <p
+              className={cn(
+                'font-semibold text-neutral-900 leading-snug',
+                isCompact ? 'text-sm line-clamp-1' : 'text-sm sm:text-base'
+              )}
+            >
               {firstLine}
             </p>
           )}
@@ -335,12 +346,14 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
               <p
                 className={cn(
                   'whitespace-pre-line leading-relaxed text-neutral-700',
-                  !isExpanded && variant === 'feed' && isLongContent && 'line-clamp-4'
+                  isCompact
+                    ? 'text-xs line-clamp-2'
+                    : !isExpanded && variant === 'feed' && isLongContent && 'line-clamp-4'
                 )}
               >
                 {remainingLines}
               </p>
-              {!isExpanded && variant === 'feed' && isLongContent && (
+              {!isCompact && !isExpanded && variant === 'feed' && isLongContent && (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -357,31 +370,32 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
         </div>
 
         {/* Image Gallery with Lightbox (SCS_UI_Plan.md § 19) */}
-        {((post.gallery && post.gallery.length > 0) ||
-          (post.images && post.images.length > 0)) && (
-          <div className="pt-1" onClick={(e) => e.stopPropagation()}>
-            <ImageGallery
-              images={
-                post.gallery && post.gallery.length > 0
-                  ? post.gallery
-                  : (post.images || []).map((url, idx) => ({
-                      id: `${post.id}-img-${idx}`,
-                      url,
-                    }))
-              }
-            />
-          </div>
-        )}
+        {!isCompact &&
+          ((post.gallery && post.gallery.length > 0) ||
+            (post.images && post.images.length > 0)) && (
+            <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+              <ImageGallery
+                images={
+                  post.gallery && post.gallery.length > 0
+                    ? post.gallery
+                    : (post.images || []).map((url, idx) => ({
+                        id: `${post.id}-img-${idx}`,
+                        url,
+                      }))
+                }
+              />
+            </div>
+          )}
 
         {/* Attachments Preview */}
-        {post.attachments && post.attachments.length > 0 && (
+        {!isCompact && post.attachments && post.attachments.length > 0 && (
           <div className="pt-1">
             <AttachmentList items={post.attachments} />
           </div>
         )}
 
         {/* Tags */}
-        {post.tags && post.tags.length > 0 && (
+        {!isCompact && post.tags && post.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 pt-1">
             {post.tags.map((tag) => (
               <span
@@ -395,7 +409,12 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
         )}
 
         {/* Interaction Action Row (Threads Style) */}
-        <div className="flex items-center gap-5 pt-2 text-neutral-500">
+        <div
+          className={cn(
+            'flex items-center text-neutral-500',
+            isCompact ? 'gap-4 pt-1' : 'gap-5 pt-2'
+          )}
+        >
           {/* Like */}
           <button
             type="button"
@@ -407,8 +426,11 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
             )}
           >
             <Heart
-              size={17}
-              className={cn('transition-transform active:scale-125', liked && 'fill-current text-tier-danger-dot')}
+              size={isCompact ? 15 : 17}
+              className={cn(
+                'transition-transform active:scale-125',
+                liked && 'fill-current text-tier-danger-dot'
+              )}
             />
             {likesCount > 0 && <span>{likesCount}</span>}
           </button>
@@ -420,35 +442,42 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
             aria-label={`Trả lời (${post.commentCount})`}
             className="flex items-center gap-1.5 text-xs font-medium hover:text-neutral-900 transition-colors p-1 -m-1 rounded-md hover:bg-neutral-100"
           >
-            <MessageCircle size={17} />
+            <MessageCircle size={isCompact ? 15 : 17} />
             {post.commentCount > 0 && <span>{post.commentCount}</span>}
           </button>
 
           {/* Save / Bookmark */}
-          <button
-            type="button"
-            onClick={handleSave}
-            aria-label="Lưu bài viết"
-            className={cn(
-              'flex items-center gap-1.5 text-xs font-medium transition-colors p-1 -m-1 rounded-md hover:bg-neutral-100',
-              saved ? 'text-brand-600 font-semibold' : 'hover:text-neutral-900'
-            )}
-          >
-            <Bookmark
-              size={17}
-              className={cn('transition-transform active:scale-125', saved && 'fill-current text-brand-600')}
-            />
-          </button>
+          {!isCompact && (
+            <button
+              type="button"
+              onClick={handleSave}
+              aria-label="Lưu bài viết"
+              className={cn(
+                'flex items-center gap-1.5 text-xs font-medium transition-colors p-1 -m-1 rounded-md hover:bg-neutral-100',
+                saved ? 'text-brand-600 font-semibold' : 'hover:text-neutral-900'
+              )}
+            >
+              <Bookmark
+                size={17}
+                className={cn(
+                  'transition-transform active:scale-125',
+                  saved && 'fill-current text-brand-600'
+                )}
+              />
+            </button>
+          )}
 
           {/* Share */}
-          <button
-            type="button"
-            onClick={handleShare}
-            aria-label="Chia sẻ bài viết"
-            className="flex items-center gap-1.5 text-xs font-medium hover:text-neutral-900 transition-colors p-1 -m-1 rounded-md hover:bg-neutral-100"
-          >
-            <Share2 size={17} />
-          </button>
+          {!isCompact && (
+            <button
+              type="button"
+              onClick={handleShare}
+              aria-label="Chia sẻ bài viết"
+              className="flex items-center gap-1.5 text-xs font-medium hover:text-neutral-900 transition-colors p-1 -m-1 rounded-md hover:bg-neutral-100"
+            >
+              <Share2 size={17} />
+            </button>
+          )}
         </div>
       </div>
     </div>

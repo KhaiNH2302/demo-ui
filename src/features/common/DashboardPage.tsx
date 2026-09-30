@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   UsersRound,
   ArrowLeftRight,
@@ -12,17 +12,14 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { ThreadComposer } from '@/components/shared/ThreadComposer';
-import { ThreadCard } from '@/components/shared/ThreadCard';
-import { CommunityActivityCard, type CommunityActivityItem } from '@/components/shared/CommunityActivityCard';
-import { ReportDialog } from '@/components/shared/ReportDialog';
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { ThreadFeed } from '@/components/shared/ThreadFeed';
+import { FeedInsert } from '@/components/shared/FeedInsert';
 import { EntityRow } from '@/components/shared/EntityRow';
 import { DateBadge } from '@/components/shared/DateBadge';
 import { UpcomingList } from '@/components/shared/UpcomingList';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { useToast } from '@/components/ui/Toast';
 import { apiClient } from '@/lib/apiClient';
 import { formatRelativeTime, getInitials } from '@/lib/format';
 import {
@@ -30,6 +27,10 @@ import {
   consumePendingGuestAction,
   type PendingGuestAction,
 } from '@/lib/viewer';
+import {
+  renderHomeFeedInsertItem,
+  type HomeFeedInsertEntry,
+} from '@/features/home/feedRegistry';
 import type { KnowledgePost } from '@/types/entities';
 
 export interface TodayTaskItem {
@@ -114,25 +115,108 @@ const DEFAULT_SPACES: MySpaceItem[] = [
   },
 ];
 
-const communityActivities: CommunityActivityItem[] = [
+/**
+ * Nội dung xen vào bảng tin Trang chủ qua FeedInsert + registry (03-knowledge.md § K-U.4 & § K-U.5):
+ * - Tối đa 1 nội dung xen sau mỗi 4 thread; 5 thread đầu tiên không xen
+ * - Đa dạng module, không 2 nội dung xen liên tiếp cùng module
+ * - Chỉ hiện ở tab "Dành cho bạn" (không xen ở tab "Đang theo dõi")
+ */
+const HOME_FEED_INSERTS: HomeFeedInsertEntry[] = [
   {
-    id: 'act_club_01',
-    sourceType: 'club',
-    sourceId: 'club_01',
-    sourceName: 'F-Code Club',
-    sourceLogoUrl:
-      'https://images.unsplash.com/photo-1534972195531-a756b1126f24?auto=format&fit=crop&w=120&q=80',
-    activityType: 'event',
-    title: 'Seminar: Ứng dụng LLM & RAG trong Đồ án Tốt nghiệp SEP490',
-    summary:
-      'Chia sẻ kiến trúc RAG thực chiến và kinh nghiệm bảo vệ đồ án SEP490 trước hội đồng.',
-    timestamp: '2026-09-25T08:00:00Z',
-    eventDetails: {
-      date: 'Thứ Bảy, 18/10/2026 (09:00 - 11:30)',
-      location: 'Hội trường Gamma, Tầng 5, ĐH FPT Hà Nội',
-      rsvpCount: 68,
+    id: 'ins_opp_01',
+    kind: 'opportunity',
+    contextLabel: 'Câu lạc bộ · F-Code Club',
+    actionHref: '/clubs',
+    data: {
+      id: 'opp_04',
+      title: 'Seminar: Ứng dụng LLM & RAG trong Đồ án Tốt nghiệp SEP490',
+      clubName: 'F-Code Club',
+      clubLogoUrl:
+        'https://images.unsplash.com/photo-1534972195531-a756b1126f24?auto=format&fit=crop&w=120&q=80',
+      typeLabel: 'Sự kiện CLB',
+      coverImageUrl:
+        'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=900&auto=format&fit=crop&q=80',
+      galleryCount: 4,
+      startAt: '2026-10-18T09:00:00Z',
+      locationOrMode: 'Hội trường Gamma, Tầng 5, ĐH FPT Hà Nội',
+      registeredCount: 68,
+      capacity: 100,
+      href: '/opportunities/opp_04',
     },
-    linkTo: '/opportunities/opp_04',
+  },
+  {
+    id: 'ins_grp_01',
+    kind: 'group',
+    contextLabel: 'Nhóm học tập · Cùng môn bạn theo dõi',
+    actionHref: '/groups',
+    data: {
+      id: 'grp_02',
+      name: 'Nhóm luyện thuật toán CSD201 & LeetCode tuần thi',
+      purpose: 'Học tập',
+      subjectCode: 'CSD201',
+      description:
+        'Cùng giải đề thực hành cây AVL, đồ thị Dijkstra và ôn tập chuẩn bị PE cuối kỳ.',
+      memberCount: 3,
+      maxMembers: 5,
+      neededSkills: ['Java', 'Algorithms', 'CSD201'],
+      scheduleSummary: 'T3 & T5 · 19:30–21:30',
+      href: '/groups/grp_02',
+    },
+  },
+  {
+    id: 'ins_prog_01',
+    kind: 'program',
+    contextLabel: 'Tình nguyện & Workshop',
+    actionHref: '/programs',
+    data: {
+      id: 'prog_01',
+      title: 'Chiến dịch Tủ Sách Cho Em — Điểm trường Ba Vì 2026',
+      organizerName: 'CLB Tình nguyện Vì Cộng Đồng',
+      categoryLabel: 'Tình nguyện',
+      coverImageUrl:
+        'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=900&auto=format&fit=crop&q=80',
+      galleryCount: 6,
+      startAt: '2026-10-25T06:30:00Z',
+      locationOrMode: 'Trường Tiểu học Ba Vì, Hà Nội (Xe đưa đón tại cổng trường)',
+      registeredCount: 34,
+      capacity: 45,
+      benefitBadge: 'Giấy chứng nhận + Điểm rèn luyện',
+      href: '/programs/prog_01',
+    },
+  },
+  {
+    id: 'ins_mentor_01',
+    kind: 'mentoring_post',
+    contextLabel: 'Mentoring · Kỹ thuật phần mềm',
+    actionHref: '/mentoring/browse',
+    data: {
+      id: 'mp_01',
+      mentorId: 'usr_mentor_01',
+      mentorName: 'Lê Hoàng Nam',
+      mentorHeadline: 'K16 Kỹ thuật phần mềm · Thực tập sinh Backend tại FPT Software',
+      title: 'Nhận review kiến trúc & Database cho nhóm làm đồ án SWP391 / SEP490',
+      summary:
+        'Hỗ trợ các nhóm rà soát ERD, thiết kế RESTful API và tối ưu truy vấn SQL trước buổi bảo vệ.',
+      tags: ['SWP391', 'Spring Boot', 'Database'],
+      slotsRemaining: 2,
+      href: '/mentoring/posts/mp_01',
+    },
+  },
+  {
+    id: 'ins_swap_01',
+    kind: 'swap_match',
+    contextLabel: 'Đổi lớp · Khớp với yêu cầu Open của bạn',
+    actionHref: '/swap',
+    data: {
+      id: 'sw_01',
+      subjectCode: 'PRN231',
+      currentClassCode: 'SE1702',
+      targetClassCode: 'SE1705',
+      partnerName: 'Trần Minh Cường',
+      scheduleSummary: 'Ca 2 (09:15–11:45) Thứ 2, 4, 6',
+      matchNote: 'Khớp 2 chiều',
+      href: '/swap/sw_01/match',
+    },
   },
 ];
 
@@ -157,11 +241,8 @@ export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const { toast } = useToast();
 
   const [feedTab, setFeedTab] = useState<'for_you' | 'following'>('for_you');
-  const [reportPost, setReportPost] = useState<KnowledgePost | null>(null);
-  const [deletePostId, setDeletePostId] = useState<string | null>(null);
 
   // C6.0 Line 1: Pending guest action before login
   const [pendingAction, setPendingAction] = useState<PendingGuestAction | null>(() =>
@@ -229,7 +310,8 @@ export const DashboardPage: React.FC = () => {
   const feedQuery = useQuery<KnowledgePost[]>({
     queryKey: ['feed', feedTab],
     queryFn: async () => {
-      const posts = await apiClient.get<KnowledgePost[]>('/posts');
+      const res = await apiClient.get<{ data: KnowledgePost[] } | KnowledgePost[]>('/posts');
+      const posts: KnowledgePost[] = Array.isArray(res) ? res : (res as any)?.data || [];
       const visible = posts.filter((p) => p.status === 'Published');
       if (feedTab === 'following') {
         const followed = followingSubjectsQuery.data || ['CSD201', 'SWP391'];
@@ -240,25 +322,6 @@ export const DashboardPage: React.FC = () => {
         );
       }
       return visible;
-    },
-  });
-
-  const likeMutation = useMutation({
-    mutationFn: ({ id, liked }: { id: string; liked: boolean }) =>
-      liked ? apiClient.post(`/posts/${id}/like`) : apiClient.delete(`/posts/${id}/like`),
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: ({ id, saved }: { id: string; saved: boolean }) =>
-      saved ? apiClient.post(`/posts/${id}/save`) : apiClient.delete(`/posts/${id}/save`),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiClient.delete(`/posts/${id}`),
-    onSuccess: () => {
-      toast({ variant: 'default', title: 'Đã xóa bài viết' });
-      queryClient.invalidateQueries({ queryKey: ['feed'] });
-      setDeletePostId(null);
     },
   });
 
@@ -457,114 +520,113 @@ export const DashboardPage: React.FC = () => {
           </Link>
         </div>
 
-        {/* Feed Timeline */}
-        <div className="space-y-1">
-          {feedQuery.isLoading ? (
-            <div className="space-y-6 pt-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex gap-3 py-4 border-b border-neutral-100 animate-pulse">
-                  <div className="w-10 h-10 rounded-full bg-neutral-200 shrink-0" />
-                  <div className="flex-1 space-y-2.5">
-                    <div className="h-4 bg-neutral-200 rounded w-1/3" />
-                    <div className="h-3.5 bg-neutral-100 rounded w-full" />
-                    <div className="h-3.5 bg-neutral-100 rounded w-4/5" />
+        {/* Feed Timeline — ThreadFeed (FE-02) + FeedInsert (03-knowledge.md § K-U) */}
+        <ThreadFeed
+          posts={posts}
+          isLoading={feedQuery.isLoading}
+          skeletonCount={4}
+          paging="none"
+          emptyTitle={
+            feedTab === 'following'
+              ? 'Chưa có bài thảo luận nào trong các môn bạn đang theo dõi.'
+              : 'Bảng tin chưa có bài viết mới.'
+          }
+          emptyAction={
+            <Link to="/knowledge">
+              <Button variant="outline" size="sm">
+                Theo dõi thêm môn học
+              </Button>
+            </Link>
+          }
+          renderInsert={(afterIndex) => {
+            // Quy tắc K-U.5: Tab "Đang theo dõi" KHÔNG xen nội dung
+            if (feedTab !== 'for_you') return null;
+
+            // C6.1: Xen khối "Các bạn đang cần giúp" sau thread thứ 3 (afterIndex === 2)
+            if (afterIndex === 2 && unansweredQuestions.length > 0) {
+              return (
+                <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 my-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <HelpCircle size={16} className="text-brand-600" />
+                      <h4 className="text-xs font-semibold text-neutral-900">
+                        Các bạn đang cần giúp · {followingSubjectsQuery.data?.[0] || 'CSD201'}
+                      </h4>
+                    </div>
+                    <Link
+                      to="/knowledge?sort=unanswered"
+                      className="text-xs font-medium text-brand-600 hover:underline"
+                    >
+                      Xem tất cả →
+                    </Link>
+                  </div>
+
+                  <div className="space-y-2">
+                    {unansweredQuestions.slice(0, 2).map((q) => (
+                      <div
+                        key={q.id}
+                        onClick={() => navigate(`/knowledge/${q.id}`)}
+                        className="p-3 rounded-md bg-white border border-neutral-200 hover:border-neutral-300 transition-colors cursor-pointer flex items-center justify-between gap-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge tier="neutral" size="sm">
+                              {q.subject || 'CSD201'}
+                            </Badge>
+                            <span className="text-xs text-neutral-500">
+                              chưa có trả lời · {formatRelativeTime(q.createdAt)}
+                            </span>
+                          </div>
+                          <p className="text-xs font-semibold text-neutral-900 line-clamp-1">
+                            {q.title || q.contentMd.split('\n')[0]}
+                          </p>
+                        </div>
+                        <Button size="sm" variant="outline" className="shrink-0">
+                          Trả lời
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : posts.length === 0 ? (
-            <div className="text-center py-12 space-y-3 bg-white rounded-lg border border-neutral-200 p-6">
-              <p className="text-sm text-neutral-600">
-                {feedTab === 'following'
-                  ? 'Chưa có bài thảo luận nào trong các môn bạn đang theo dõi.'
-                  : 'Bảng tin chưa có bài viết mới.'}
-              </p>
-              <Link to="/knowledge">
-                <Button variant="outline" size="sm">
-                  Theo dõi thêm môn học
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            posts.map((post, index) => {
-              const showUnansweredWidget = index === 2 && unansweredQuestions.length > 0;
-              const showCommunityActivity = index === 4 && communityActivities.length > 0;
+              );
+            }
+
+            // K-U.5: 5 thread đầu tiên không xen module khác; tối đa 1 nội dung xen sau mỗi 4 thread (afterIndex = 4, 8, 12, 16, 20)
+            if (afterIndex >= 4 && (afterIndex - 4) % 4 === 0) {
+              const slotIdx = (afterIndex - 4) / 4;
+              const entry = HOME_FEED_INSERTS[slotIdx];
+              if (!entry) return null;
 
               return (
-                <React.Fragment key={post.id}>
-                  <ThreadCard
-                    post={post}
-                    variant="feed"
-                    onLikeToggle={(id, liked) => likeMutation.mutate({ id, liked })}
-                    onSaveToggle={(id, saved) => saveMutation.mutate({ id, saved })}
-                    onDelete={(id) => setDeletePostId(id)}
-                    onReport={() => setReportPost(post)}
-                  />
-
-                  {showUnansweredWidget && (
-                    <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 my-3 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <HelpCircle size={16} className="text-brand-600" />
-                          <h4 className="text-xs font-bold text-neutral-900">
-                            Câu hỏi chưa có lời giải
-                          </h4>
-                        </div>
-                        <Link
-                          to="/knowledge?sort=unanswered"
-                          className="text-xs font-semibold text-brand-600 hover:underline"
-                        >
-                          Xem tất cả
-                        </Link>
-                      </div>
-
-                      <div className="space-y-2">
-                        {unansweredQuestions.slice(0, 2).map((q) => (
-                          <div
-                            key={q.id}
-                            onClick={() => navigate(`/knowledge/${q.id}`)}
-                            className="p-3 rounded-md bg-white border border-neutral-200 hover:border-neutral-300 transition-colors cursor-pointer flex items-center justify-between gap-3"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Badge tier="neutral" size="sm">
-                                  {q.subject || 'CSD201'}
-                                </Badge>
-                                <span className="text-xs text-neutral-500">
-                                  {formatRelativeTime(q.createdAt)}
-                                </span>
-                              </div>
-                              <p className="text-xs font-semibold text-neutral-900 line-clamp-1">
-                                {q.title || q.contentMd.split('\n')[0]}
-                              </p>
-                            </div>
-                            <Button size="sm" variant="outline" className="shrink-0">
-                              Trả lời
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {showCommunityActivity && (
-                    <CommunityActivityCard activity={communityActivities[0]} />
-                  )}
-                </React.Fragment>
+                <FeedInsert
+                  key={entry.id}
+                  kind={entry.kind}
+                  contextLabel={entry.contextLabel}
+                  actionHref={entry.actionHref}
+                >
+                  {renderHomeFeedInsertItem(entry)}
+                </FeedInsert>
               );
-            })
-          )}
-        </div>
+            }
 
-        {/* End of Feed message */}
-        <div className="text-center py-6 border-t border-neutral-100">
-          <p className="text-xs text-neutral-500">
-            Bạn đã xem hết bài viết mới ·{' '}
-            <Link to="/knowledge" className="text-brand-600 font-semibold hover:underline">
-              Khám phá chủ đề khác
-            </Link>
-          </p>
-        </div>
+            return null;
+          }}
+          footerSlot={
+            posts.length > 0 ? (
+              <div className="text-center py-6 border-t border-neutral-100">
+                <p className="text-xs text-neutral-500">
+                  Bạn đã xem hết bài viết mới ·{' '}
+                  <Link
+                    to="/knowledge"
+                    className="text-brand-600 font-semibold hover:underline"
+                  >
+                    Khám phá chủ đề khác
+                  </Link>
+                </p>
+              </div>
+            ) : undefined
+          }
+        />
       </div>
 
       {/* Desktop Right Column (≥1280px, width 300px sticky) */}
@@ -617,7 +679,7 @@ export const DashboardPage: React.FC = () => {
         {/* Box 2: Môn học theo dõi */}
         <div className="bg-white border border-neutral-200 rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-neutral-900">Môn học theo dõi</h3>
+            <h3 className="text-sm font-semibold text-neutral-900">Môn bạn theo dõi</h3>
             <Link to="/knowledge" className="text-xs font-medium text-brand-600 hover:underline">
               Thêm
             </Link>
@@ -632,7 +694,7 @@ export const DashboardPage: React.FC = () => {
                     size="md"
                     className="hover:bg-brand-50 hover:text-brand-700 hover:border-brand-200 transition-colors cursor-pointer"
                   >
-                    #{subj}
+                    {subj}
                   </Badge>
                 </Link>
               ),
@@ -681,33 +743,6 @@ export const DashboardPage: React.FC = () => {
           <span>© SCS 2026</span>
         </div>
       </aside>
-
-      {/* Shared Report Dialog */}
-      {reportPost && (
-        <ReportDialog
-          open={!!reportPost}
-          onOpenChange={(open) => !open && setReportPost(null)}
-          targetType="post"
-          targetId={reportPost.id}
-          targetTitle={reportPost.title}
-          targetAuthorName={reportPost.authorName}
-          contentSnapshot={reportPost.contentMd}
-        />
-      )}
-
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        open={!!deletePostId}
-        onOpenChange={(open) => !open && setDeletePostId(null)}
-        title="Xóa bài viết"
-        description="Bạn có chắc chắn muốn xóa bài viết này không? Hành động này không thể hoàn tác."
-        danger={true}
-        confirmLabel="Xóa bài viết"
-        loading={deleteMutation.isPending}
-        onConfirm={() => {
-          if (deletePostId) deleteMutation.mutate(deletePostId);
-        }}
-      />
     </div>
   );
 };

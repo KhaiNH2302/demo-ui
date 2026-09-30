@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { AppShell } from '@/app/layouts/AppShell';
 import { Button } from '@/components/ui/Button';
-import { KnowledgeListItem } from '@/components/shared/KnowledgeListItem';
+import { ThreadFeed } from '@/components/shared/ThreadFeed';
 import { UpcomingList, type UpcomingItem } from '@/components/shared/UpcomingList';
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton';
 import { useAuthStore } from '@/store/authStore';
@@ -96,7 +96,7 @@ export const GuestHomePage: React.FC = () => {
 
         {/* Khối 2 — Đang diễn ra trong trường (2 cột 2/3 + 1/3) */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          {/* Cột trái 2/3: Sinh viên đang hỏi gì — tái sử dụng KnowledgeListItem (K0) */}
+          {/* Cột trái 2/3: Sinh viên đang hỏi gì — tái sử dụng ThreadFeed + ThreadCard density="compact" (C12 & K-U) */}
           <div className="lg:col-span-2 space-y-2.5">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-neutral-900">
@@ -110,19 +110,15 @@ export const GuestHomePage: React.FC = () => {
               </Link>
             </div>
 
-            {loadingPosts ? (
-              <LoadingSkeleton variant="row-list" count={3} />
-            ) : (
-              <div className="rounded-lg border border-neutral-200 bg-white px-4 overflow-hidden">
-                {posts.map((post) => (
-                  <KnowledgeListItem
-                    key={post.id}
-                    post={post}
-                    showBookmark={false}
-                  />
-                ))}
-              </div>
-            )}
+            <div className="rounded-lg border border-neutral-200 bg-white px-4 overflow-hidden">
+              <ThreadFeed
+                posts={posts}
+                isLoading={loadingPosts}
+                skeletonCount={3}
+                density="compact"
+                paging="none"
+              />
+            </div>
           </div>
 
           {/* Cột phải 1/3: Sắp diễn ra */}

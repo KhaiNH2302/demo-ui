@@ -17,7 +17,7 @@ import { useAuthStore } from '@/store/authStore';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { FollowButton, type FollowButtonState } from '@/components/shared/FollowButton';
 import { ScheduleInput } from '@/components/shared/ScheduleInput';
-import { ThreadCard } from '@/components/shared/ThreadCard';
+import { ThreadFeed } from '@/components/shared/ThreadFeed';
 import { EntityRow } from '@/components/shared/EntityRow';
 import { ReportDialog } from '@/components/shared/ReportDialog';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -536,22 +536,21 @@ export const ProfilePage: React.FC = () => {
               </div>
             )}
 
-            {filteredPosts.length === 0 ? (
-              <EmptyState
-                title="Chưa có bài viết nào"
-                description={
+            <div className="rounded-lg border border-neutral-200 bg-white px-4">
+              <ThreadFeed
+                posts={filteredPosts}
+                isLoading={postsQuery.isLoading}
+                skeletonCount={3}
+                paging="pages"
+                pageSize={10}
+                emptyTitle="Chưa có bài viết nào"
+                emptyDescription={
                   isEffectiveSelf
                     ? 'Đặt câu hỏi hoặc chia sẻ kinh nghiệm học tập đầu tiên của bạn.'
                     : `${userEntity.fullName} chưa đăng bài viết công khai nào.`
                 }
               />
-            ) : (
-              <div className="rounded-lg border border-neutral-200 bg-white divide-y divide-neutral-200 px-4">
-                {filteredPosts.map((post) => (
-                  <ThreadCard key={post.id} post={post} variant="feed" />
-                ))}
-              </div>
-            )}
+            </div>
           </TabsContent>
 
           {/* TAB 2: GIỚI THIỆU (C7.3) */}

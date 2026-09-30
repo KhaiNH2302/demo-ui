@@ -105,7 +105,7 @@ export default function KnowledgePostDetailPage() {
 
   if (!guestPreviewStatus.allowed) {
     return (
-      <div className="max-w-xl mx-auto py-8">
+      <div className="max-w-[720px] mx-auto py-8">
         <LimitNotice noun="bài viết" remaining={24} alwaysShow />
       </div>
     );
@@ -113,7 +113,7 @@ export default function KnowledgePostDetailPage() {
 
   if (postDetailQuery.isLoading) {
     return (
-      <div className="max-w-2xl mx-auto space-y-4 pt-4">
+      <div className="max-w-[720px] mx-auto space-y-4 pt-4">
         <div className="h-8 bg-neutral-100 rounded w-1/4 animate-pulse" />
         <div className="h-48 bg-neutral-50 rounded-xl animate-pulse" />
       </div>
@@ -123,7 +123,7 @@ export default function KnowledgePostDetailPage() {
   const data = postDetailQuery.data;
   if (!data?.post) {
     return (
-      <div className="max-w-2xl mx-auto text-center py-16 space-y-3">
+      <div className="max-w-[720px] mx-auto text-center py-16 space-y-3">
         <h3 className="text-base font-bold text-neutral-900">
           Bài viết không tồn tại hoặc đã bị gỡ
         </h3>
@@ -174,283 +174,320 @@ export default function KnowledgePostDetailPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 pb-24">
-      <ContextHeader backHref="/knowledge" title="Chi tiết thảo luận" />
-
-      {!canInteract && (
-        <div className="rounded-lg border border-brand-200 bg-brand-50/70 px-3.5 py-2 text-xs text-brand-700 flex items-center justify-between">
-          <span>
-            Chế độ xem thử cho Khách: đã xem {guestPreviewStatus.viewedCount}/
-            {guestPreviewStatus.limit} bài viết công khai.
-          </span>
-        </div>
-      )}
-
-      {/* Main Post Full View */}
-      <div className="bg-white rounded-xl">
-        <ThreadCard
-          post={post}
-          variant="detail"
-          onLikeToggle={guard('like_post', (pId: string, liked: boolean) =>
-            likeMutation.mutate({ postId: pId, liked })
-          )}
-          onSaveToggle={guard('bookmark_post', (pId: string, saved: boolean) =>
-            saveMutation.mutate({ postId: pId, saved })
-          )}
-          onDelete={() => setDeleteDialogOpen(true)}
-          onReport={guard('report', () =>
-            setReportTarget({
-              type: 'post',
-              id: post.id,
-              title: post.title || 'Bài viết thảo luận',
-              authorName: post.authorName,
-              snapshot: post.contentMd,
-            })
-          )}
+    <div className="max-w-[720px] mx-auto pb-8">
+      <div className="bg-white border border-neutral-200 rounded-xl shadow-2xs">
+        <ContextHeader
+          backHref="/knowledge"
+          title="Chi tiết thảo luận"
+          className="rounded-t-xl px-5 sm:px-6"
         />
-      </div>
 
-      {/* Replies Section Header & Sorting */}
-      <div className="flex items-center justify-between pt-4 border-t border-neutral-100 px-1">
-        <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-1.5">
-          <MessageCircle size={16} className="text-brand-600" />
-          <span>Phản hồi ({comments.length})</span>
-        </h3>
-
-        <SegmentedControl
-          options={[
-            { value: 'top', label: 'Hữu ích nhất' },
-            { value: 'new', label: 'Mới nhất' },
-          ]}
-          value={sortReplies}
-          onValueChange={(val) => setSortReplies(val as any)}
-          size="sm"
-        />
-      </div>
-
-      {/* Comment List */}
-      <div className="space-y-3 pt-1">
-        {comments.length === 0 ? (
-          <div className="text-center py-10 bg-neutral-50 rounded-xl border border-neutral-200 text-xs text-neutral-500">
-            Chưa có câu trả lời nào. Hãy là người đầu tiên tham gia thảo luận.
+        {!canInteract && (
+          <div className="mx-5 sm:mx-6 mt-4 rounded-lg border border-brand-200 bg-brand-50/70 px-3.5 py-2 text-xs text-brand-700 flex items-center justify-between">
+            <span>
+              Chế độ xem thử cho Khách: đã xem {guestPreviewStatus.viewedCount}/
+              {guestPreviewStatus.limit} bài viết công khai.
+            </span>
           </div>
-        ) : (
-          visibleComments.map((comment) => {
-            const commentAuthor = seedUsers.find((u) => u.id === comment.authorId) || {
-              id: comment.authorId,
-              fullName: 'Thành viên FPTU',
-              avatarUrl: undefined,
-              major: 'Sinh viên',
-              cohort: 'K18',
-            };
-
-            const nested = getNestedComments(comment.id);
-
-            return (
-              <div
-                key={comment.id}
-                className={cn(
-                  'bg-white border rounded-xl p-4 space-y-3 transition-colors',
-                  comment.isAcceptedAnswer
-                    ? 'border-tier-success-border bg-tier-success-bg/20'
-                    : 'border-neutral-200'
-                )}
-              >
-                {comment.isAcceptedAnswer && (
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-tier-success-text pb-1 border-b border-tier-success-border/50">
-                    <CheckCircle2 size={15} className="text-tier-success-dot" />
-                    <span>Câu trả lời được tác giả chọn</span>
-                  </div>
-                )}
-
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <UserAvatar
-                      user={{
-                        id: commentAuthor.id,
-                        fullName: commentAuthor.fullName,
-                        avatarUrl: commentAuthor.avatarUrl,
-                      }}
-                      linkToProfile
-                      size="sm"
-                    />
-                    <div>
-                      <span className="text-xs font-bold text-neutral-900 block">
-                        {commentAuthor.fullName}
-                      </span>
-                      <span className="text-xs text-neutral-500">
-                        {formatRelativeTime(comment.createdAt)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {isAuthor && isQuestion && !comment.isAcceptedAnswer && !isClosed && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => acceptAnswerMutation.mutate(comment.id)}
-                      className="text-xs h-7 gap-1 text-tier-success-text hover:bg-tier-success-bg"
-                    >
-                      <CheckCircle2 size={13} /> Chọn câu trả lời này
-                    </Button>
-                  )}
-                </div>
-
-                <p className="text-xs sm:text-sm text-neutral-800 leading-relaxed whitespace-pre-line">
-                  {comment.content}
-                </p>
-
-                <div className="flex items-center justify-between text-xs text-neutral-500 pt-1 border-t border-neutral-100">
-                  <div className="flex items-center gap-4">
-                    <button
-                      type="button"
-                      onClick={guard('like_post', () => {
-                        toast({ variant: 'default', title: 'Đã thích phản hồi' });
-                      })}
-                      className="flex items-center gap-1 hover:text-neutral-900 transition-colors cursor-pointer"
-                    >
-                      <Heart size={14} />
-                      <span>{comment.likesCount || 0}</span>
-                    </button>
-
-                    {!isClosed && (
-                      <button
-                        type="button"
-                        onClick={() => handleStartReply(comment.id, commentAuthor.fullName)}
-                        className="flex items-center gap-1 hover:text-brand-600 transition-colors font-medium cursor-pointer"
-                      >
-                        <MessageCircle size={14} />
-                        <span>Trả lời</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={guard('report', () =>
-                      setReportTarget({
-                        type: 'comment',
-                        id: comment.id,
-                        title: `Bình luận của ${commentAuthor.fullName}`,
-                        authorName: commentAuthor.fullName,
-                        snapshot: comment.content,
-                      })
-                    )}
-                    className="flex items-center gap-1 text-neutral-400 hover:text-neutral-700 cursor-pointer"
-                    title="Báo cáo bình luận"
-                  >
-                    <Flag size={13} />
-                    <span>Báo cáo</span>
-                  </button>
-                </div>
-
-                {/* Nested 1-Level Replies */}
-                {nested.length > 0 && (
-                  <div className="pl-4 border-l-2 border-neutral-200 space-y-2.5 pt-2 mt-2">
-                    {nested.map((nc) => {
-                      const ncAuthor = seedUsers.find((u) => u.id === nc.authorId) || {
-                        id: nc.authorId,
-                        fullName: 'Thành viên FPTU',
-                        avatarUrl: undefined,
-                      };
-
-                      return (
-                        <div key={nc.id} className="space-y-1 bg-neutral-50/80 rounded-lg p-2.5">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-semibold text-neutral-900">
-                              {ncAuthor.fullName}
-                            </span>
-                            <span className="text-xs text-neutral-500">
-                              {formatRelativeTime(nc.createdAt)}
-                            </span>
-                          </div>
-                          <p className="text-xs text-neutral-700 leading-relaxed">
-                            {nc.content}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })
         )}
 
-        {!canInteract && hiddenCommentsCount > 0 && (
-          <LimitNotice remaining={hiddenCommentsCount} noun="bình luận" />
-        )}
-      </div>
+        {/* Main Post Full View */}
+        <div className="px-5 sm:px-6">
+          <ThreadCard
+            post={post}
+            variant="detail"
+            className="border-b-0 py-5"
+            onLikeToggle={guard('like_post', (pId: string, liked: boolean) =>
+              likeMutation.mutate({ postId: pId, liked })
+            )}
+            onSaveToggle={guard('bookmark_post', (pId: string, saved: boolean) =>
+              saveMutation.mutate({ postId: pId, saved })
+            )}
+            onDelete={() => setDeleteDialogOpen(true)}
+            onReport={guard('report', () =>
+              setReportTarget({
+                type: 'post',
+                id: post.id,
+                title: post.title || 'Bài viết thảo luận',
+                authorName: post.authorName,
+                snapshot: post.contentMd,
+              })
+            )}
+          />
+        </div>
 
-      {/* Sticky Bottom Reply Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur-md border-t border-neutral-200 py-3 px-4 shadow-sm">
-        <div className="max-w-2xl mx-auto space-y-1.5">
-          {replyingTo && (
-            <div className="flex items-center justify-between text-xs text-brand-700 bg-brand-50 px-3 py-1 rounded-md">
-              <span className="flex items-center gap-1">
-                <CornerDownRight size={13} /> Đang trả lời <strong>@{replyingTo.authorName}</strong>
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setReplyingTo(null);
-                  setReplyText('');
-                }}
-                className="text-neutral-400 hover:text-neutral-700 p-0.5 cursor-pointer"
-              >
-                <X size={13} />
-              </button>
-            </div>
-          )}
+        {/* Replies Section Header & Sorting */}
+        <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-3 bg-neutral-50/80 border-y border-neutral-200">
+          <h3 className="text-sm font-semibold text-neutral-900 flex items-center gap-1.5">
+            <MessageCircle size={16} className="text-brand-600" />
+            <span>Phản hồi ({comments.length})</span>
+          </h3>
 
-          {isClosed ? (
-            <div className="text-center py-2 text-xs text-neutral-500 bg-neutral-100 rounded-lg flex items-center justify-center gap-1.5">
-              <Lock size={13} /> Tác giả đã đóng thảo luận bài viết này.
-            </div>
-          ) : !canInteract ? (
-            <div className="flex items-center justify-between gap-3 py-1 px-3 rounded-lg bg-neutral-50 border border-neutral-200 text-xs text-neutral-600">
-              <span>Đăng nhập để trả lời</span>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={guard('comment', () => {})}
-              >
-                Đăng nhập
-              </Button>
+          <SegmentedControl
+            options={[
+              { value: 'top', label: 'Hữu ích nhất' },
+              { value: 'new', label: 'Mới nhất' },
+            ]}
+            value={sortReplies}
+            onValueChange={(val) => setSortReplies(val as any)}
+            size="sm"
+          />
+        </div>
+
+        {/* Comment List (2-column ThreadCard reply layout per K3 spec) */}
+        <div className="divide-y divide-neutral-100">
+          {comments.length === 0 ? (
+            <div className="text-center py-12 px-5 sm:px-6 text-xs text-neutral-500">
+              Chưa có câu trả lời nào. Hãy là người đầu tiên tham gia thảo luận.
             </div>
           ) : (
-            <form onSubmit={handleSubmitReply} className="flex items-center gap-2.5">
-              <Avatar
-                src={user?.avatarUrl}
-                name={user?.fullName || 'Thành viên'}
-                size="sm"
-                className="shrink-0"
-              />
-              <input
-                ref={replyInputRef}
-                type="text"
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder={
-                  replyingTo
-                    ? `Trả lời @${replyingTo.authorName}...`
-                    : 'Viết câu trả lời hoặc thảo luận...'
-                }
-                disabled={addCommentMutation.isPending}
-                className="flex-1 text-xs sm:text-sm bg-neutral-100 hover:bg-neutral-50 focus:bg-white rounded-full px-4 py-2 border border-transparent focus:border-brand-300 outline-hidden transition-all"
-              />
-              <Button
-                type="submit"
-                size="sm"
-                disabled={!replyText.trim() || addCommentMutation.isPending}
-                loading={addCommentMutation.isPending}
-                className="rounded-full px-4"
-              >
-                <Send size={14} />
-              </Button>
-            </form>
+            visibleComments.map((comment) => {
+              const commentAuthor = seedUsers.find((u) => u.id === comment.authorId) || {
+                id: comment.authorId,
+                fullName: 'Thành viên FPTU',
+                avatarUrl: undefined,
+                major: 'Sinh viên',
+                cohort: 'K18',
+              };
+
+              const nested = getNestedComments(comment.id);
+
+              return (
+                <div
+                  key={comment.id}
+                  className={cn(
+                    'px-5 sm:px-6 py-4 transition-colors',
+                    comment.isAcceptedAnswer &&
+                      'border-l-2 border-l-tier-success-dot bg-tier-success-bg/15'
+                  )}
+                >
+                  {comment.isAcceptedAnswer && (
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-tier-success-text mb-2.5">
+                      <CheckCircle2 size={15} className="text-tier-success-dot shrink-0" />
+                      <span>Câu trả lời được chọn</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-start gap-3.5">
+                    {/* Left Avatar Column */}
+                    <div className="shrink-0 pt-0.5">
+                      <UserAvatar
+                        user={{
+                          id: commentAuthor.id,
+                          fullName: commentAuthor.fullName,
+                          avatarUrl: commentAuthor.avatarUrl,
+                        }}
+                        linkToProfile
+                        size="sm"
+                      />
+                    </div>
+
+                    {/* Right Content Column */}
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+                          <span className="font-semibold text-neutral-900">
+                            {commentAuthor.fullName}
+                          </span>
+                          {commentAuthor.major && (
+                            <>
+                              <span className="text-neutral-300">·</span>
+                              <span className="text-neutral-500">{commentAuthor.major}</span>
+                            </>
+                          )}
+                          <span className="text-neutral-300">·</span>
+                          <span className="text-neutral-400">
+                            {formatRelativeTime(comment.createdAt)}
+                          </span>
+                        </div>
+
+                        {isAuthor && isQuestion && !comment.isAcceptedAnswer && !isClosed && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => acceptAnswerMutation.mutate(comment.id)}
+                            className="text-xs h-7 gap-1 text-tier-success-text hover:bg-tier-success-bg shrink-0"
+                          >
+                            <CheckCircle2 size={13} /> Chọn câu trả lời này
+                          </Button>
+                        )}
+                      </div>
+
+                      <p className="text-xs sm:text-sm text-neutral-800 leading-relaxed whitespace-pre-line">
+                        {comment.content}
+                      </p>
+
+                      <div className="flex items-center justify-between text-xs text-neutral-500 pt-1">
+                        <div className="flex items-center gap-4">
+                          <button
+                            type="button"
+                            onClick={guard('like_post', () => {
+                              toast({ variant: 'default', title: 'Đã thích phản hồi' });
+                            })}
+                            className="flex items-center gap-1.5 hover:text-neutral-900 transition-colors cursor-pointer"
+                          >
+                            <Heart size={14} />
+                            <span>{comment.likesCount || 0}</span>
+                          </button>
+
+                          {!isClosed && (
+                            <button
+                              type="button"
+                              onClick={() => handleStartReply(comment.id, commentAuthor.fullName)}
+                              className="flex items-center gap-1.5 hover:text-brand-600 transition-colors font-medium cursor-pointer"
+                            >
+                              <MessageCircle size={14} />
+                              <span>Trả lời</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={guard('report', () =>
+                            setReportTarget({
+                              type: 'comment',
+                              id: comment.id,
+                              title: `Bình luận của ${commentAuthor.fullName}`,
+                              authorName: commentAuthor.fullName,
+                              snapshot: comment.content,
+                            })
+                          )}
+                          className="flex items-center gap-1 text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                          title="Báo cáo bình luận"
+                        >
+                          <Flag size={13} />
+                          <span>Báo cáo</span>
+                        </button>
+                      </div>
+
+                      {/* Nested 1-Level Replies */}
+                      {nested.length > 0 && (
+                        <div className="pl-3.5 border-l-2 border-neutral-200 space-y-2.5 pt-1 mt-2.5">
+                          {nested.map((nc) => {
+                            const ncAuthor = seedUsers.find((u) => u.id === nc.authorId) || {
+                              id: nc.authorId,
+                              fullName: 'Thành viên FPTU',
+                              avatarUrl: undefined,
+                            };
+
+                            return (
+                              <div
+                                key={nc.id}
+                                className="flex items-start gap-2.5 bg-neutral-50/80 rounded-lg p-2.5"
+                              >
+                                <UserAvatar
+                                  user={{
+                                    id: ncAuthor.id,
+                                    fullName: ncAuthor.fullName,
+                                    avatarUrl: ncAuthor.avatarUrl,
+                                  }}
+                                  linkToProfile
+                                  size="xs"
+                                  className="mt-0.5"
+                                />
+                                <div className="flex-1 min-w-0 space-y-1">
+                                  <div className="flex items-center justify-between gap-2 text-xs">
+                                    <span className="font-semibold text-neutral-900">
+                                      {ncAuthor.fullName}
+                                    </span>
+                                    <span className="text-neutral-400">
+                                      {formatRelativeTime(nc.createdAt)}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-neutral-700 leading-relaxed">
+                                    {nc.content}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
           )}
+        </div>
+
+        {!canInteract && hiddenCommentsCount > 0 && (
+          <div className="p-5 sm:p-6 border-t border-neutral-100">
+            <LimitNotice remaining={hiddenCommentsCount} noun="bình luận" />
+          </div>
+        )}
+
+        {/* Sticky Bottom Reply Bar — aligned inside the 720px thread column */}
+        <div className="sticky bottom-0 z-20 bg-white/95 backdrop-blur-md border-t border-neutral-200 px-5 sm:px-6 py-3 rounded-b-xl">
+          <div className="space-y-1.5">
+            {replyingTo && (
+              <div className="flex items-center justify-between text-xs text-brand-700 bg-brand-50 px-3 py-1 rounded-md">
+                <span className="flex items-center gap-1">
+                  <CornerDownRight size={13} /> Đang trả lời <strong>@{replyingTo.authorName}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReplyingTo(null);
+                    setReplyText('');
+                  }}
+                  className="text-neutral-400 hover:text-neutral-700 p-0.5 cursor-pointer"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            )}
+
+            {isClosed ? (
+              <div className="text-center py-2 text-xs text-neutral-500 bg-neutral-100 rounded-lg flex items-center justify-center gap-1.5">
+                <Lock size={13} /> Tác giả đã đóng thảo luận bài viết này.
+              </div>
+            ) : !canInteract ? (
+              <div className="flex items-center justify-between gap-3 py-1 px-3 rounded-lg bg-neutral-50 border border-neutral-200 text-xs text-neutral-600">
+                <span>Đăng nhập để trả lời</span>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={guard('comment', () => {})}
+                >
+                  Đăng nhập
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitReply} className="flex items-center gap-3">
+                <Avatar
+                  src={user?.avatarUrl}
+                  name={user?.fullName || 'Thành viên'}
+                  size="sm"
+                  className="shrink-0"
+                />
+                <input
+                  ref={replyInputRef}
+                  type="text"
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder={
+                    replyingTo
+                      ? `Trả lời @${replyingTo.authorName}...`
+                      : 'Viết câu trả lời hoặc thảo luận...'
+                  }
+                  disabled={addCommentMutation.isPending}
+                  className="flex-1 text-xs sm:text-sm bg-neutral-100 hover:bg-neutral-50 focus:bg-white rounded-full px-4 py-2 border border-transparent focus:border-brand-300 outline-hidden transition-all"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!replyText.trim() || addCommentMutation.isPending}
+                  loading={addCommentMutation.isPending}
+                  className="rounded-full px-4 shrink-0"
+                >
+                  <Send size={14} />
+                </Button>
+              </form>
+            )}
+          </div>
         </div>
       </div>
 
