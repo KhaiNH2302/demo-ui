@@ -4,12 +4,12 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 // Layouts
 import { AuthLayout } from './layouts/AuthLayout';
 import { AppShell } from './layouts/AppShell';
-import { ClubWorkspaceShell } from './layouts/ClubWorkspaceShell';
+import { PublicOrAuthRoute } from './layouts/PublicOrAuthRoute';
 import { AdminShell } from './layouts/AdminShell';
 import { ProtectedRoute } from './ProtectedRoute';
 
 // Public & Auth Pages
-import LandingPage from '@/features/landing/LandingPage';
+import GuestHomePage from '@/features/guest/GuestHomePage';
 import LoginPage from '@/features/auth/LoginPage';
 import RegisterPage from '@/features/auth/RegisterPage';
 import VerifyEmailPage from '@/features/auth/VerifyEmailPage';
@@ -19,19 +19,18 @@ import TermsPage from '@/features/legal/TermsPage';
 import PrivacyPage from '@/features/legal/PrivacyPage';
 import HelpPage from '@/features/help/HelpPage';
 
-// Common & Global Navigation Pages (26/09/2026 specs)
+// Common & Global Navigation Pages
 import DashboardPage from '@/features/common/DashboardPage';
 import SearchPage from '@/features/search/SearchPage';
 import OpportunitiesPage from '@/features/opportunities/OpportunitiesPage';
 import EventsPage from '@/features/events/EventsPage';
-import EventDetailPage from '@/features/events/EventDetailPage';
 import RequestsPage from '@/features/requests/RequestsPage';
 import SettingsPage from '@/features/settings/SettingsPage';
 import ErrorPage from '@/features/common/ErrorPage';
+import PeoplePage from '@/features/people/PeoplePage';
 
-// Profile
+// Profile (Unified C7 + C8)
 import ProfilePage from '@/features/profile/ProfilePage';
-import PublicProfilePage from '@/features/profile/PublicProfilePage';
 
 // Notifications & Chat
 import NotificationsPage from '@/features/notifications/NotificationsPage';
@@ -46,7 +45,6 @@ import SwapConnectionsPage from '@/features/swap/SwapConnectionsPage';
 
 // FE-02: Knowledge Sharing
 import KnowledgeHubPage from '@/features/knowledge/KnowledgeHubPage';
-import KnowledgePostFormPage from '@/features/knowledge/KnowledgePostFormPage';
 import KnowledgePostDetailPage from '@/features/knowledge/KnowledgePostDetailPage';
 import MyPostsPage from '@/features/knowledge/MyPostsPage';
 
@@ -57,28 +55,22 @@ import GroupDetailPage from '@/features/groups/GroupDetailPage';
 import MyGroupsPage from '@/features/groups/MyGroupsPage';
 import GroupManagePage from '@/features/groups/GroupManagePage';
 
-// FE-04: Clubs
-import ClubsListPage from '@/features/clubs/ClubsListPage';
+// FE-04: Club Connection (CL1–CL12)
+import ClubsExplorePage from '@/features/clubs/ClubsExplorePage';
 import ClubProfilePage from '@/features/clubs/ClubProfilePage';
-import ClubApplicationFormPage from '@/features/clubs/ClubApplicationFormPage';
-import MyApplicationsPage from '@/features/clubs/MyApplicationsPage';
-import RegisterClubPage from '@/features/clubs/RegisterClubPage';
+import ClubOpportunityDetailPage from '@/features/clubs/ClubOpportunityDetailPage';
+import ClubOpportunityRegisterPage from '@/features/clubs/ClubOpportunityRegisterPage';
+import ClubRegistrationDetailPage from '@/features/clubs/ClubRegistrationDetailPage';
+import ClubOpportunityFormPage from '@/features/clubs/ClubOpportunityFormPage';
+import ClubOpportunityManageDetailPage from '@/features/clubs/ClubOpportunityManageDetailPage';
+import ClubRepresentRequestPage from '@/features/clubs/ClubRepresentRequestPage';
 
-// FE-04: Club Workspace
-import ClubOverviewPage from '@/features/clubs/workspace/OverviewPage';
-import ClubEventsPage from '@/features/clubs/workspace/EventsPage';
-import ClubEventDetailPage from '@/features/clubs/workspace/EventDetailPage';
-import ClubEventFormPage from '@/features/clubs/workspace/EventFormPage';
-import ClubTasksPage from '@/features/clubs/workspace/TasksPage';
-import ClubChatPage from '@/features/clubs/workspace/ClubChatPage';
-import ClubMembersPage from '@/features/clubs/workspace/MembersPage';
-import ClubRecruitmentsPage from '@/features/clubs/workspace/RecruitmentsPage';
-import ClubRecruitmentApplicationsPage from '@/features/clubs/workspace/RecruitmentApplicationsPage';
-import ClubFinanceOverviewPage from '@/features/clubs/workspace/FinanceOverviewPage';
-import ClubTransactionsPage from '@/features/clubs/workspace/TransactionsPage';
-import ClubExpensesPage from '@/features/clubs/workspace/ExpensesPage';
-import ClubReconciliationPage from '@/features/clubs/workspace/ReconciliationPage';
-import ClubSettingsPage from '@/features/clubs/workspace/SettingsPage';
+// FE-06: Community Program Registration (PG1–PG8)
+import ProgramsExplorePage from '@/features/programs/ProgramsExplorePage';
+import ProgramDetailPage from '@/features/programs/ProgramDetailPage';
+import ProgramRegisterPage from '@/features/programs/ProgramRegisterPage';
+import ProgramFormPage from '@/features/programs/ProgramFormPage';
+import ProgramManagePage from '@/features/programs/ProgramManagePage';
 
 // FE-05: Mentoring (Student)
 import MentoringHomePage from '@/features/mentoring/MentoringHomePage';
@@ -99,12 +91,13 @@ import MentorProfilePage from '@/features/mentor/MentorProfilePage';
 import MentorPostsPage from '@/features/mentor/MentorPostsPage';
 import MentorRequestsPage from '@/features/mentor/MentorRequestsPage';
 
-// FE-06: Admin Portal
+// Admin Portal
 import AdminDashboardPage from '@/features/admin/AdminDashboardPage';
 import AdminUsersPage from '@/features/admin/AdminUsersPage';
 import AdminUserDetailPage from '@/features/admin/AdminUserDetailPage';
 import ModerationPage from '@/features/admin/ModerationPage';
 import AdminClubsPage from '@/features/admin/AdminClubsPage';
+import AdminProgramsPage from '@/features/admin/AdminProgramsPage';
 import AdminMentorApplicationsPage from '@/features/admin/AdminMentorApplicationsPage';
 import AdminMentorApplicationDetailPage from '@/features/admin/AdminMentorApplicationDetailPage';
 import MasterDataPage from '@/features/admin/MasterDataPage';
@@ -116,8 +109,8 @@ import AuditLogsPage from '@/features/admin/AuditLogsPage';
 import KitchenSinkPage from '@/features/dev/KitchenSinkPage';
 
 export const router = createBrowserRouter([
-  // Public Landing & Legal Routes (Accessible without login)
-  { path: '/welcome', element: <LandingPage /> },
+  // Public Landing & Legal Routes
+  { path: '/welcome', element: <GuestHomePage /> },
   { path: '/terms', element: <TermsPage /> },
   { path: '/privacy', element: <PrivacyPage /> },
 
@@ -133,7 +126,23 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // Main App Routes (AppShell) — Protected
+  // Public-Previewable Routes (AppShell variant="guest" when unauthenticated, AppShell variant="member" when logged in)
+  {
+    element: <PublicOrAuthRoute />,
+    children: [
+      { path: '/knowledge', element: <KnowledgeHubPage /> },
+      { path: '/knowledge/:id', element: <KnowledgePostDetailPage /> },
+      { path: '/clubs', element: <ClubsExplorePage /> },
+      { path: '/clubs/:id', element: <ClubProfilePage /> },
+      { path: '/clubs/opportunities/:oppId', element: <ClubOpportunityDetailPage /> },
+      { path: '/opportunities/:oppId', element: <ClubOpportunityDetailPage /> },
+      { path: '/programs', element: <ProgramsExplorePage /> },
+      { path: '/programs/:id', element: <ProgramDetailPage /> },
+      { path: '/help', element: <HelpPage /> },
+    ],
+  },
+
+  // Main App Routes (AppShell) — Protected (shows AppShell variant="guest" + EmptyState Lock for guests)
   {
     path: '/',
     element: (
@@ -149,11 +158,11 @@ export const router = createBrowserRouter([
       { path: 'requests', element: <RequestsPage /> },
       { path: 'opportunities', element: <OpportunitiesPage /> },
       { path: 'events', element: <EventsPage /> },
-      { path: 'events/:id', element: <EventDetailPage /> },
+      { path: 'events/:id', element: <Navigate to="/events" replace /> },
+      { path: 'people', element: <PeoplePage /> },
       { path: 'settings', element: <SettingsPage /> },
-      { path: 'help', element: <HelpPage /> },
       { path: 'profile/me', element: <ProfilePage /> },
-      { path: 'users/:id', element: <PublicProfilePage /> },
+      { path: 'users/:id', element: <ProfilePage /> },
       { path: 'notifications', element: <NotificationsPage /> },
       { path: 'chats', element: <ChatsPage /> },
       { path: 'chats/:id', element: <ChatsPage /> },
@@ -165,11 +174,9 @@ export const router = createBrowserRouter([
       { path: 'swap/:id/match', element: <SwapMatchPage /> },
       { path: 'swap/connections', element: <SwapConnectionsPage /> },
 
-      // FE-02: Knowledge
-      { path: 'knowledge', element: <KnowledgeHubPage /> },
-      { path: 'knowledge/new', element: <KnowledgePostFormPage /> },
-      { path: 'knowledge/:id', element: <KnowledgePostDetailPage /> },
-      { path: 'knowledge/:id/edit', element: <KnowledgePostFormPage /> },
+      // FE-02: Knowledge (Protected actions & redirects)
+      { path: 'knowledge/new', element: <Navigate to="/knowledge" replace /> },
+      { path: 'knowledge/:id/edit', element: <Navigate to="/knowledge" replace /> },
       { path: 'knowledge/me', element: <MyPostsPage /> },
 
       // FE-03: Groups
@@ -179,12 +186,25 @@ export const router = createBrowserRouter([
       { path: 'groups/me', element: <MyGroupsPage /> },
       { path: 'groups/:id/manage', element: <GroupManagePage /> },
 
-      // FE-04: Clubs (Discovery & Applications)
-      { path: 'clubs', element: <ClubsListPage /> },
-      { path: 'clubs/register', element: <RegisterClubPage /> },
-      { path: 'clubs/:id', element: <ClubProfilePage /> },
-      { path: 'clubs/:id/apply', element: <ClubApplicationFormPage /> },
-      { path: 'applications', element: <MyApplicationsPage /> },
+      // FE-04: Club Connection (Protected actions & Representative Manage)
+      { path: 'clubs/opportunities/:oppId/register', element: <ClubOpportunityRegisterPage /> },
+      { path: 'clubs/registrations/:respId', element: <ClubRegistrationDetailPage /> },
+      { path: 'clubs/manage/new', element: <ClubOpportunityFormPage /> },
+      { path: 'clubs/manage/:oppId/edit', element: <ClubOpportunityFormPage /> },
+      { path: 'clubs/manage/:oppId', element: <ClubOpportunityManageDetailPage /> },
+      { path: 'clubs/represent', element: <ClubRepresentRequestPage /> },
+
+      // Legacy FE-04 Redirects
+      { path: 'clubs/register', element: <Navigate to="/clubs/represent" replace /> },
+      { path: 'applications', element: <Navigate to="/clubs?tab=registrations" replace /> },
+      { path: 'clubs/:id/apply', element: <Navigate to="/clubs" replace /> },
+      { path: 'clubs/:clubId/workspace/*', element: <Navigate to="/clubs?tab=manage" replace /> },
+
+      // FE-06: Community Program Registration (Protected actions & Organizer Manage)
+      { path: 'programs/new', element: <ProgramFormPage /> },
+      { path: 'programs/:id/edit', element: <ProgramFormPage /> },
+      { path: 'programs/:id/register', element: <ProgramRegisterPage /> },
+      { path: 'programs/manage/:id', element: <ProgramManagePage /> },
 
       // FE-05: Mentoring (Student)
       { path: 'mentoring', element: <MentoringHomePage /> },
@@ -199,7 +219,7 @@ export const router = createBrowserRouter([
       { path: 'mentor/apply/form', element: <MentorApplyFormPage /> },
       { path: 'mentor/apply/review', element: <MentorApplyReviewPage /> },
 
-      // FE-05: Mentoring (Mentor Center) — Nested in MentorCenterShell (Only for approved mentors)
+      // FE-05: Mentoring (Mentor Center)
       {
         path: 'mentor',
         element: (
@@ -215,36 +235,13 @@ export const router = createBrowserRouter([
         ],
       },
 
-      // FE-04: Club Workspace (ClubWorkspaceShell) — Nested in AppShell
-      {
-        path: 'clubs/:clubId/workspace',
-        element: <ClubWorkspaceShell />,
-        children: [
-          { index: true, element: <Navigate to="overview" replace /> },
-          { path: 'overview', element: <ClubOverviewPage /> },
-          { path: 'events', element: <ClubEventsPage /> },
-          { path: 'events/new', element: <ClubEventFormPage /> },
-          { path: 'events/:eventId', element: <ClubEventDetailPage /> },
-          { path: 'events/:eventId/edit', element: <ClubEventFormPage /> },
-          { path: 'tasks', element: <ClubTasksPage /> },
-          { path: 'chat', element: <ClubChatPage /> },
-          { path: 'members', element: <ClubMembersPage /> },
-          { path: 'recruitments', element: <ClubRecruitmentsPage /> },
-          { path: 'recruitments/:rid/applications', element: <ClubRecruitmentApplicationsPage /> },
-          { path: 'finance', element: <ClubFinanceOverviewPage /> },
-          { path: 'finance/transactions', element: <ClubTransactionsPage /> },
-          { path: 'finance/expenses', element: <ClubExpensesPage /> },
-          { path: 'finance/reconciliation', element: <ClubReconciliationPage /> },
-          { path: 'settings', element: <ClubSettingsPage /> },
-        ],
-      },
-
       // Dev Showcase
       { path: 'dev/kitchen-sink', element: <KitchenSinkPage /> },
+      { path: 'dev/components', element: <KitchenSinkPage /> },
     ],
   },
 
-  // FE-06: Admin Portal (AdminShell)
+  // Admin Portal (AdminShell)
   {
     path: '/admin',
     element: (
@@ -258,6 +255,7 @@ export const router = createBrowserRouter([
       { path: 'users/:id', element: <AdminUserDetailPage /> },
       { path: 'moderation', element: <ModerationPage /> },
       { path: 'clubs', element: <AdminClubsPage /> },
+      { path: 'programs', element: <AdminProgramsPage /> },
       { path: 'mentor-applications', element: <AdminMentorApplicationsPage /> },
       { path: 'mentor-applications/:id', element: <AdminMentorApplicationDetailPage /> },
       { path: 'master-data', element: <MasterDataPage /> },

@@ -42,12 +42,28 @@ export const authHandlers = [
     });
   }),
 
+  http.post('/api/v1/auth/google/mock', async () => {
+    await mockDelay();
+    const user = seedUsers.find((u) => u.id === 'usr_student_01') || seedUsers[0];
+    const { password: _, ...safeUser } = user;
+    const userMemberships = seedClubMemberships.filter((m) => m.userId === user.id);
+
+    return HttpResponse.json({
+      data: {
+        user: safeUser,
+        token: `mock_jwt_token_${user.id}`,
+        memberships: userMemberships,
+        isNewUser: false,
+      },
+    });
+  }),
+
   http.post('/api/v1/auth/register', async ({ request }) => {
     await mockDelay();
     const body = (await request.json()) as {
       fullName: string;
       email: string;
-      school: string;
+      school?: string;
       studentCode?: string;
       password: string;
     };
@@ -64,7 +80,7 @@ export const authHandlers = [
       fullName: body.fullName,
       email: body.email,
       password: body.password,
-      school: body.school,
+      school: body.school || 'FPT University',
       studentCode: body.studentCode,
       roles: ['student'],
       status: 'unverified',

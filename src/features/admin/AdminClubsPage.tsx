@@ -1,9 +1,17 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Check,
+  X,
+  Building2,
+  UserCheck,
+  UserMinus,
+  EyeOff,
+  Eye,
+} from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { QueryBoundary } from '@/components/shared/QueryBoundary';
-import { UserMiniCard } from '@/components/shared/UserMiniCard';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ReasonDialog } from '@/components/shared/ReasonDialog';
@@ -12,97 +20,164 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { toast } from '@/components/ui/Toast';
-import { Check, X, Building2, Users } from 'lucide-react';
-import type { Club } from '@/types/entities';
+import type { Club, ClubRepresentativeRequest } from '@/types/entities';
 
 export const AdminClubsPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const [tab, setTab] = useState<'requests' | 'clubs'>('requests');
+  const [rejectReqId, setRejectReqId] = useState<string | null>(null);
 
-  const [tab, setTab] = useState<'PendingApproval' | 'Approved' | 'Rejected'>('PendingApproval');
-  const [rejectClubId, setRejectClubId] = useState<string | null>(null);
-
-  const clubsQuery = useQuery({
-    queryKey: ['admin', 'clubs', tab],
-    queryFn: () => apiClient.get<Club[]>(`/admin/clubs?status=${tab}`),
+  const repRequestsQuery = useQuery<ClubRepresentativeRequest[]>({
+    queryKey: ['admin', 'club-rep-requests'],
+    queryFn: () => apiClient.get('/admin/club-rep-requests'),
   });
 
-  const reviewClubMutation = useMutation({
-    mutationFn: ({ id, approvalStatus, reason }: { id: string; approvalStatus: 'Approved' | 'Rejected'; reason?: string }) =>
-      apiClient.put(`/admin/clubs/${id}`, { approvalStatus, reason }),
+  const clubsQuery = useQuery<Club[]>({
+    queryKey: ['admin', 'clubs'],
+    queryFn: () => apiClient.get('/admin/clubs'),
+  });
+
+  const reviewRepMutation = useMutation({
+    mutationFn: ({
+      id,
+      status,
+      reason,
+    }: {
+      id: string;
+      status: 'Verified' | 'Rejected';
+      reason?: string;
+    }) => apiClient.put(`/admin/club-rep-requests/${id}`, { status, reason }),
     onSuccess: (_, vars) => {
-      toast.success(vars.approvalStatus === 'Approved' ? 'Phê duyệt thành lập CLB thành công!' : 'Đã từ chối đơn thành lập CLB.');
-      setRejectClubId(null);
+      toast.success(
+        vars.status === 'Verified'
+          ? 'Đã xác minh và cấp quyền Đại diện CLB thành công!'
+          : 'Đã từ chối yêu cầu đại diện CLB.'
+      );
+      setRejectReqId(null);
+      queryClient.invalidateQueries({ queryKey: ['admin', 'club-rep-requests'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'clubs'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
     },
-    onError: () => toast.error('Có lỗi xảy ra.'),
   });
+
+  const updateClubMutation = useMutation({
+    mutationFn: ({
+      id,
+      status,
+      revokeUserId,
+    }: {
+      id: string;
+      status?: 'Active' | 'Hidden';
+      revokeUserId?: string;
+    }) => apiClient.put(`/admin/clubs/${id}`, { status, revokeUserId }),
+    onSuccess: () => {
+      toast.success('Đã cập nhật thông tin Câu lạc bộ');
+      queryClient.invalidateQueries({ queryKey: ['admin', 'clubs'] });
+    },
+  });
+
+  const pendingCount = (repRequestsQuery.data || []).filter((r) => r.status === 'Pending').length;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Phê duyệt Câu lạc bộ & Tổ chức"
-        description="Xét duyệt đề xuất thành lập câu lạc bộ mới và quản lý trạng thái hoạt động"
+        title="Xác minh Quyền Đại diện CLB & Danh bạ CLB"
+        description="Xét duyệt yêu cầu làm đại diện đăng cơ hội cho Câu lạc bộ và quản lý danh sách CLB trong trường"
         breadcrumbs={[
           { label: 'Admin Portal', href: '/admin' },
-          { label: 'Duyệt CLB' },
+          { label: 'Quyền đại diện CLB' },
         ]}
       />
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
-          <TabsTrigger value="PendingApproval">Chờ phê duyệt</TabsTrigger>
-          <TabsTrigger value="Approved">Đã phê duyệt</TabsTrigger>
-          <TabsTrigger value="Rejected">Đã từ chối</TabsTrigger>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full space-y-6">
+        <TabsList>
+          <TabsTrigger value="requests">
+            Yêu cầu đại diện chờ xác minh ({pendingCount})
+          </TabsTrigger>
+          <TabsTrigger value="clubs">
+            Danh sách CLB ({clubsQuery.data?.length || 0})
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value={tab} className="mt-6">
-          <QueryBoundary queries={[clubsQuery]}>
-            {clubsQuery.data && clubsQuery.data.length === 0 ? (
+        {/* Tab 1: Representative Verification Requests */}
+        <TabsContent value="requests" className="mt-4">
+          <QueryBoundary queries={[repRequestsQuery]}>
+            {(repRequestsQuery.data || []).length === 0 ? (
               <EmptyState
-                title="Không có hồ sơ nào"
-                description={`Hiện tại không có câu lạc bộ nào ở trạng thái ${tab}.`}
+                icon={UserCheck}
+                title="Không có yêu cầu đại diện nào"
+                description="Hiện tại không có yêu cầu xác minh đại diện CLB nào."
               />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {clubsQuery.data?.map((club) => (
-                  <Card key={club.id} className="flex flex-col justify-between">
-                    <CardHeader className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Badge variant="secondary">{club.field}</Badge>
-                        <StatusBadge status={club.approvalStatus} domain="clubs" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {repRequestsQuery.data?.map((req) => (
+                  <Card key={req.id} className="flex flex-col justify-between">
+                    <CardHeader className="space-y-2 pb-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <Badge tier={req.clubId ? 'neutral' : 'brand'} size="sm">
+                          {req.clubId ? 'CLB đã có trong danh mục' : 'Đề xuất thêm CLB mới'}
+                        </Badge>
+                        <StatusBadge status={req.status} group="representativeRequest" />
                       </div>
-                      <CardTitle className="text-base">{club.name}</CardTitle>
+                      <CardTitle className="text-base">{req.clubName}</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      <p className="text-xs text-[var(--text-muted)] line-clamp-3">
-                        {club.description}
-                      </p>
-                      <div className="pt-2 border-t border-[var(--border-subtle)]">
-                        <span className="text-xs text-[var(--text-muted)] block mb-1">Người đại diện nộp đơn:</span>
-                        <UserMiniCard userId={club.managerId} showMajor />
+
+                    <CardContent className="space-y-3 text-xs">
+                      <div className="rounded-lg bg-neutral-50 border border-neutral-200 p-3 space-y-1">
+                        <div className="font-semibold text-neutral-900">
+                          Sinh viên yêu cầu: {req.userName} ({req.studentCode})
+                        </div>
+                        <div className="text-neutral-600">
+                          Email: {req.userEmail} · Vai trò trong CLB:{' '}
+                          <strong className="text-neutral-900">{req.roleNote}</strong>
+                        </div>
                       </div>
+
+                      {req.proposedClub && (
+                        <div className="rounded-lg bg-brand-50/40 border border-brand-100 p-3 space-y-1">
+                          <div className="font-semibold text-brand-700">
+                            Thông tin CLB đề xuất bổ sung ({req.proposedClub.code}):
+                          </div>
+                          <p className="text-neutral-700">{req.proposedClub.description}</p>
+                        </div>
+                      )}
+
+                      <div className="space-y-1">
+                        <span className="font-semibold text-neutral-800 block">
+                          Minh chứng chức vụ / Quyết định BCN:
+                        </span>
+                        <p className="text-neutral-600 bg-white border border-neutral-200 rounded-lg p-2.5">
+                          {req.proofNote}
+                        </p>
+                      </div>
+
+                      {req.rejectionReason && (
+                        <p className="text-tier-danger-text font-medium">
+                          Lý do từ chối: {req.rejectionReason}
+                        </p>
+                      )}
                     </CardContent>
-                    {club.approvalStatus === 'PendingApproval' && (
-                      <CardFooter className="p-4 border-t border-[var(--border-subtle)] flex items-center justify-end gap-2">
+
+                    {req.status === 'Pending' && (
+                      <CardFooter className="border-t border-neutral-100 pt-3 flex items-center justify-end gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setRejectClubId(club.id)}
+                          leftIcon={<X size={14} />}
+                          onClick={() => setRejectReqId(req.id)}
                         >
-                          <X className="w-3.5 h-3.5 mr-1 text-[var(--status-danger-fg)]" /> Từ chối
+                          Từ chối
                         </Button>
                         <Button
+                          variant="primary"
                           size="sm"
+                          leftIcon={<Check size={14} />}
+                          loading={reviewRepMutation.isPending}
                           onClick={() =>
-                            reviewClubMutation.mutate({
-                              id: club.id,
-                              approvalStatus: 'Approved',
-                            })
+                            reviewRepMutation.mutate({ id: req.id, status: 'Verified' })
                           }
-                          loading={reviewClubMutation.isPending}
                         >
-                          <Check className="w-3.5 h-3.5 mr-1" /> Phê duyệt
+                          Xác minh & Cấp quyền
                         </Button>
                       </CardFooter>
                     )}
@@ -112,19 +187,105 @@ export const AdminClubsPage: React.FC = () => {
             )}
           </QueryBoundary>
         </TabsContent>
+
+        {/* Tab 2: Clubs Directory & Representative Management */}
+        <TabsContent value="clubs" className="mt-4">
+          <QueryBoundary queries={[clubsQuery]}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {clubsQuery.data?.map((club) => (
+                <Card key={club.id} className="flex flex-col justify-between">
+                  <CardHeader className="space-y-2 pb-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <Badge tier="neutral" size="sm">
+                        {club.code || club.category}
+                      </Badge>
+                      <StatusBadge status={club.status || 'Active'} group="club" />
+                    </div>
+                    <CardTitle className="text-base">{club.name}</CardTitle>
+                  </CardHeader>
+
+                  <CardContent className="space-y-3 text-xs">
+                    <p className="text-neutral-600 line-clamp-2">{club.description}</p>
+
+                    <div className="space-y-2 pt-2 border-t border-neutral-100">
+                      <span className="font-semibold text-neutral-800 block">
+                        Đại diện được xác minh ({club.representatives?.length || 0}):
+                      </span>
+                      {!club.representatives || club.representatives.length === 0 ? (
+                        <p className="text-neutral-500 italic">
+                          Chưa có đại diện nào được xác minh cho CLB này.
+                        </p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {club.representatives.map((rep) => (
+                            <div
+                              key={rep.userId}
+                              className="flex items-center justify-between rounded-lg bg-neutral-50 border border-neutral-200 px-3 py-2"
+                            >
+                              <div>
+                                <span className="font-semibold text-neutral-900">
+                                  {rep.fullName} ({rep.studentCode})
+                                </span>
+                                <span className="block text-neutral-500">{rep.roleNote}</span>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                title="Thu hồi quyền đại diện"
+                                onClick={() =>
+                                  updateClubMutation.mutate({
+                                    id: club.id,
+                                    revokeUserId: rep.userId,
+                                  })
+                                }
+                              >
+                                <UserMinus size={14} className="text-tier-danger-text" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+
+                  <CardFooter className="border-t border-neutral-100 pt-3 flex items-center justify-between">
+                    <span className="text-xs text-neutral-500">
+                      Đang mở: <strong>{club.openOpportunitiesCount ?? 0}</strong> cơ hội
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leftIcon={
+                        club.status === 'Hidden' ? <Eye size={14} /> : <EyeOff size={14} />
+                      }
+                      onClick={() =>
+                        updateClubMutation.mutate({
+                          id: club.id,
+                          status: club.status === 'Hidden' ? 'Active' : 'Hidden',
+                        })
+                      }
+                    >
+                      {club.status === 'Hidden' ? 'Hiện lại CLB' : 'Tạm ẩn CLB'}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          </QueryBoundary>
+        </TabsContent>
       </Tabs>
 
       {/* Reject Reason Dialog */}
       <ReasonDialog
-        open={!!rejectClubId}
-        onOpenChange={() => setRejectClubId(null)}
-        title="Từ chối đề xuất thành lập CLB"
-        description="Nêu rõ lý do không đạt yêu cầu (mục đích chưa rõ ràng, trùng lặp định hướng...)."
+        open={!!rejectReqId}
+        onOpenChange={() => setRejectReqId(null)}
+        title="Từ chối yêu cầu đại diện CLB"
+        description="Nêu rõ lý do chưa thể xác minh quyền đại diện (thiếu quyết định BCN, thông tin chưa khớp...)."
         label="Lý do từ chối"
-        placeholder="Nhập lý do gửi người đại diện..."
+        placeholder="Nhập lý do gửi tới sinh viên..."
         onConfirm={(reason) => {
-          if (!rejectClubId) return;
-          reviewClubMutation.mutate({ id: rejectClubId, approvalStatus: 'Rejected', reason });
+          if (!rejectReqId) return;
+          reviewRepMutation.mutate({ id: rejectReqId, status: 'Rejected', reason });
         }}
       />
     </div>

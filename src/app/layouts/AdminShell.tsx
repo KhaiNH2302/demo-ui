@@ -6,6 +6,7 @@ import {
   Users,
   CheckSquare,
   Building2,
+  HeartHandshake,
   GraduationCap,
   Database,
   Sliders,
@@ -34,7 +35,8 @@ export const AdminShell: React.FC = () => {
     { to: '/admin', label: 'Tổng quan', icon: LayoutDashboard, end: true },
     { to: '/admin/users', label: 'Quản lý người dùng', icon: Users },
     { to: '/admin/moderation', label: 'Kiểm duyệt nội dung', icon: CheckSquare },
-    { to: '/admin/clubs', label: 'Duyệt CLB', icon: Building2 },
+    { to: '/admin/clubs', label: 'Quyền đại diện CLB', icon: Building2 },
+    { to: '/admin/programs', label: 'Duyệt kênh chương trình', icon: HeartHandshake },
     { to: '/admin/mentor-applications', label: 'Duyệt Mentor', icon: GraduationCap },
     { to: '/admin/master-data', label: 'Dữ liệu danh mục', icon: Database },
     { to: '/admin/settings', label: 'Cấu hình hệ thống', icon: Sliders },
@@ -66,10 +68,9 @@ export const AdminShell: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Back button to student app */}
           <Link
             to="/"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white text-xs font-semibold border border-neutral-700 transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white text-xs font-semibold border border-neutral-700 transition-colors"
             title="Quay lại giao diện sinh viên"
           >
             <ArrowLeft size={14} className="text-brand-400" />
@@ -98,7 +99,7 @@ export const AdminShell: React.FC = () => {
       {/* Main layout */}
       <div className="flex flex-1">
         {/* Sidebar Desktop */}
-        <aside className="hidden lg:flex w-64 flex-col justify-between border-r border-neutral-200 bg-white p-4 shrink-0 shadow-xs sticky top-16 h-[calc(100vh-4rem)] self-start overflow-y-auto">
+        <aside className="hidden lg:flex w-64 flex-col justify-between border-r border-neutral-200 bg-white p-4 shrink-0 sticky top-16 h-[calc(100vh-4rem)] self-start overflow-y-auto">
           <nav className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;

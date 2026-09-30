@@ -1,16 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { AppHeader } from '@/components/shared/AppHeader';
 import { AppSidebar } from '@/components/shared/AppSidebar';
 import { BottomTabBar } from '@/components/shared/BottomTabBar';
+import { PublicFooter } from '@/components/shared/PublicFooter';
+import { LoginGate } from '@/components/shared/LoginGate';
 import { DevScenarioPanel } from '@/components/shared/DevScenarioPanel';
 import { cn } from '@/lib/cn';
 
-export const AppShell: React.FC = () => {
-  const location = useLocation();
-  const isFullBleed = location.pathname.startsWith('/chats');
+export interface AppShellProps {
+  variant?: 'member' | 'guest';
+  children?: React.ReactNode;
+}
 
-  // Sidebar collapse state (desktop)
+export const AppShell: React.FC<AppShellProps> = ({
+  variant = 'member',
+  children,
+}) => {
+  const location = useLocation();
+  const isFullBleed = variant === 'member' && location.pathname.startsWith('/chats');
+
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('scs_sidebar') === 'collapsed';
   });
@@ -23,22 +32,34 @@ export const AppShell: React.FC = () => {
     });
   };
 
+  if (variant === 'guest') {
+    return (
+      <div className="bg-neutral-50/50 flex flex-col antialiased min-h-screen">
+        <AppHeader variant="guest" />
+        <main className="flex-1 w-full max-w-[1080px] mx-auto px-4 lg:px-6 py-8">
+          {children ?? <Outlet />}
+        </main>
+        <PublicFooter />
+        <LoginGate />
+        <DevScenarioPanel />
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
-        'bg-neutral-50/60 flex flex-col antialiased min-h-screen',
-        isFullBleed ? 'h-screen overflow-hidden' : 'min-h-screen'
+        'bg-neutral-50/50 flex flex-col antialiased min-h-screen',
+        isFullBleed ? 'h-screen overflow-hidden' : 'min-h-screen',
       )}
     >
-      {/* 1. Global Brand Header (64px, Sticky Top) */}
       <AppHeader
+        variant="member"
         onToggleSidebar={toggleSidebar}
         sidebarCollapsed={collapsed}
       />
 
-      {/* 2. Workspace Body: Left Sidebar + Main Content */}
       <div className="flex-1 flex w-full relative">
-        {/* Desktop Sidebar */}
         <div className="hidden md:block shrink-0">
           <AppSidebar
             variant={collapsed ? 'collapsed' : 'expanded'}
@@ -46,11 +67,10 @@ export const AppShell: React.FC = () => {
           />
         </div>
 
-        {/* Main Content Area */}
         <div
           className={cn(
             'flex-1 flex flex-col min-w-0 transition-all duration-200',
-            isFullBleed && 'h-[calc(100vh-4rem)] overflow-hidden'
+            isFullBleed && 'h-[calc(100vh-3.5rem)] overflow-hidden',
           )}
         >
           <main
@@ -58,18 +78,16 @@ export const AppShell: React.FC = () => {
               'w-full flex-1',
               isFullBleed
                 ? 'p-0 m-0 overflow-hidden'
-                : 'max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6 pb-24 md:pb-12'
+                : 'max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6 pb-24 md:pb-12',
             )}
           >
-            <Outlet />
+            {children ?? <Outlet />}
           </main>
         </div>
       </div>
 
-      {/* 3. Mobile Fixed Bottom Navigation Bar (< 768px) */}
       <BottomTabBar />
-
-      {/* 4. Developer Scenario Switcher */}
+      <LoginGate />
       <DevScenarioPanel />
     </div>
   );

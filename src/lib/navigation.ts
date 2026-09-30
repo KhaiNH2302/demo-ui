@@ -1,268 +1,232 @@
-import type { LucideIcon } from 'lucide-react';
 import {
   Home,
   Bell,
   MessageCircle,
   BookOpen,
-  GraduationCap,
   UsersRound,
-  Repeat2,
-  Building2,
-  CalendarDays,
-  Compass,
+  GraduationCap,
+  ArrowLeftRight,
+  Flag,
+  HeartHandshake,
+  Calendar,
   Inbox,
-  BadgeCheck,
+  Compass,
+  Users,
   Settings,
   LifeBuoy,
+  ShieldAlert,
+  type LucideIcon,
 } from 'lucide-react';
 import type { NavCounters } from '@/types/entities';
 
-export type NavKey =
-  | 'home'
-  | 'notifications'
-  | 'chats'
-  | 'knowledge'
-  | 'mentoring'
-  | 'groups'
-  | 'swap'
-  | 'clubs'
-  | 'events'
-  | 'opportunities'
-  | 'requests'
-  | 'mentor'
-  | 'mentor-apply';
-
 export interface NavItemConfig {
-  key: NavKey;
+  key: string;
   label: string;
   href: string;
+  to: string;
   icon: LucideIcon;
-  badge?: (counters?: NavCounters | null) => number | boolean | null;
-  requiresRole?: string;
-  isCustomComponent?: boolean;
+  requiresRole?: 'mentor' | 'admin';
+  badgeType?: 'count' | 'dot';
+  badge?: (counters: NavCounters) => number | boolean | undefined;
 }
 
-export interface NavSectionConfig {
+export interface NavSection {
   title?: string;
   items: NavItemConfig[];
 }
 
-export const NAV_SECTIONS: NavSectionConfig[] = [
+export const NAV_SECTIONS: NavSection[] = [
   {
     items: [
       {
         key: 'home',
         label: 'Trang chủ',
         href: '/',
+        to: '/',
         icon: Home,
       },
       {
         key: 'notifications',
         label: 'Thông báo',
         href: '/notifications',
+        to: '/notifications',
         icon: Bell,
-        badge: (c) => c?.unreadNotifications || null,
+        badgeType: 'count',
+        badge: (c) => c.unreadNotifications || 0,
       },
       {
         key: 'chats',
         label: 'Tin nhắn',
         href: '/chats',
+        to: '/chats',
         icon: MessageCircle,
-        badge: (c) =>
-          c ? (c.unreadMessages + c.pendingMessageRequests > 0 ? c.unreadMessages + c.pendingMessageRequests : null) : null,
+        badgeType: 'count',
+        badge: (c) => (c.unreadMessages || 0) + (c.pendingMessageRequests || 0),
       },
     ],
   },
   {
-    title: 'Học tập',
+    title: 'HỌC TẬP',
     items: [
       {
         key: 'knowledge',
-        label: 'Knowledge Sharing',
+        label: 'Kiến thức',
         href: '/knowledge',
+        to: '/knowledge',
         icon: BookOpen,
-      },
-      {
-        key: 'mentoring',
-        label: 'Mentoring',
-        href: '/mentoring',
-        icon: GraduationCap,
+        badgeType: 'dot',
       },
       {
         key: 'groups',
-        label: 'Nhóm kết nối',
+        label: 'Nhóm học tập',
         href: '/groups',
+        to: '/groups',
         icon: UsersRound,
-        badge: (c) => c?.pendingGroupJoinRequests || null,
+        badgeType: 'dot',
+        badge: (c) => (c.pendingGroupJoinRequests || 0) > 0,
+      },
+      {
+        key: 'mentoring',
+        label: 'Mentor',
+        href: '/mentoring',
+        to: '/mentoring',
+        icon: GraduationCap,
+        badgeType: 'dot',
+        badge: (c) => (c.pendingMentoringRequests || 0) > 0,
       },
       {
         key: 'swap',
         label: 'Đổi lớp',
         href: '/swap',
-        icon: Repeat2,
-        badge: (c) => ((c?.pendingSwapInvites || 0) > 0 ? true : null), // dot badge
+        to: '/swap',
+        icon: ArrowLeftRight,
+        badgeType: 'dot',
+        badge: (c) => (c.pendingSwapInvites || 0) > 0,
       },
     ],
   },
   {
-    title: 'Cộng đồng',
+    title: 'HOẠT ĐỘNG',
     items: [
       {
         key: 'clubs',
         label: 'Câu lạc bộ',
         href: '/clubs',
-        icon: Building2,
-        badge: (c) => ((c?.clubsWithNewActivity?.length || 0) > 0 ? true : null),
+        to: '/clubs',
+        icon: Flag,
+        badgeType: 'dot',
+        badge: (c) =>
+          (c.pendingOpportunityResponses || 0) > 0 ||
+          (c.clubsWithNewActivity?.length || 0) > 0,
+      },
+      {
+        key: 'programs',
+        label: 'Tình nguyện & Workshop',
+        href: '/programs',
+        to: '/programs',
+        icon: HeartHandshake,
+        badgeType: 'dot',
+        badge: (c) => (c.pendingProgramRegistrations || 0) > 0,
       },
       {
         key: 'events',
         label: 'Sự kiện',
         href: '/events',
-        icon: CalendarDays,
-        badge: (c) => c?.todayRegisteredEvents || null,
-      },
-      {
-        key: 'opportunities',
-        label: 'Cơ hội',
-        href: '/opportunities',
-        icon: Compass,
+        to: '/events',
+        icon: Calendar,
+        badgeType: 'dot',
+        badge: (c) => (c.todayRegisteredEvents || 0) > 0,
       },
     ],
   },
   {
-    title: 'Quản lý',
+    title: 'CÁ NHÂN',
     items: [
       {
         key: 'requests',
-        label: 'Quản lý yêu cầu',
+        label: 'Yêu cầu của tôi',
         href: '/requests',
+        to: '/requests',
         icon: Inbox,
-        badge: (c) => c?.pendingRequestsTotal || null,
+        badgeType: 'dot',
+        badge: (c) => (c.pendingRequestsTotal || 0) > 0,
       },
       {
-        key: 'mentor',
-        label: 'Mentor Center',
-        href: '/mentor',
-        icon: BadgeCheck,
-        requiresRole: 'mentor',
-        badge: (c) => c?.pendingMentoringRequests || null,
+        key: 'opportunities',
+        label: 'Cơ hội quanh trường',
+        href: '/opportunities',
+        to: '/opportunities',
+        icon: Compass,
+      },
+      {
+        key: 'people',
+        label: 'Mọi người',
+        href: '/people',
+        to: '/people',
+        icon: Users,
+        badgeType: 'dot',
+        badge: (c) => (c.pendingFollowRequests || 0) > 0,
       },
     ],
   },
 ];
 
-export const FOOTER_NAV_ITEMS = [
+export const SIDEBAR_SECTIONS = NAV_SECTIONS;
+
+export const FOOTER_NAV_ITEMS: NavItemConfig[] = [
   {
     key: 'settings',
     label: 'Cài đặt',
     href: '/settings',
+    to: '/settings',
     icon: Settings,
   },
   {
     key: 'help',
     label: 'Trợ giúp',
     href: '/help',
+    to: '/help',
     icon: LifeBuoy,
   },
 ];
 
-/**
- * Xác định mục điều hướng L1 / Sidebar nào đang active dựa trên pathname.
- * Tuân thủ bảng ánh xạ chuẩn trong specs/ui/design-system/03-patterns.md § 7.6.
- */
-export function getActiveNavKey(pathname: string): NavKey | null {
-  // 1. Trang chủ
-  if (pathname === '/' || pathname === '/dashboard') {
-    return 'home';
-  }
+export const ADMIN_SECTION: NavSection = {
+  title: 'QUẢN TRỊ',
+  items: [
+    {
+      key: 'admin',
+      label: 'Quản trị hệ thống',
+      href: '/admin',
+      to: '/admin',
+      icon: ShieldAlert,
+    },
+  ],
+};
 
-  // 2. Thông báo
-  if (pathname.startsWith('/notifications')) {
-    return 'notifications';
-  }
-
-  // 3. Tin nhắn
-  if (pathname.startsWith('/chats')) {
-    return 'chats';
-  }
-
-  // 4. Knowledge Sharing
-  if (pathname.startsWith('/knowledge')) {
-    return 'knowledge';
-  }
-
-  // 5. Mentoring (phía sinh viên)
-  if (pathname.startsWith('/mentoring')) {
-    return 'mentoring';
-  }
-
-  // 6. Nhóm kết nối
-  if (pathname.startsWith('/groups')) {
-    return 'groups';
-  }
-
-  // 7. Đổi lớp
-  if (pathname.startsWith('/swap')) {
-    return 'swap';
-  }
-
-  // 8. Đăng ký Mentor
-  if (pathname.startsWith('/mentor/apply')) {
-    return 'mentor-apply';
-  }
-
-  // 9. Mentor Center (dành cho Mentor đã duyệt)
-  if (pathname.startsWith('/mentor')) {
-    return 'mentor';
-  }
-
-  // 10. Câu lạc bộ (kể cả workspace, applications, register)
-  if (
-    pathname.startsWith('/clubs') ||
-    pathname.startsWith('/applications')
-  ) {
-    return 'clubs';
-  }
-
-  // 11. Sự kiện
-  if (pathname.startsWith('/events')) {
-    return 'events';
-  }
-
-  // 13. Cơ hội
-  if (pathname.startsWith('/opportunities')) {
-    return 'opportunities';
-  }
-
-  // 14. Quản lý yêu cầu & Của tôi
-  if (pathname.startsWith('/requests') || pathname === '/me') {
-    return 'requests';
-  }
-
-  // Các trang không làm sáng mục nào (Search, Profile/me, Settings, Help, Legal, Admin)
-  return null;
+export function getActiveNavKey(pathname: string): string {
+  if (pathname === '/') return 'home';
+  if (pathname.startsWith('/notifications')) return 'notifications';
+  if (pathname.startsWith('/chats')) return 'chats';
+  if (pathname.startsWith('/knowledge')) return 'knowledge';
+  if (pathname.startsWith('/groups')) return 'groups';
+  if (pathname.startsWith('/mentoring') || pathname.startsWith('/mentor')) return 'mentoring';
+  if (pathname.startsWith('/swap')) return 'swap';
+  if (pathname.startsWith('/clubs') || pathname.startsWith('/opportunities/')) return 'clubs';
+  if (pathname.startsWith('/programs')) return 'programs';
+  if (pathname.startsWith('/events')) return 'events';
+  if (pathname.startsWith('/requests')) return 'requests';
+  if (pathname.startsWith('/opportunities')) return 'opportunities';
+  if (pathname.startsWith('/people')) return 'people';
+  if (pathname.startsWith('/settings')) return 'settings';
+  if (pathname.startsWith('/help')) return 'help';
+  return '';
 }
 
-/**
- * Xác định mục active trên mobile bottom tab bar (5 mục: Home, Knowledge, New, Chats, Menu).
- */
-export function getActiveMobileTab(pathname: string): 'home' | 'knowledge' | 'chats' | 'menu' | null {
-  if (pathname === '/' || pathname === '/dashboard') return 'home';
+export function getActiveMobileTab(
+  pathname: string,
+): 'home' | 'knowledge' | 'chats' | 'menu' {
+  if (pathname === '/') return 'home';
   if (pathname.startsWith('/knowledge')) return 'knowledge';
   if (pathname.startsWith('/chats')) return 'chats';
-  if (
-    pathname.startsWith('/notifications') ||
-    pathname.startsWith('/mentoring') ||
-    pathname.startsWith('/groups') ||
-    pathname.startsWith('/swap') ||
-    pathname.startsWith('/clubs') ||
-    pathname.startsWith('/events') ||
-    pathname.startsWith('/opportunities') ||
-    pathname.startsWith('/requests') ||
-    pathname.startsWith('/mentor') ||
-    pathname.startsWith('/applications')
-  ) {
-    return 'menu';
-  }
-  return null;
+  return 'menu';
 }

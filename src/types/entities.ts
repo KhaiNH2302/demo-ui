@@ -22,6 +22,20 @@ import type {
   SupportMode,
   NotificationSource,
   FontSizeScale,
+  ClubStatus,
+  RepresentativeRequestStatus,
+  OpportunityType,
+  OpportunityStatus,
+  OpportunityResponseStatus,
+  ConnectionInviteStatus,
+  ProgramType,
+  ProgramChannelStatus,
+  ProgramRegistrationStatus,
+  CoOrganizerStatus,
+  FollowStatus,
+  ProfileVisibility,
+  ReportStatus,
+  ReportTargetType,
 } from './status';
 
 export type {
@@ -48,9 +62,24 @@ export type {
   SupportMode,
   NotificationSource,
   FontSizeScale,
+  ClubStatus,
+  RepresentativeRequestStatus,
+  OpportunityType,
+  OpportunityStatus,
+  OpportunityResponseStatus,
+  ConnectionInviteStatus,
+  ProgramType,
+  ProgramChannelStatus,
+  ProgramRegistrationStatus,
+  CoOrganizerStatus,
+  FollowStatus,
+  ProfileVisibility,
+  ReportStatus,
+  ReportTargetType,
 };
 
 export type ClubRole = 'lead' | 'vice' | 'treasurer' | 'manager' | 'member' | MembershipRole;
+export type ClubCategory = 'Academic' | 'Art' | 'Sports' | 'Volunteer' | 'Tech' | 'Media';
 
 export interface ScheduleSlot {
   day: 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
@@ -63,26 +92,71 @@ export interface User {
   fullName: string;
   email: string;
   avatarUrl?: string;
+  coverUrl?: string;
   school: string;
   major?: string;
+  cohort?: string;
+  campus?: string;
   studentCode?: string;
+  bio?: string;
+  skills?: string[];
   roles: Role[];
   status: UserAccountStatus;
+  accountStatus?: UserAccountStatus;
+  isMentorAvailable?: boolean;
   createdAt: string;
 }
 
 export interface StudentProfile {
   userId: string;
   bio?: string;
+  coverUrl?: string;
+  major?: string;
+  cohort?: string;
   skills: string[];
   interests: string[];
   goals: string[];
   availability: ScheduleSlot[];
+  socialLinks?: {
+    github?: string;
+    linkedin?: string;
+    facebook?: string;
+    portfolio?: string;
+  };
   privacy: {
     swapMatching: boolean;
     groupMatching: boolean;
     mentoringMatching: boolean;
+    showEmail?: boolean;
+    showSchedule?: boolean;
+    showClubs?: boolean;
+    allowMentorRequests?: boolean;
+    whoCanMessage?: 'everyone' | 'connections' | 'nobody';
+    profileVisibility?: ProfileVisibility;
   };
+  stats?: {
+    postsCount: number;
+    helpfulAnswersCount: number;
+    mentoringSessionsCount: number;
+    clubsCount: number;
+    followersCount: number;
+    followingCount: number;
+  };
+}
+
+export interface Follow {
+  id: string;
+  followerId: string;
+  followerName: string;
+  followerAvatar?: string;
+  followerMeta: string;
+  followeeId: string;
+  followeeName: string;
+  followeeAvatar?: string;
+  followeeMeta: string;
+  status: FollowStatus;
+  createdAt: string;
+  respondedAt?: string;
 }
 
 export interface CourseOffering {
@@ -130,10 +204,22 @@ export interface AiSwapMatch {
   reasons: string[];
 }
 
+export interface MediaImageItem {
+  id: string;
+  url: string;
+  thumbnailUrl?: string;
+  caption?: string;
+  alt?: string;
+  width?: number;
+  height?: number;
+}
+
 // FE-02 Knowledge (Threads model)
 export interface KnowledgePost {
   id: string;
   authorId: string;
+  authorName?: string;
+  category?: PostCategory;
   type: PostType;
   title?: string;
   contentMd: string;
@@ -142,16 +228,19 @@ export interface KnowledgePost {
   subjectCode?: string;
   tags: string[];
   images?: string[];
+  gallery?: MediaImageItem[];
   attachments: { name: string; url: string; size: number }[];
   visibility: 'school' | 'cross_school';
   status: PostStatus;
   rejectReason?: string;
   likesCount?: number;
+  upvotes?: number;
   likedByMe?: boolean;
   savedByMe?: boolean;
   isSolved?: boolean;
   acceptedCommentId?: string;
   commentCount: number;
+  reportCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -171,13 +260,27 @@ export interface Comment {
 export interface ViolationReport {
   id: string;
   postId?: string;
+  postTitle?: string;
   commentId?: string;
+  targetType?: ReportTargetType;
+  targetId?: string;
+  targetTitle?: string;
+  targetAuthorName?: string;
   reporterId: string;
+  reporterName?: string;
   reason: string;
   details?: string;
+  description?: string;
   note?: string;
-  status: 'Open' | 'Resolved';
+  contentSnapshot?: string;
+  status: ReportStatus;
+  reportCount?: number;
+  autoHidden?: boolean;
+  resolution?: 'Dismissed' | 'ContentRemoved' | 'UserRestricted';
+  resolutionNote?: string;
   createdAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
 }
 
 // FE-03 Group
@@ -224,25 +327,189 @@ export interface AiMemberSuggestion {
   reasons: string[];
 }
 
-// FE-04 Club
+// ============================================================================
+// FE-04 Club Connection (29/09/2026 Plan)
+// ============================================================================
+
+export interface ClubRepresentative {
+  userId: string;
+  fullName: string;
+  studentCode: string;
+  avatarUrl?: string;
+  roleNote: string; // VD: "Chủ nhiệm", "Đại diện truyền thông"
+  verifiedAt: string;
+}
+
 export interface Club {
   id: string;
+  code?: string;
   name: string;
+  category?: ClubCategory;
+  field: string;
+  tagline?: string;
+  description: string;
   logoUrl?: string;
   coverUrl?: string;
-  description: string;
-  field: string;
-  managerId: string;
-  approvalStatus: ClubApprovalStatus;
+  coverImageUrl?: string | null;
+  gallery?: MediaImageItem[];
+  foundedYear?: number;
+  contactEmail?: string;
+  socialLinks?: {
+    facebook?: string;
+    instagram?: string;
+    website?: string;
+  };
+  representatives?: ClubRepresentative[];
+  openOpportunitiesCount?: number;
+  status?: ClubStatus;
+  // Legacy compatibility fields
+  managerId?: string;
+  approvalStatus?: ClubApprovalStatus;
   createdAt: string;
 }
 
+export interface ClubRepresentativeRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  studentCode: string;
+  userEmail?: string;
+  clubId?: string;
+  proposedClub?: {
+    name: string;
+    code: string;
+    category: ClubCategory;
+    tagline: string;
+    description: string;
+    contactEmail?: string;
+  };
+  clubName: string;
+  roleNote: string;
+  evidenceNote: string;
+  proofNote?: string;
+  evidenceFileName?: string;
+  evidenceUrl?: string;
+  status: RepresentativeRequestStatus;
+  rejectionReason?: string;
+  createdAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+}
+
+export interface FormQuestion {
+  id: string;
+  label: string;
+  kind: 'short' | 'long' | 'single' | 'multi';
+  options?: string[];
+  required: boolean;
+}
+
+export interface OpportunityPosition {
+  id: string;
+  name: string;
+  quota: number;
+  registeredCount: number;
+  description: string;
+}
+
+export interface ClubOpportunity {
+  id: string;
+  clubId: string;
+  clubName: string;
+  clubCode?: string;
+  clubLogo?: string;
+  clubCategory?: ClubCategory;
+  createdById: string;
+  createdByName: string;
+  type: OpportunityType;
+  title: string;
+  summary: string;
+  description: string;
+  coverUrl?: string;
+  coverImageUrl?: string | null;
+  gallery?: MediaImageItem[];
+  tags: string[];
+  startAt?: string;
+  endAt?: string;
+  mode?: 'Online' | 'Offline' | 'Hybrid';
+  locationOrLink?: string;
+  confirmMode?: 'Instant' | 'Approval';
+  expectedCommitment?: string;
+  positions?: OpportunityPosition[];
+  quota: number;
+  used: number;
+  submittedCount?: number;
+  registrationDeadline: string;
+  resultDeadline?: string;
+  questions: FormQuestion[];
+  status: OpportunityStatus;
+  hasResponses: boolean;
+  cancelReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OpportunityResponse {
+  id: string;
+  opportunityId: string;
+  opportunityTitle: string;
+  opportunityType: OpportunityType;
+  clubId: string;
+  clubName: string;
+  clubLogo?: string;
+  studentId: string;
+  profileSnapshot: {
+    fullName: string;
+    studentCode: string;
+    email: string;
+    major: string;
+    cohort: string;
+    avatarUrl?: string;
+  };
+  positionId?: string;
+  positionName?: string;
+  answers: { questionId: string; questionLabel: string; value: string | string[] }[];
+  note?: string;
+  attachment?: { name: string; size: string; url: string };
+  status: OpportunityResponseStatus;
+  feedbackNote?: string;
+  visibleToCoParticipants: boolean;
+  conversationId?: string;
+  submittedAt?: string;
+  updatedAt: string;
+  history: {
+    status: OpportunityResponseStatus;
+    at: string;
+    note?: string;
+    actorName?: string;
+  }[];
+}
+
+export interface ConnectionInvite {
+  id: string;
+  fromUserId: string;
+  fromUserName: string;
+  fromUserAvatar?: string;
+  fromUserMeta: string;
+  toUserId: string;
+  toUserName: string;
+  toUserAvatar?: string;
+  toUserMeta?: string;
+  sourceType: 'opportunity' | 'program';
+  sourceId: string;
+  sourceTitle: string;
+  message: string;
+  status: ConnectionInviteStatus;
+  conversationId?: string;
+  createdAt: string;
+}
+
+// Legacy FE-04 types kept only so non-deleted files compile cleanly
 export interface RecruitmentQuestion {
   id: string;
   label: string;
   required: boolean;
 }
-
 export interface Recruitment {
   id: string;
   clubId: string;
@@ -254,7 +521,6 @@ export interface Recruitment {
   acceptedCount: number;
   status: RecruitmentStatus;
 }
-
 export interface Interview {
   scheduledAt: string;
   mode: 'online' | 'offline';
@@ -264,7 +530,6 @@ export interface Interview {
   result?: 'pass' | 'fail';
   note?: string;
 }
-
 export interface ClubApplication {
   id: string;
   recruitmentId: string;
@@ -276,7 +541,6 @@ export interface ClubApplication {
   interview?: Interview;
   createdAt: string;
 }
-
 export interface ClubMembership {
   clubId: string;
   userId: string;
@@ -285,7 +549,6 @@ export interface ClubMembership {
   contributionScore: number;
   joinedAt: string;
 }
-
 export interface ClubEvent {
   id: string;
   clubId: string;
@@ -297,14 +560,12 @@ export interface ClubEvent {
   capacity: number;
   status: EventStatus;
 }
-
 export interface EventRegistration {
   eventId: string;
   userId: string;
   checkedIn: boolean;
   registeredAt: string;
 }
-
 export interface EventTask {
   id: string;
   eventId: string;
@@ -313,7 +574,6 @@ export interface EventTask {
   status: TaskStatus;
   note?: string;
 }
-
 export interface Transaction {
   id: string;
   clubId: string;
@@ -324,7 +584,6 @@ export interface Transaction {
   recordedBy: string;
   createdAt: string;
 }
-
 export interface ExpenseRequest {
   id: string;
   clubId: string;
@@ -336,7 +595,6 @@ export interface ExpenseRequest {
   approverNote?: string;
   createdAt: string;
 }
-
 export interface Reconciliation {
   id: string;
   clubId: string;
@@ -353,7 +611,123 @@ export interface Reconciliation {
   createdAt: string;
 }
 
+// ============================================================================
+// FE-06 — Community Program Registration (Tình nguyện & Workshop — 29/09/2026)
+// ============================================================================
+
+export interface ProgramSlot {
+  id: string;
+  name: string;
+  timeRange: string;
+  quota: number;
+  confirmedCount: number;
+  description?: string;
+}
+
+export interface ProgramChannel {
+  id: string;
+  type: ProgramType;
+  title: string;
+  summary: string;
+  description: string;
+  coverUrl?: string;
+  coverImageUrl?: string | null;
+  gallery?: MediaImageItem[];
+  tags: string[];
+  organizer: {
+    userId: string;
+    fullName: string;
+    studentCode: string;
+    major: string;
+    cohort: string;
+    avatarUrl?: string;
+    roleNote: string;
+  };
+  coOrganizers: {
+    userId: string;
+    fullName: string;
+    studentCode: string;
+    avatarUrl?: string;
+    status: CoOrganizerStatus;
+  }[];
+  startAt: string;
+  endAt: string;
+  mode: 'Online' | 'Offline' | 'Hybrid';
+  locationOrLink: string;
+  gatheringPoint?: string;
+  beneficiaryAndGoal?: string;
+  slots?: ProgramSlot[];
+  preparationNotes?: string;
+  safetyNotes?: string;
+  costInfo: 'Free' | string;
+  costDetails?: string;
+  speakerInfo?: {
+    name: string;
+    bio: string;
+    topics: string[];
+  };
+  targetAudience?: string;
+  prerequisites?: string;
+  confirmMode: 'Instant' | 'Approval';
+  quota: number;
+  confirmedCount: number;
+  submittedCount?: number;
+  registrationDeadline: string;
+  questions: FormQuestion[];
+  status: ProgramChannelStatus;
+  rejectionReason?: string;
+  cancelReason?: string;
+  hasRegistrations: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProgramRegistration {
+  id: string;
+  programId: string;
+  programTitle: string;
+  programType: ProgramType;
+  programStartAt: string;
+  programMode?: 'Online' | 'Offline' | 'Hybrid';
+  programLocationOrLink?: string;
+  organizerName?: string;
+  studentId: string;
+  profileSnapshot: {
+    fullName: string;
+    studentCode: string;
+    email: string;
+    major: string;
+    cohort: string;
+    avatarUrl?: string;
+  };
+  slotId?: string;
+  slotName?: string;
+  answers: { questionId: string; questionLabel: string; value: string | string[] }[];
+  note?: string;
+  acknowledgedTerms: boolean;
+  visibleToCoParticipants: boolean;
+  status: ProgramRegistrationStatus;
+  feedbackNote?: string;
+  conversationId?: string;
+  submittedAt: string;
+  updatedAt: string;
+}
+
+export interface ProgramAnnouncement {
+  id: string;
+  programId: string;
+  authorId: string;
+  authorName: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  recipientCount: number;
+}
+
+// ============================================================================
 // FE-05 Mentoring
+// ============================================================================
+
 export interface Mentor {
   userId: string;
   fields: string[];
@@ -408,7 +782,7 @@ export interface Notification {
 
 export interface Conversation {
   id: string;
-  kind: 'swap' | 'mentoring' | 'club' | 'group' | 'direct';
+  kind: 'swap' | 'mentoring' | 'club' | 'opportunity' | 'program' | 'group' | 'direct';
   refId: string;
   title?: string;
   participantIds: string[];
@@ -520,7 +894,7 @@ export interface MentorApplication {
 // Module Opportunity (O1)
 export interface Opportunity {
   id: string;
-  type: 'club' | 'group' | 'mentor';
+  type: 'club' | 'group' | 'mentor' | 'program';
   title: string;
   subtitle: string;
   organizationName: string;
@@ -545,8 +919,11 @@ export interface NavCounters {
   pendingSwapInvites: number;
   pendingRequestsTotal: number;
   pendingMentoringRequests: number;
+  pendingOpportunityResponses?: number;
+  pendingProgramRegistrations?: number;
+  pendingFollowRequests?: number;
   todayRegisteredEvents: number;
-  clubsWithNewActivity: string[];
+  clubsWithNewActivity?: string[];
   mentorApplicationStatus?: MentorApplicationStatus;
 }
 
@@ -555,17 +932,20 @@ export interface SystemSettings {
     swap: boolean;
     group: boolean;
     mentoring: boolean;
+    clubs?: boolean;
   };
   aiFeatures?: {
     smartSwapMatch: boolean;
     groupMemberSuggestion: boolean;
     mentorAutoMatch: boolean;
+    clubOpportunitySuggestion?: boolean;
   };
   emailNotifications: {
     swap: boolean;
     groups: boolean;
     clubs: boolean;
     mentoring: boolean;
+    programs?: boolean;
   };
   notifications?: {
     emailOnStatusChange: boolean;
@@ -574,11 +954,21 @@ export interface SystemSettings {
   defaultPrivacy: {
     showProfilePublicly: boolean;
     allowMatching: boolean;
+    defaultProfileVisibility?: ProfileVisibility;
+  };
+  guestAccess?: {
+    allowGuestPreview: boolean;
+    knowledgePreviewLimit: number;
+    programsPreviewLimit: number;
+  };
+  programLimits?: {
+    maxActiveChannelsPerStudent: number;
+    maxAnnouncementsPerDay: number;
   };
   appearance?: {
     fontScale: 'sm' | 'md' | 'lg' | 'xl';
   };
-  autoModerationThreshold: number; // 0 to 100
+  autoModerationThreshold: number;
   moderationThreshold?: number;
+  autoHideReportThreshold?: number;
 }
-

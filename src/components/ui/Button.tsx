@@ -34,24 +34,40 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   loading?: boolean;
+  isLoading?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, loading = false, leftIcon, rightIcon, children, disabled, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      loading = false,
+      isLoading = false,
+      leftIcon,
+      rightIcon,
+      children,
+      disabled,
+      ...props
+    },
+    ref
+  ) => {
+    const busy = loading || isLoading;
     return (
       <button
         ref={ref}
         className={cn(buttonVariants({ variant, size }), className)}
-        disabled={disabled || loading}
-        aria-disabled={disabled || loading}
-        aria-busy={loading}
+        disabled={disabled || busy}
+        aria-disabled={disabled || busy}
+        aria-busy={busy}
         {...props}
       >
-        {loading ? <Loader2 className="animate-spin" size={size === 'sm' ? 14 : 18} /> : leftIcon}
+        {busy ? <Loader2 className="animate-spin" size={size === 'sm' ? 14 : 18} /> : leftIcon}
         {children}
-        {!loading && rightIcon}
+        {!busy && rightIcon}
       </button>
     );
   }

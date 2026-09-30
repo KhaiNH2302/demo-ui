@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ThreadComposer } from '@/components/shared/ThreadComposer';
 import { ThreadCard } from '@/components/shared/ThreadCard';
-import { ReportPostDialog } from './ReportPostDialog';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';

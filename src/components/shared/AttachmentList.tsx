@@ -1,6 +1,8 @@
 import React from 'react';
 import { FileText, Download, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { useViewer } from '@/lib/viewer';
+import { useGuardedAction } from '@/lib/guestGate';
 
 export interface AttachmentItem {
   name: string;
@@ -25,6 +27,10 @@ export const AttachmentList: React.FC<AttachmentListProps> = ({
   onRemove,
   className,
 }) => {
+  const viewer = useViewer();
+  const guard = useGuardedAction();
+  const canDownload = viewer.can('knowledge.interact');
+
   if (!items || items.length === 0) return null;
 
   return (
@@ -45,16 +51,30 @@ export const AttachmentList: React.FC<AttachmentListProps> = ({
           </div>
 
           <div className="flex items-center gap-1 shrink-0 ml-2">
-            <a
-              href={item.url}
-              download={item.name}
-              target="_blank"
-              rel="noreferrer"
-              className="p-1 text-neutral-500 hover:text-brand-600 transition-colors"
-              title="Tải xuống"
-            >
-              <Download size={14} />
-            </a>
+            {canDownload ? (
+              <a
+                href={item.url}
+                download={item.name}
+                target="_blank"
+                rel="noreferrer"
+                className="p-1 text-neutral-500 hover:text-brand-600 transition-colors"
+                title="Tải xuống"
+              >
+                <Download size={14} />
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  guard('tải xuống tài liệu đính kèm', () => {})();
+                }}
+                className="p-1 text-neutral-500 hover:text-brand-600 transition-colors cursor-pointer"
+                title="Tải xuống"
+              >
+                <Download size={14} />
+              </button>
+            )}
             {onRemove && (
               <button
                 type="button"
@@ -71,3 +91,4 @@ export const AttachmentList: React.FC<AttachmentListProps> = ({
     </div>
   );
 };
+

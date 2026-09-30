@@ -1,6 +1,7 @@
 import React from 'react';
 import * as AvatarPrimitive from '@radix-ui/react-avatar';
 import { cn } from '@/lib/cn';
+import { getInitials } from '@/lib/format';
 
 const avatarSizes = {
   xs: 'h-6 w-6 text-xs',
@@ -12,32 +13,6 @@ const avatarSizes = {
   '2xl': 'h-24 w-24 text-2xl',
   '3xl': 'h-[120px] w-[120px] text-3xl',
 };
-
-const bgPalette = [
-  'bg-blue-100 text-blue-700',
-  'bg-emerald-100 text-emerald-700',
-  'bg-purple-100 text-purple-700',
-  'bg-amber-100 text-amber-700',
-  'bg-rose-100 text-rose-700',
-  'bg-indigo-100 text-indigo-700',
-];
-
-function getInitials(name?: string) {
-  if (!name) return 'U';
-  const parts = name.trim().split(' ');
-  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-function getBgColor(name?: string) {
-  if (!name) return bgPalette[0];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % bgPalette.length;
-  return bgPalette[index];
-}
 
 export interface AvatarProps extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root> {
   src?: string;
@@ -53,9 +28,9 @@ export const Avatar = React.forwardRef<
     <AvatarPrimitive.Root
       ref={ref}
       className={cn(
-        'relative flex shrink-0 overflow-hidden rounded-full font-medium select-none items-center justify-center',
+        'relative flex shrink-0 overflow-hidden rounded-full font-medium select-none items-center justify-center border border-neutral-200/70',
         avatarSizes[size],
-        className
+        className,
       )}
       {...props}
     >
@@ -65,10 +40,7 @@ export const Avatar = React.forwardRef<
         className="aspect-square h-full w-full object-cover"
       />
       <AvatarPrimitive.Fallback
-        className={cn(
-          'flex h-full w-full items-center justify-center font-semibold',
-          getBgColor(name)
-        )}
+        className="flex h-full w-full items-center justify-center font-semibold bg-neutral-100 text-neutral-700"
       >
         {getInitials(name)}
       </AvatarPrimitive.Fallback>

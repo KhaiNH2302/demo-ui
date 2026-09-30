@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Avatar } from '@/components/ui/Avatar';
+import { UserAvatar } from '@/components/shared/UserAvatar';
 import { Badge } from '@/components/ui/Badge';
 import { AttachmentList } from '@/components/shared/AttachmentList';
+import { ImageGallery } from '@/components/shared/ImageGallery';
 import { useToast } from '@/components/ui/Toast';
 import { useAuthStore } from '@/store/authStore';
+import { useViewer } from '@/lib/viewer';
+import { useGuardedAction } from '@/lib/guestGate';
 import { formatRelativeTime } from '@/lib/format';
 import { seedUsers } from '@/mocks/data/users';
 import { cn } from '@/lib/cn';
@@ -21,16 +24,11 @@ import {
   Share2,
   MoreHorizontal,
   CheckCircle2,
-  Lock,
   Pencil,
   Trash2,
   Flag,
-  FileText,
-  HelpCircle,
-  MessageSquare,
-  Sparkles,
 } from 'lucide-react';
-import type { KnowledgePost, Comment } from '@/types/entities';
+import type { KnowledgePost } from '@/types/entities';
 
 export interface ThreadCardProps {
   post: KnowledgePost;
@@ -61,6 +59,8 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
 }) => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const viewer = useViewer();
+  const guard = useGuardedAction();
   const { toast } = useToast();
 
   const [liked, setLiked] = useState<boolean>(post.likedByMe || false);
@@ -70,17 +70,17 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
 
   const author = seedUsers.find((u) => u.id === post.authorId) || {
     id: post.authorId,
-    fullName: 'Sinh viên FPTU',
+    fullName: post.authorName || 'Sinh viên FPTU',
     major: 'Kỹ thuật phần mềm',
     school: 'Đại học FPT',
     avatarUrl: undefined,
   };
 
   const isMine = user?.id === post.authorId;
-  const isQuestion = post.type === 'question';
   const isSolved = post.isSolved;
   const isPending = post.status === 'PendingReview' || post.status === 'pending_review';
   const isRejected = post.status === 'Rejected' || post.status === 'rejected';
+  const canOpenProfile = viewer.can('profile.open');
 
   // Split first line for headline styling if not given title
   const rawContent = post.contentMd || post.content || '';
@@ -90,25 +90,29 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
 
   const handleLike = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const nextLiked = !liked;
-    setLiked(nextLiked);
-    setLikesCount((prev) => (nextLiked ? prev + 1 : Math.max(0, prev - 1)));
-    if (onLikeToggle) {
-      onLikeToggle(post.id, nextLiked);
-    }
+    guard('like_post', () => {
+      const nextLiked = !liked;
+      setLiked(nextLiked);
+      setLikesCount((prev) => (nextLiked ? prev + 1 : Math.max(0, prev - 1)));
+      if (onLikeToggle) {
+        onLikeToggle(post.id, nextLiked);
+      }
+    })();
   };
 
   const handleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const nextSaved = !saved;
-    setSaved(nextSaved);
-    toast({
-      variant: 'default',
-      title: nextSaved ? 'Đã lưu thread vào bộ sưu tập' : 'Đã bỏ lưu thread',
-    });
-    if (onSaveToggle) {
-      onSaveToggle(post.id, nextSaved);
-    }
+    guard('bookmark_post', () => {
+      const nextSaved = !saved;
+      setSaved(nextSaved);
+      toast({
+        variant: 'default',
+        title: nextSaved ? 'Đã lưu thread vào bộ sưu tập' : 'Đã bỏ lưu thread',
+      });
+      if (onSaveToggle) {
+        onSaveToggle(post.id, nextSaved);
+      }
+    })();
   };
 
   const handleShare = (e: React.MouseEvent) => {
@@ -122,6 +126,8 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
     e.stopPropagation();
     if (onReply) {
       onReply(post);
+    } else if (variant === 'detail') {
+      guard('comment', () => {})();
     } else {
       navigate(`/knowledge/${post.id}`);
     }
@@ -151,19 +157,16 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
       )}
     >
       {/* Left Avatar Column with optional vertical connector */}
-      <div className="flex flex-col items-center shrink-0">
-        <Link
-          to={`/users/${author.id}`}
-          onClick={(e) => e.stopPropagation()}
-          className="focus:outline-hidden"
-        >
-          <Avatar
-            src={author.avatarUrl}
-            name={author.fullName}
-            size={variant === 'reply' ? 'sm' : 'md'}
-            className="ring-1 ring-neutral-200 hover:ring-brand-500 transition-all"
-          />
-        </Link>
+      <div className="flex flex-col items-center shrink-0" onClick={(e) => e.stopPropagation()}>
+        <UserAvatar
+          user={{
+            id: author.id,
+            fullName: author.fullName,
+            avatarUrl: author.avatarUrl,
+          }}
+          linkToProfile
+          size={variant === 'reply' ? 'sm' : 'md'}
+        />
         {showThreadLine && (
           <div className="w-0.5 flex-1 bg-neutral-200 mt-2 rounded-full min-h-[24px]" />
         )}
@@ -210,13 +213,19 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
         {/* Author Header & Menu */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
-            <Link
-              to={`/users/${author.id}`}
-              onClick={(e) => e.stopPropagation()}
-              className="font-semibold text-neutral-900 hover:text-brand-600 transition-colors truncate"
-            >
-              {author.fullName}
-            </Link>
+            {canOpenProfile ? (
+              <Link
+                to={`/users/${author.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="font-semibold text-neutral-900 hover:text-brand-600 transition-colors truncate"
+              >
+                {author.fullName}
+              </Link>
+            ) : (
+              <span className="font-semibold text-neutral-900 truncate">
+                {author.fullName}
+              </span>
+            )}
             {author.major && (
               <>
                 <span className="text-neutral-300">·</span>
@@ -243,7 +252,7 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
                 {isMine ? (
                   <>
                     <DropdownMenuItem
-                      onClick={() => onEdit ? onEdit(post) : navigate(`/knowledge/${post.id}`)}
+                      onClick={() => (onEdit ? onEdit(post) : navigate(`/knowledge/${post.id}`))}
                     >
                       <Pencil size={14} /> Chỉnh sửa
                     </DropdownMenuItem>
@@ -258,15 +267,17 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
                   </>
                 ) : (
                   <>
-                    <DropdownMenuItem onClick={handleSave}>
+                    <DropdownMenuItem onClick={(e) => handleSave(e as unknown as React.MouseEvent)}>
                       <Bookmark size={14} /> {saved ? 'Bỏ lưu bài viết' : 'Lưu bài viết'}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleShare}>
+                    <DropdownMenuItem onClick={(e) => handleShare(e as unknown as React.MouseEvent)}>
                       <Share2 size={14} /> Sao chép liên kết
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       danger
-                      onClick={() => (onReport ? onReport(post.id) : navigate(`/knowledge/${post.id}`))}
+                      onClick={guard('report', () =>
+                        onReport ? onReport(post.id) : navigate(`/knowledge/${post.id}`)
+                      )}
                     >
                       <Flag size={14} /> Báo cáo vi phạm
                     </DropdownMenuItem>
@@ -345,29 +356,20 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
           )}
         </div>
 
-        {/* Image Grid */}
-        {post.images && post.images.length > 0 && (
-          <div
-            className={cn(
-              'pt-1 gap-2',
-              post.images.length === 1 && 'block',
-              post.images.length === 2 && 'grid grid-cols-2',
-              post.images.length >= 3 && 'grid grid-cols-2'
-            )}
-          >
-            {post.images.slice(0, 4).map((img, idx) => (
-              <div
-                key={idx}
-                className="overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100 max-h-80"
-              >
-                <img
-                  src={img}
-                  alt={`attachment-${idx}`}
-                  className="w-full h-full object-cover hover:scale-102 transition-transform duration-200"
-                  loading="lazy"
-                />
-              </div>
-            ))}
+        {/* Image Gallery with Lightbox (SCS_UI_Plan.md § 19) */}
+        {((post.gallery && post.gallery.length > 0) ||
+          (post.images && post.images.length > 0)) && (
+          <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+            <ImageGallery
+              images={
+                post.gallery && post.gallery.length > 0
+                  ? post.gallery
+                  : (post.images || []).map((url, idx) => ({
+                      id: `${post.id}-img-${idx}`,
+                      url,
+                    }))
+              }
+            />
           </div>
         )}
 

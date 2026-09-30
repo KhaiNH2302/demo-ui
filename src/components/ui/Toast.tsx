@@ -9,6 +9,10 @@ export interface ToastOptions {
   message?: string;
   variant?: 'default' | 'success' | 'error' | 'warning' | 'info';
   duration?: number;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 interface ToastItem extends ToastOptions {
@@ -25,18 +29,32 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 type ToastListener = (toast: ToastItem) => void;
 const toastListeners = new Set<ToastListener>();
 
+type SecondToastArg =
+  | string
+  | {
+      description?: string;
+      duration?: number;
+      action?: { label: string; onClick: () => void };
+    };
+
+function normalizeSecondArg(arg?: SecondToastArg): Partial<ToastOptions> {
+  if (!arg) return {};
+  if (typeof arg === 'string') return { description: arg };
+  return arg;
+}
+
 export const toast = {
-  success: (msg: string, desc?: string) => {
-    emitToast({ title: msg, description: desc, variant: 'success' });
+  success: (msg: string, descOrOpts?: SecondToastArg) => {
+    emitToast({ title: msg, variant: 'success', ...normalizeSecondArg(descOrOpts) });
   },
-  error: (msg: string, desc?: string) => {
-    emitToast({ title: msg, description: desc, variant: 'error' });
+  error: (msg: string, descOrOpts?: SecondToastArg) => {
+    emitToast({ title: msg, variant: 'error', ...normalizeSecondArg(descOrOpts) });
   },
-  info: (msg: string, desc?: string) => {
-    emitToast({ title: msg, description: desc, variant: 'info' });
+  info: (msg: string, descOrOpts?: SecondToastArg) => {
+    emitToast({ title: msg, variant: 'info', ...normalizeSecondArg(descOrOpts) });
   },
-  warning: (msg: string, desc?: string) => {
-    emitToast({ title: msg, description: desc, variant: 'warning' });
+  warning: (msg: string, descOrOpts?: SecondToastArg) => {
+    emitToast({ title: msg, variant: 'warning', ...normalizeSecondArg(descOrOpts) });
   },
 };
 
@@ -89,27 +107,39 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             <div
               key={t.id}
               className={cn(
-                'pointer-events-auto flex items-start gap-3 rounded-xl border p-4 shadow-lg transition-all duration-300 animate-in slide-in-from-right-full bg-[var(--surface-card)]',
-                isSuccess && 'border-[var(--status-success-border)] bg-[var(--status-success-bg)] text-[var(--text-main)]',
-                isError && 'border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--text-main)]',
-                isWarning && 'border-[var(--status-attention-border)] bg-[var(--status-attention-bg)] text-[var(--text-main)]',
-                !isSuccess && !isError && !isWarning && 'border-[var(--border-subtle)] text-[var(--text-main)]'
+                'pointer-events-auto flex items-start gap-3 rounded-xl border p-4 shadow-lg transition-all duration-300 bg-white',
+                isSuccess && 'border-tier-success-border bg-tier-success-bg text-neutral-900',
+                isError && 'border-tier-danger-border bg-tier-danger-bg text-neutral-900',
+                isWarning && 'border-tier-pending-border bg-tier-pending-bg text-neutral-900',
+                !isSuccess && !isError && !isWarning && 'border-neutral-200 text-neutral-900'
               )}
             >
               <div className="shrink-0 mt-0.5">
-                {isSuccess && <CheckCircle2 className="text-[var(--status-success-fg)]" size={18} />}
-                {isError && <AlertCircle className="text-[var(--status-danger-fg)]" size={18} />}
-                {isWarning && <AlertTriangle className="text-[var(--status-attention-fg)]" size={18} />}
-                {!isSuccess && !isError && !isWarning && <Info className="text-primary" size={18} />}
+                {isSuccess && <CheckCircle2 className="text-tier-success-text" size={18} />}
+                {isError && <AlertCircle className="text-tier-danger-text" size={18} />}
+                {isWarning && <AlertTriangle className="text-tier-pending-text" size={18} />}
+                {!isSuccess && !isError && !isWarning && <Info className="text-brand-600" size={18} />}
               </div>
               <div className="flex-1 text-xs">
                 <div className="font-semibold text-sm">{t.title || t.message}</div>
-                {t.description && <div className="text-[var(--text-muted)] mt-1">{t.description}</div>}
+                {t.description && <div className="text-neutral-600 mt-1">{t.description}</div>}
+                {t.action && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      t.action?.onClick();
+                      removeToast(t.id);
+                    }}
+                    className="mt-2 inline-flex items-center px-2.5 py-1 rounded-md bg-white border border-neutral-300 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 cursor-pointer"
+                  >
+                    {t.action.label}
+                  </button>
+                )}
               </div>
               <button
                 type="button"
                 onClick={() => removeToast(t.id)}
-                className="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-main)] p-0.5"
+                className="shrink-0 text-neutral-500 hover:text-neutral-900 p-0.5 cursor-pointer"
               >
                 <X size={14} />
               </button>

@@ -1,32 +1,218 @@
 import { http, HttpResponse } from 'msw';
 import { seedMentorApplications } from '../data/mentorApplications';
-import { seedPublicEvents } from '../data/events';
 import { seedOpportunities } from '../data/opportunities';
-import { seedUsers } from '../data/users';
-import { seedClubs } from '../data/clubs';
+import { seedUsers, seedFollows } from '../data/users';
+import {
+  seedClubs,
+  seedClubOpportunities,
+  seedOpportunityResponses,
+  seedConnectionInvites,
+} from '../data/clubs';
+import {
+  seedProgramChannels,
+  seedProgramRegistrations,
+  seedProgramAnnouncements,
+} from '../data/programs';
 import { seedGroups } from '../data/groups';
-import { seedKnowledgePosts } from '../data/knowledge';
-import type { NavCounters, MentorApplication, KnowledgePost, User, Club, Group, ClubEvent } from '@/types/entities';
+import { seedKnowledgePosts, seedReports } from '../data/knowledge';
+import type {
+  NavCounters,
+  MentorApplication,
+  KnowledgePost,
+  User,
+  Club,
+  Group,
+  ProgramChannel,
+  ProgramRegistration,
+  ProgramAnnouncement,
+  ConnectionInvite,
+} from '@/types/entities';
+import type { ProgramRegistrationStatus } from '@/types/status';
 
-// In-memory mutable states
 const mentorApplications: MentorApplication[] = [...seedMentorApplications];
-const events = [...seedPublicEvents];
 const followingUserIds = new Set<string>(['usr_mentor_02', 'usr_manager_03']);
 
+function getCurrentUserId(request: Request): string {
+  const authHeader = request.headers.get('Authorization') || '';
+  return authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+}
+
 export const newModulesHandlers = [
+  // 0. Public Stats for Landing Page (C12)
+  http.get('/api/v1/public/stats', () => {
+    return HttpResponse.json({
+      data: {
+        totalPosts: seedKnowledgePosts.filter((p) => p.status === 'Published').length,
+        publishedPostsCount: seedKnowledgePosts.filter((p) => p.status === 'Published').length,
+        openProgramsCount: seedProgramChannels.filter((p) => p.status === 'Published').length,
+        openClubOpportunitiesCount: seedClubOpportunities.filter((o) => o.status === 'Published').length,
+        activeClubsCount: seedClubs.filter((c) => c.status !== 'Hidden').length,
+      },
+    });
+  }),
+
+  // Public Preview Posts (3 posts for Guest / Welcome)
+  http.get('/api/v1/public/posts/preview', () => {
+    const list = seedKnowledgePosts
+      .filter((p) => p.status === 'Published')
+      .slice(0, 3);
+    return HttpResponse.json({
+      data: list,
+      meta: { total: seedKnowledgePosts.filter((p) => p.status === 'Published').length },
+    });
+  }),
+
+  // Public Upcoming Activities (up to 4 items)
+  http.get('/api/v1/public/upcoming', () => {
+    const upcomingPrograms = seedProgramChannels
+      .filter((p) => p.status === 'Published')
+      .slice(0, 2)
+      .map((p) => ({
+        id: p.id,
+        type: 'program' as const,
+        title: p.title,
+        subtitle: `${p.type === 'Volunteer' ? 'Tình nguyện' : 'Workshop'} · ${p.organizer.fullName}`,
+        startAt: p.startAt,
+        weekday: 'T7',
+        dateStr: '04/10',
+        href: `/programs/${p.id}`,
+        linkTo: `/programs/${p.id}`,
+      }));
+
+    const upcomingClubOpps = seedClubOpportunities
+      .filter((o) => o.status === 'Published')
+      .slice(0, 2)
+      .map((o) => ({
+        id: o.id,
+        type: 'club' as const,
+        title: o.title,
+        subtitle: `${o.clubName} · Còn ${Math.max(0, o.quota - o.used)} chỗ`,
+        startAt: o.startAt || o.registrationDeadline,
+        weekday: 'CN',
+        dateStr: '05/10',
+        href: `/clubs/opportunities/${o.id}`,
+        linkTo: `/clubs/opportunities/${o.id}`,
+      }));
+
+    return HttpResponse.json({
+      data: [...upcomingPrograms, ...upcomingClubOpps].slice(0, 4),
+    });
+  }),
+
+  // Home Today Panel & My Spaces (C6.T)
+  http.get('/api/v1/home/today', () => {
+    return HttpResponse.json({
+      data: [
+        {
+          id: 'td-1',
+          kind: 'swap_invite',
+          title: 'Lời mời đổi lớp SE1701 ↔ SE1703',
+          subtitle: 'Từ Trần Minh · Môn PRN212',
+          actionLabel: 'Xem & phản hồi',
+          href: '/swap/connections',
+        },
+        {
+          id: 'td-2',
+          kind: 'club_need_info',
+          title: 'Đơn đăng ký F-Code cần bổ sung thông tin',
+          subtitle: 'Đợt tuyển Thành viên Gen 19 · Còn 2 ngày',
+          actionLabel: 'Bổ sung',
+          href: '/clubs?tab=registrations',
+        },
+      ],
+    });
+  }),
+
+  http.get('/api/v1/home/spaces', () => {
+    return HttpResponse.json({
+      data: [
+        {
+          id: 'grp_01',
+          kind: 'group',
+          name: 'Nhóm Đồ án SEP490 - G72',
+          roleLabel: 'Trưởng nhóm',
+          hasUnread: true,
+          href: '/groups/grp_01',
+        },
+        {
+          id: 'clb_01',
+          kind: 'club',
+          name: 'F-Code Club',
+          roleLabel: 'Đại diện CLB',
+          hasUnread: true,
+          href: '/clubs/clb_01',
+        },
+      ],
+    });
+  }),
+
+  http.post('/api/v1/uploads/images', async () => {
+    return HttpResponse.json({
+      data: {
+        id: `img_${Date.now()}`,
+        url: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80',
+        thumbUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=400&q=80',
+        width: 1200,
+        height: 675,
+      },
+    });
+  }),
+
+  // Public Config
+  http.get('/api/v1/public/config', () => {
+    return HttpResponse.json({
+      data: {
+        guestAccess: { knowledge: true, programs: true, clubs: true },
+        limits: { posts: 3, programs: 6, opportunities: 6 },
+      },
+    });
+  }),
+
   // 1. Nav Counters (GET /nav/counters)
-  http.get('/api/v1/nav/counters', () => {
-    const myApp = mentorApplications.find((a) => a.userId === 'usr_student_01');
+  http.get('/api/v1/nav/counters', ({ request }) => {
+    const userId = getCurrentUserId(request);
+    const myApp = mentorApplications.find((a) => a.userId === userId);
+
+    const needMoreInfoCount = seedOpportunityResponses.filter(
+      (r) => r.studentId === userId && r.status === 'NeedsMoreInfo'
+    ).length;
+    const myRepClubIds = seedClubs
+      .filter((c) => c.representatives?.some((rep) => rep.userId === userId))
+      .map((c) => c.id);
+    const clubPendingReviews = seedOpportunityResponses.filter(
+      (r) =>
+        myRepClubIds.includes(r.clubId) &&
+        (r.status === 'Submitted' || r.status === 'UnderReview')
+    ).length;
+
+    const myProgramIds = seedProgramChannels
+      .filter(
+        (p) =>
+          p.organizer.userId === userId ||
+          p.coOrganizers.some((co) => co.userId === userId && co.status === 'Accepted')
+      )
+      .map((p) => p.id);
+    const pendingProgramRegs = seedProgramRegistrations.filter(
+      (reg) => myProgramIds.includes(reg.programId) && reg.status === 'Submitted'
+    ).length;
+
+    const pendingFollows = seedFollows.filter(
+      (f) => f.followeeId === userId && f.status === 'Pending'
+    ).length;
+
     const counters: NavCounters = {
       unreadNotifications: 3,
       unreadMessages: 2,
       pendingMessageRequests: 1,
       pendingGroupJoinRequests: 1,
       pendingSwapInvites: 1,
-      pendingRequestsTotal: 4,
+      pendingRequestsTotal:
+        needMoreInfoCount + clubPendingReviews + pendingProgramRegs + pendingFollows + 3,
       pendingMentoringRequests: 2,
-      todayRegisteredEvents: 1,
-      clubsWithNewActivity: ['club_01'],
+      pendingOpportunityResponses: needMoreInfoCount + clubPendingReviews,
+      pendingProgramRegistrations: pendingProgramRegs,
+      pendingFollowRequests: pendingFollows,
+      todayRegisteredEvents: 2,
       mentorApplicationStatus: myApp?.status,
     };
     return HttpResponse.json({ data: counters });
@@ -38,44 +224,47 @@ export const newModulesHandlers = [
     const q = (url.searchParams.get('q') || '').toLowerCase();
 
     const posts = seedKnowledgePosts
-      .filter((p: KnowledgePost) =>
-        (p.contentMd || p.title || '').toLowerCase().includes(q) ||
-        (p.subject && p.subject.toLowerCase().includes(q))
+      .filter(
+        (p: KnowledgePost) =>
+          (p.contentMd || p.title || '').toLowerCase().includes(q) ||
+          (p.subject && p.subject.toLowerCase().includes(q))
       )
       .slice(0, 10);
 
     const students = seedUsers
-      .filter((u: User) =>
-        u.fullName.toLowerCase().includes(q) ||
-        (u.studentCode && u.studentCode.toLowerCase().includes(q))
+      .filter(
+        (u: User) =>
+          u.fullName.toLowerCase().includes(q) ||
+          (u.studentCode && u.studentCode.toLowerCase().includes(q))
       )
       .slice(0, 10);
 
     const clubs = seedClubs
-      .filter((c: Club) =>
-        c.name.toLowerCase().includes(q) ||
-        c.description.toLowerCase().includes(q)
+      .filter(
+        (c: Club) =>
+          c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q)
       )
       .slice(0, 10);
 
     const groups = seedGroups
-      .filter((g: Group) =>
-        g.name.toLowerCase().includes(q) ||
-        g.topic.toLowerCase().includes(q)
+      .filter(
+        (g: Group) => g.name.toLowerCase().includes(q) || g.topic.toLowerCase().includes(q)
       )
       .slice(0, 10);
 
-    const evts = events
-      .filter((e: ClubEvent) =>
-        e.title.toLowerCase().includes(q) ||
-        e.description.toLowerCase().includes(q)
+    const programs = seedProgramChannels
+      .filter(
+        (p) =>
+          p.status === 'Published' &&
+          (p.title.toLowerCase().includes(q) || p.summary.toLowerCase().includes(q))
       )
       .slice(0, 10);
 
     const mentors = seedUsers
-      .filter((u: User) =>
-        u.roles.some((r) => r.toLowerCase() === 'mentor') &&
-        u.fullName.toLowerCase().includes(q)
+      .filter(
+        (u: User) =>
+          u.roles.some((r) => r.toLowerCase() === 'mentor') &&
+          u.fullName.toLowerCase().includes(q)
       )
       .slice(0, 10);
 
@@ -85,9 +274,16 @@ export const newModulesHandlers = [
         students,
         clubs,
         groups,
-        events: evts,
+        events: programs,
+        programs,
         mentors,
-        total: posts.length + students.length + clubs.length + groups.length + evts.length + mentors.length,
+        total:
+          posts.length +
+          students.length +
+          clubs.length +
+          groups.length +
+          programs.length +
+          mentors.length,
       },
     });
   }),
@@ -104,6 +300,14 @@ export const newModulesHandlers = [
           type: 'post',
           title: (p.title || p.contentMd || '').slice(0, 50) + '...',
           link: `/knowledge/${p.id}`,
+        })),
+      ...seedProgramChannels
+        .filter((p) => p.title.toLowerCase().includes(q))
+        .slice(0, 2)
+        .map((p) => ({
+          type: 'program',
+          title: p.title,
+          link: `/programs/${p.id}`,
         })),
       ...seedClubs
         .filter((c: Club) => c.name.toLowerCase().includes(q))
@@ -126,13 +330,59 @@ export const newModulesHandlers = [
     return HttpResponse.json({ data: suggestions });
   }),
 
-  // 3. Opportunities (GET /opportunities)
+  // 3. Opportunities (GET /opportunities — O1)
   http.get('/api/v1/opportunities', ({ request }) => {
     const url = new URL(request.url);
     const type = url.searchParams.get('type');
     const field = url.searchParams.get('field');
 
-    let list = [...seedOpportunities];
+    const clubMapped = seedClubOpportunities
+      .filter((o) => o.status === 'Published')
+      .map((o) => ({
+        id: o.id,
+        type: 'club' as const,
+        title: o.title,
+        subtitle:
+          o.type === 'MemberRecruitment'
+            ? 'Tuyển thành viên CLB'
+            : o.type === 'CollaboratorRecruitment'
+            ? 'Tuyển cộng tác viên CLB'
+            : 'Sự kiện CLB',
+        organizationName: o.clubName,
+        avatarUrl: o.clubLogo,
+        field: o.clubCategory === 'Tech' ? 'Công nghệ thông tin' : 'Hoạt động sinh viên',
+        deadline: o.registrationDeadline,
+        spotsLeft: Math.max(0, o.quota - o.used),
+        tags: o.tags,
+        linkTo: `/clubs/opportunities/${o.id}`,
+        isUrgent: o.quota - o.used <= 10,
+        isFeatured: o.id === 'opp_02',
+        createdAt: o.createdAt,
+      }));
+
+    const programMapped = seedProgramChannels
+      .filter((p) => p.status === 'Published')
+      .map((p) => ({
+        id: p.id,
+        type: 'program' as const,
+        title: p.title,
+        subtitle: p.type === 'Volunteer' ? 'Chiến dịch Tình nguyện' : 'Workshop Kỹ năng & Học thuật',
+        organizationName: `Tổ chức bởi ${p.organizer.fullName}`,
+        avatarUrl: p.organizer.avatarUrl,
+        coverUrl: p.coverUrl,
+        field: p.type === 'Volunteer' ? 'Cộng đồng & Xã hội' : 'Công nghệ thông tin',
+        deadline: p.registrationDeadline,
+        spotsLeft: Math.max(0, p.quota - p.confirmedCount),
+        tags: p.tags,
+        linkTo: `/programs/${p.id}`,
+        isUrgent: p.quota - p.confirmedCount <= 10,
+        isFeatured: p.id === 'prog_01',
+        createdAt: p.createdAt,
+      }));
+
+    const otherOpps = seedOpportunities.filter((o) => o.type !== 'club');
+    let list = [...clubMapped, ...programMapped, ...otherOpps];
+
     if (type && type !== 'all') {
       list = list.filter((item) => item.type === type);
     }
@@ -148,12 +398,91 @@ export const newModulesHandlers = [
     return HttpResponse.json({ data: featured });
   }),
 
-  // 4. Public Events (GET /events, POST /events/:id/register)
+  // 4. Read-only Aggregated Events Calendar (E1 — aggregates FE-04 Event + FE-06 ProgramChannel)
   http.get('/api/v1/events', ({ request }) => {
     const url = new URL(request.url);
     const tab = url.searchParams.get('tab') || 'upcoming';
+    const sourceFilter = url.searchParams.get('source') || 'all';
+    const userId = getCurrentUserId(request);
 
-    let list = [...events];
+    const clubEventItems = seedClubOpportunities
+      .filter((o) => o.type === 'Event' && o.status !== 'Draft')
+      .map((o) => {
+        const myResp = seedOpportunityResponses.find(
+          (r) =>
+            r.opportunityId === o.id &&
+            r.studentId === userId &&
+            (r.status === 'Confirmed' || r.status === 'Accepted' || r.status === 'Submitted')
+        );
+        return {
+          id: o.id,
+          sourceType: 'club' as const,
+          sourceLabel: `CLB ${o.clubName}`,
+          clubId: o.clubId,
+          clubName: o.clubName,
+          clubLogo: o.clubLogo,
+          title: o.title,
+          description: o.summary,
+          startAt: o.startAt || o.registrationDeadline,
+          endAt: o.endAt || o.registrationDeadline,
+          mode: o.mode || 'Offline',
+          location: o.locationOrLink || 'ĐH FPT Hà Nội',
+          capacity: o.quota,
+          registeredCount: o.used,
+          registeredByMe: Boolean(myResp),
+          myStatus: myResp?.status,
+          status: o.status === 'Expired' || o.status === 'Closed' ? 'Finished' : 'Published',
+          detailUrl: `/clubs/opportunities/${o.id}`,
+          tags: o.tags,
+        };
+      });
+
+    const programEventItems = seedProgramChannels
+      .filter((p) => p.status === 'Published' || p.status === 'Closed' || p.status === 'Expired')
+      .map((p) => {
+        const myReg = seedProgramRegistrations.find(
+          (r) =>
+            r.programId === p.id &&
+            r.studentId === userId &&
+            (r.status === 'Confirmed' || r.status === 'Submitted')
+        );
+        return {
+          id: p.id,
+          sourceType: 'program' as const,
+          programType: p.type,
+          sourceLabel: `Tổ chức bởi ${p.organizer.fullName}`,
+          clubId: p.id,
+          clubName: `${p.type === 'Volunteer' ? 'Tình nguyện' : 'Workshop'} · ${p.organizer.fullName}`,
+          clubLogo: p.organizer.avatarUrl,
+          coverUrl: p.coverUrl,
+          title: p.title,
+          description: p.summary,
+          startAt: p.startAt,
+          endAt: p.endAt,
+          mode: p.mode,
+          location: p.locationOrLink,
+          capacity: p.quota,
+          registeredCount: p.confirmedCount,
+          registeredByMe: Boolean(myReg),
+          myStatus: myReg?.status,
+          status: p.status === 'Expired' ? 'Finished' : 'Published',
+          detailUrl: `/programs/${p.id}`,
+          tags: p.tags,
+        };
+      });
+
+    let list = [...clubEventItems, ...programEventItems].sort(
+      (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+    );
+
+    if (sourceFilter === 'club') {
+      list = list.filter((e) => e.sourceType === 'club');
+    } else if (sourceFilter === 'volunteer') {
+      list = list.filter((e) => e.sourceType === 'program' && (e as any).programType === 'Volunteer');
+    } else if (sourceFilter === 'workshop') {
+      list = list.filter((e) => e.sourceType === 'program' && (e as any).programType === 'Workshop');
+    }
+
     if (tab === 'registered') {
       list = list.filter((e) => e.registeredByMe);
     } else if (tab === 'past') {
@@ -165,46 +494,68 @@ export const newModulesHandlers = [
     return HttpResponse.json({ data: list });
   }),
 
-  http.get('/api/v1/events/:id', ({ params }) => {
-    const event = events.find((e) => e.id === params.id) || events[0];
-    return HttpResponse.json({ data: event });
-  }),
+  // 5. People / Student Connection & Follow Requests (P1)
+  http.get('/api/v1/users/suggested', ({ request }) => {
+    const url = new URL(request.url);
+    const q = (url.searchParams.get('q') || '').toLowerCase();
+    const major = url.searchParams.get('major');
+    const cohort = url.searchParams.get('cohort');
 
-  http.post('/api/v1/events/:id/register', ({ params }) => {
-    const idx = events.findIndex((e) => e.id === params.id);
-    if (idx !== -1) {
-      events[idx] = { ...events[idx], registeredByMe: true, registeredCount: events[idx].registeredCount + 1 };
-    }
-    return HttpResponse.json({ data: { success: true } });
-  }),
-
-  http.delete('/api/v1/events/:id/register', ({ params }) => {
-    const idx = events.findIndex((e) => e.id === params.id);
-    if (idx !== -1) {
-      events[idx] = { ...events[idx], registeredByMe: false, registeredCount: Math.max(0, events[idx].registeredCount - 1) };
-    }
-    return HttpResponse.json({ data: { success: true } });
-  }),
-
-  // 5. People / Student Connection (GET /users/suggested)
-  http.get('/api/v1/users/suggested', () => {
-    const students = seedUsers.slice(0, 15).map((u) => ({
+    let students = seedUsers.map((u) => ({
       ...u,
       isFollowing: followingUserIds.has(u.id),
-      sharedTags: ['Cùng học CSD201', 'Kỹ thuật phần mềm', 'F-Code'],
+      sharedTags: [u.major || 'Kỹ thuật phần mềm', u.cohort || 'K18', 'Cùng học SWP391'],
       mutualConnectionsCount: 4,
     }));
+
+    if (q) {
+      students = students.filter(
+        (s) =>
+          s.fullName.toLowerCase().includes(q) ||
+          (s.studentCode && s.studentCode.toLowerCase().includes(q)) ||
+          (s.major && s.major.toLowerCase().includes(q))
+      );
+    }
+    if (major && major !== 'all') {
+      students = students.filter((s) => s.major === major);
+    }
+    if (cohort && cohort !== 'all') {
+      students = students.filter((s) => s.cohort === cohort);
+    }
+
     return HttpResponse.json({ data: students });
   }),
 
   http.get('/api/v1/users/me/following', () => {
-    const list = seedUsers.filter((u) => followingUserIds.has(u.id)).map((u) => ({ ...u, isFollowing: true }));
+    const list = seedUsers
+      .filter((u) => followingUserIds.has(u.id))
+      .map((u) => ({ ...u, isFollowing: true }));
     return HttpResponse.json({ data: list });
   }),
 
   http.get('/api/v1/users/me/followers', () => {
-    const list = seedUsers.slice(2, 6).map((u) => ({ ...u, isFollowing: followingUserIds.has(u.id) }));
+    const list = seedUsers.slice(1, 6).map((u) => ({
+      ...u,
+      isFollowing: followingUserIds.has(u.id),
+    }));
     return HttpResponse.json({ data: list });
+  }),
+
+  http.get('/api/v1/follow-requests', ({ request }) => {
+    const userId = getCurrentUserId(request);
+    const incoming = seedFollows.filter((f) => f.followeeId === userId && f.status === 'Pending');
+    const outgoing = seedFollows.filter((f) => f.followerId === userId && f.status === 'Pending');
+    return HttpResponse.json({ data: { incoming, outgoing } });
+  }),
+
+  http.put('/api/v1/follow-requests/:id/respond', async ({ params, request }) => {
+    const body = (await request.json()) as { action: 'accept' | 'decline' };
+    const flw = seedFollows.find((f) => f.id === params.id);
+    if (flw) {
+      flw.status = body.action === 'accept' ? 'Active' : 'Declined';
+      flw.respondedAt = new Date().toISOString();
+    }
+    return HttpResponse.json({ data: flw });
   }),
 
   http.post('/api/v1/users/:id/follow', ({ params }) => {
@@ -217,18 +568,546 @@ export const newModulesHandlers = [
     return HttpResponse.json({ data: { following: false } });
   }),
 
-  // 6. Requests Management (GET /requests)
+  // 6. Connection Invites (CL11 / PG2 CoParticipantsPanel)
+  http.get('/api/v1/connection-invites', ({ request }) => {
+    const userId = getCurrentUserId(request);
+    const list = seedConnectionInvites.filter(
+      (i) => i.toUserId === userId || i.fromUserId === userId
+    );
+    return HttpResponse.json({ data: list });
+  }),
+
+  http.post('/api/v1/connection-invites', async ({ request }) => {
+    const userId = getCurrentUserId(request);
+    const user = seedUsers.find((u) => u.id === userId) || seedUsers[0];
+    const body = (await request.json()) as {
+      sourceType: 'opportunity' | 'program';
+      sourceId: string;
+      sourceTitle: string;
+      toUserId: string;
+      toUserName: string;
+      message: string;
+    };
+
+    const created: ConnectionInvite = {
+      id: `cinv_${Date.now()}`,
+      fromUserId: user.id,
+      fromUserName: user.fullName,
+      fromUserAvatar: user.avatarUrl,
+      fromUserMeta: `${user.major || 'Kỹ thuật phần mềm'} · ${user.cohort || 'K18'}`,
+      toUserId: body.toUserId,
+      toUserName: body.toUserName,
+      sourceType: body.sourceType,
+      sourceId: body.sourceId,
+      sourceTitle: body.sourceTitle,
+      message: body.message,
+      status: 'Pending',
+      conversationId: 'conv_02',
+      createdAt: new Date().toISOString(),
+    };
+    seedConnectionInvites.unshift(created);
+    return HttpResponse.json({ data: created });
+  }),
+
+  http.put('/api/v1/connection-invites/:id/respond', async ({ params, request }) => {
+    const body = (await request.json()) as { action: 'accept' | 'decline' };
+    const inv = seedConnectionInvites.find((i) => i.id === params.id);
+    if (inv) {
+      inv.status = body.action === 'accept' ? 'Accepted' : 'Declined';
+      inv.conversationId = 'conv_02';
+    }
+    return HttpResponse.json({ data: inv });
+  }),
+
+  // 7. Unified Violation Reports (C9b)
+  http.post('/api/v1/reports', async ({ request }) => {
+    const userId = getCurrentUserId(request);
+    const user = seedUsers.find((u) => u.id === userId) || seedUsers[0];
+    const body = (await request.json()) as {
+      targetType: any;
+      targetId: string;
+      targetTitle: string;
+      targetAuthorName: string;
+      reason: string;
+      description?: string;
+      contentSnapshot?: string;
+    };
+
+    const existing = seedReports.find(
+      (r) => r.targetType === body.targetType && r.targetId === body.targetId && r.status === 'Open'
+    );
+
+    if (existing) {
+      existing.reportCount = (existing.reportCount || 1) + 1;
+      if (existing.reportCount >= 5) {
+        existing.autoHidden = true;
+        if (body.targetType === 'post') {
+          const post = seedKnowledgePosts.find((p) => p.id === body.targetId);
+          if (post) post.status = 'TemporarilyHidden';
+        }
+      }
+      return HttpResponse.json({ data: existing });
+    }
+
+    const newReport = {
+      id: `rep_${Date.now()}`,
+      targetType: body.targetType,
+      targetId: body.targetId,
+      targetTitle: body.targetTitle,
+      targetAuthorName: body.targetAuthorName,
+      reporterId: user.id,
+      reporterName: user.fullName,
+      reason: body.reason,
+      description: body.description,
+      contentSnapshot: body.contentSnapshot,
+      reportCount: 1,
+      autoHidden: false,
+      status: 'Open' as const,
+      createdAt: new Date().toISOString(),
+    };
+    seedReports.unshift(newReport);
+    return HttpResponse.json({ data: newReport });
+  }),
+
+  // 8. FE-06 Community Program Registration (PG1–PG8)
+  http.get('/api/v1/programs/eligibility', ({ request }) => {
+    const userId = getCurrentUserId(request);
+    const activeOwnedCount = seedProgramChannels.filter(
+      (p) =>
+        p.organizer.userId === userId &&
+        (p.status === 'PendingReview' || p.status === 'Published')
+    ).length;
+
+    return HttpResponse.json({
+      data: {
+        eligible: activeOwnedCount < 2,
+        activeChannelsCount: activeOwnedCount,
+        maxAllowed: 2,
+        checks: [
+          {
+            key: 'account_active',
+            label: 'Tài khoản sinh viên đang hoạt động bình thường',
+            passed: true,
+          },
+          {
+            key: 'school_email',
+            label: 'Email trường học (@fpt.edu.vn) đã xác thực',
+            passed: true,
+          },
+          {
+            key: 'profile_complete',
+            label: 'Hồ sơ cá nhân đã điền đầy đủ Họ tên, MSSV, Ngành và Khóa',
+            passed: true,
+          },
+          {
+            key: 'active_limit',
+            label: `Số kênh đang mở hoặc chờ duyệt dưới giới hạn (${activeOwnedCount}/2 kênh)`,
+            passed: activeOwnedCount < 2,
+          },
+        ],
+      },
+    });
+  }),
+
+  http.get('/api/v1/programs/registrations/me', ({ request }) => {
+    const userId = getCurrentUserId(request);
+    const list = seedProgramRegistrations.filter((r) => r.studentId === userId);
+    return HttpResponse.json({ data: list });
+  }),
+
+  http.get('/api/v1/programs', ({ request }) => {
+    const url = new URL(request.url);
+    const type = url.searchParams.get('type');
+    const mode = url.searchParams.get('mode');
+    const cost = url.searchParams.get('cost');
+    const q = url.searchParams.get('q');
+    const mine = url.searchParams.get('mine');
+    const userId = getCurrentUserId(request);
+
+    let list = [...seedProgramChannels];
+
+    if (mine === 'true') {
+      list = list.filter(
+        (p) =>
+          p.organizer.userId === userId ||
+          p.coOrganizers.some((co) => co.userId === userId)
+      );
+    } else {
+      list = list.filter(
+        (p) => p.status === 'Published' || p.status === 'Closed' || p.status === 'Expired'
+      );
+    }
+
+    if (type && type !== 'all') {
+      list = list.filter((p) => p.type === type);
+    }
+    if (mode && mode !== 'all') {
+      list = list.filter((p) => p.mode === mode);
+    }
+    if (cost === 'free') {
+      list = list.filter((p) => p.costInfo === 'Free');
+    }
+    if (q) {
+      const lower = q.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.title.toLowerCase().includes(lower) ||
+          p.summary.toLowerCase().includes(lower) ||
+          p.organizer.fullName.toLowerCase().includes(lower)
+      );
+    }
+
+    return HttpResponse.json({ data: list });
+  }),
+
+  http.get('/api/v1/programs/:id', ({ params, request }) => {
+    const userId = getCurrentUserId(request);
+    const prog = seedProgramChannels.find((p) => p.id === params.id);
+    if (!prog) {
+      return HttpResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'Không tìm thấy kênh chương trình' } },
+        { status: 404 }
+      );
+    }
+
+    const myRegistration = seedProgramRegistrations.find(
+      (r) => r.programId === prog.id && r.studentId === userId && r.status !== 'Withdrawn'
+    );
+    const announcements = seedProgramAnnouncements.filter((a) => a.programId === prog.id);
+    const registrations = seedProgramRegistrations.filter((r) => r.programId === prog.id);
+
+    const coParticipants = registrations
+      .filter(
+        (r) =>
+          r.status === 'Confirmed' &&
+          r.visibleToCoParticipants &&
+          r.studentId !== userId
+      )
+      .map((r) => ({
+        userId: r.studentId,
+        fullName: r.profileSnapshot.fullName,
+        studentCode: r.profileSnapshot.studentCode,
+        major: r.profileSnapshot.major,
+        cohort: r.profileSnapshot.cohort,
+        avatarUrl: r.profileSnapshot.avatarUrl,
+        positionOrSlot: r.slotName,
+      }));
+
+    return HttpResponse.json({
+      data: {
+        ...prog,
+        myRegistration: myRegistration || null,
+        announcements,
+        registrations,
+        coParticipants,
+      },
+    });
+  }),
+
+  http.post('/api/v1/programs', async ({ request }) => {
+    const userId = getCurrentUserId(request);
+    const user = seedUsers.find((u) => u.id === userId) || seedUsers[0];
+    const body = (await request.json()) as Partial<ProgramChannel> & {
+      roleNote?: string;
+    };
+
+    const created: ProgramChannel = {
+      id: `prog_${Date.now()}`,
+      type: body.type || 'Workshop',
+      title: body.title || 'Chương trình mới',
+      summary: body.summary || '',
+      description: body.description || '',
+      coverUrl: body.coverUrl,
+      tags: body.tags || [],
+      organizer: {
+        userId: user.id,
+        fullName: user.fullName,
+        studentCode: user.studentCode || 'HE180001',
+        major: user.major || 'Kỹ thuật phần mềm',
+        cohort: user.cohort || 'K18',
+        avatarUrl: user.avatarUrl,
+        roleNote: body.roleNote || body.organizer?.roleNote || 'Trưởng nhóm tổ chức',
+      },
+      coOrganizers: body.coOrganizers || [],
+      startAt: body.startAt || new Date(Date.now() + 7 * 86400000).toISOString(),
+      endAt: body.endAt || new Date(Date.now() + 7 * 86400000 + 7200000).toISOString(),
+      mode: body.mode || 'Offline',
+      locationOrLink: body.locationOrLink || 'ĐH FPT Hà Nội',
+      gatheringPoint: body.gatheringPoint,
+      beneficiaryAndGoal: body.beneficiaryAndGoal,
+      slots: body.slots,
+      preparationNotes: body.preparationNotes,
+      safetyNotes: body.safetyNotes || 'Tuân thủ nội quy học đường và hướng dẫn an toàn của BTC.',
+      costInfo: body.costInfo || 'Free',
+      speakerInfo: body.speakerInfo,
+      targetAudience: body.targetAudience,
+      prerequisites: body.prerequisites,
+      confirmMode: body.confirmMode || 'Instant',
+      quota: body.quota || 40,
+      confirmedCount: 0,
+      submittedCount: 0,
+      registrationDeadline:
+        body.registrationDeadline || new Date(Date.now() + 5 * 86400000).toISOString(),
+      questions: body.questions || [],
+      status: body.status || 'PendingReview',
+      hasRegistrations: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    seedProgramChannels.unshift(created);
+    return HttpResponse.json({ data: created });
+  }),
+
+  http.put('/api/v1/programs/:id', async ({ params, request }) => {
+    const body = (await request.json()) as Partial<ProgramChannel>;
+    const prog = seedProgramChannels.find((p) => p.id === params.id);
+    if (!prog) {
+      return HttpResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'Không tìm thấy kênh' } },
+        { status: 404 }
+      );
+    }
+    Object.assign(prog, body, { updatedAt: new Date().toISOString() });
+    return HttpResponse.json({ data: prog });
+  }),
+
+  http.put('/api/v1/programs/:id/co-organizers/respond', async ({ params, request }) => {
+    const userId = getCurrentUserId(request);
+    const body = (await request.json()) as { action: 'accept' | 'decline' };
+    const prog = seedProgramChannels.find((p) => p.id === params.id);
+    if (prog) {
+      const co = prog.coOrganizers.find((c) => c.userId === userId);
+      if (co) {
+        co.status = body.action === 'accept' ? 'Accepted' : 'Declined';
+      }
+    }
+    return HttpResponse.json({ data: prog });
+  }),
+
+  http.post('/api/v1/programs/:id/register', async ({ params, request }) => {
+    const userId = getCurrentUserId(request);
+    const user = seedUsers.find((u) => u.id === userId) || seedUsers[0];
+    const prog = seedProgramChannels.find((p) => p.id === params.id);
+    if (!prog) {
+      return HttpResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'Không tìm thấy chương trình' } },
+        { status: 404 }
+      );
+    }
+
+    const body = (await request.json()) as {
+      slotId?: string;
+      answers: { questionId: string; questionLabel: string; value: string | string[] }[];
+      note?: string;
+      acknowledgedTerms: boolean;
+      visibleToCoParticipants: boolean;
+    };
+
+    const slot = prog.slots?.find((s) => s.id === body.slotId);
+    const status: ProgramRegistrationStatus =
+      prog.confirmMode === 'Instant' ? 'Confirmed' : 'Submitted';
+
+    const created: ProgramRegistration = {
+      id: `preg_${Date.now()}`,
+      programId: prog.id,
+      programTitle: prog.title,
+      programType: prog.type,
+      programStartAt: prog.startAt,
+      programMode: prog.mode,
+      programLocationOrLink: prog.locationOrLink,
+      organizerName: prog.organizer.fullName,
+      studentId: user.id,
+      profileSnapshot: {
+        fullName: user.fullName,
+        studentCode: user.studentCode || 'HE180001',
+        email: user.email,
+        major: user.major || 'Kỹ thuật phần mềm',
+        cohort: user.cohort || 'K18',
+        avatarUrl: user.avatarUrl,
+      },
+      slotId: body.slotId,
+      slotName: slot?.name,
+      answers: body.answers || [],
+      note: body.note,
+      acknowledgedTerms: body.acknowledgedTerms,
+      visibleToCoParticipants: body.visibleToCoParticipants ?? true,
+      status,
+      conversationId: 'conv_02',
+      submittedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    seedProgramRegistrations.unshift(created);
+    prog.hasRegistrations = true;
+    prog.submittedCount = (prog.submittedCount || 0) + 1;
+    if (status === 'Confirmed') {
+      prog.confirmedCount += 1;
+      if (slot) slot.confirmedCount += 1;
+    }
+
+    return HttpResponse.json({ data: created });
+  }),
+
+  http.put('/api/v1/programs/registrations/:regId', async ({ params, request }) => {
+    const body = (await request.json()) as {
+      action?: 'withdraw' | 'toggleVisibility';
+      visibleToCoParticipants?: boolean;
+      status?: ProgramRegistrationStatus;
+      feedbackNote?: string;
+    };
+    const reg = seedProgramRegistrations.find((r) => r.id === params.regId);
+    if (!reg) {
+      return HttpResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'Không tìm thấy đăng ký' } },
+        { status: 404 }
+      );
+    }
+
+    const prog = seedProgramChannels.find((p) => p.id === reg.programId);
+
+    if (body.action === 'withdraw') {
+      if (reg.status === 'Confirmed' && prog) {
+        prog.confirmedCount = Math.max(0, prog.confirmedCount - 1);
+      }
+      reg.status = 'Withdrawn';
+      reg.updatedAt = new Date().toISOString();
+    } else if (body.action === 'toggleVisibility') {
+      reg.visibleToCoParticipants = Boolean(body.visibleToCoParticipants);
+    } else if (body.status) {
+      const prev = reg.status;
+      reg.status = body.status;
+      if (body.feedbackNote !== undefined) reg.feedbackNote = body.feedbackNote;
+      reg.updatedAt = new Date().toISOString();
+      if (prog && body.status === 'Confirmed' && prev !== 'Confirmed') {
+        prog.confirmedCount += 1;
+      }
+    }
+
+    return HttpResponse.json({ data: reg });
+  }),
+
+  http.post('/api/v1/programs/:id/announcements', async ({ params, request }) => {
+    const userId = getCurrentUserId(request);
+    const user = seedUsers.find((u) => u.id === userId) || seedUsers[0];
+    const prog = seedProgramChannels.find((p) => p.id === params.id);
+    const body = (await request.json()) as { title: string; body: string };
+
+    const created: ProgramAnnouncement = {
+      id: `pann_${Date.now()}`,
+      programId: params.id as string,
+      authorId: user.id,
+      authorName: user.fullName,
+      title: body.title,
+      body: body.body,
+      createdAt: new Date().toISOString(),
+      recipientCount: prog?.confirmedCount || 15,
+    };
+
+    seedProgramAnnouncements.unshift(created);
+    return HttpResponse.json({ data: created });
+  }),
+
+  // 9. Requests Management (GET /requests — C13)
   http.get('/api/v1/requests', ({ request }) => {
     const url = new URL(request.url);
     const box = url.searchParams.get('box') || 'incoming';
 
-    const items = [
+    const incomingItems = [
+      {
+        id: 'req_club_sup_01',
+        module: 'club_supplement',
+        moduleLabel: 'Đơn CLB cần bổ sung',
+        title: 'Đơn CTV Matsuri Tech 2026 (JS Club) cần bổ sung link bài viết mẫu',
+        fromUser: {
+          id: 'usr_manager_03',
+          fullName: 'JS Club · Trần Minh Cường',
+          avatarUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=150',
+        },
+        createdAt: '2026-09-28T15:30:00Z',
+        status: 'NeedsMoreInfo',
+        linkTo: '/clubs/registrations/resp_01',
+      },
+      {
+        id: 'req_club_rev_01',
+        module: 'club_review',
+        moduleLabel: 'Đơn CLB chờ xét',
+        title: 'Vũ Minh Khôi (K19) gửi đơn đăng ký Tuyển thành viên F-Code Gen 11',
+        fromUser: {
+          id: 'usr_newbie_08',
+          fullName: 'Vũ Minh Khôi',
+          avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150',
+        },
+        createdAt: '2026-09-28T09:15:00Z',
+        status: 'Submitted',
+        linkTo: '/clubs/manage/opp_02',
+      },
+      {
+        id: 'req_prog_rev_01',
+        module: 'program_review',
+        moduleLabel: 'Đăng ký chương trình chờ xét',
+        title: 'Vũ Minh Khôi đăng ký tham dự Workshop Thiết kế Database & SRS SWP391',
+        fromUser: {
+          id: 'usr_newbie_08',
+          fullName: 'Vũ Minh Khôi',
+          avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150',
+        },
+        createdAt: '2026-09-28T11:20:00Z',
+        status: 'Submitted',
+        linkTo: '/programs/manage/prog_02',
+      },
+      {
+        id: 'req_coorg_01',
+        module: 'co_organizer',
+        moduleLabel: 'Lời mời đồng tổ chức',
+        title: 'Đặng Thu Hà mời bạn làm Đồng tổ chức chiến dịch "Tủ Sách Cho Em — Ba Vì"',
+        fromUser: {
+          id: 'usr_organizer_09',
+          fullName: 'Đặng Thu Hà',
+          avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150',
+        },
+        createdAt: '2026-09-28T10:00:00Z',
+        status: 'Pending',
+        linkTo: '/programs?tab=organizing',
+      },
+      {
+        id: 'req_cinv_01',
+        module: 'connection_invite',
+        moduleLabel: 'Lời mời kết nối',
+        title: 'Vũ Minh Khôi (cùng tham gia Seminar RAG) gửi lời mời kết nối',
+        fromUser: {
+          id: 'usr_newbie_08',
+          fullName: 'Vũ Minh Khôi',
+          avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150',
+        },
+        createdAt: '2026-09-28T20:15:00Z',
+        status: 'Pending',
+        linkTo: '/clubs/opportunities/opp_04',
+      },
+      {
+        id: 'req_flw_01',
+        module: 'follow',
+        moduleLabel: 'Yêu cầu theo dõi',
+        title: 'Hoàng Trọng Nghĩa (AI · K18) gửi yêu cầu theo dõi hồ sơ của bạn',
+        fromUser: {
+          id: 'usr_student_07',
+          fullName: 'Hoàng Trọng Nghĩa',
+          avatarUrl: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150',
+        },
+        createdAt: '2026-09-29T07:45:00Z',
+        status: 'Pending',
+        linkTo: '/people?tab=requests',
+      },
       {
         id: 'req_01',
         module: 'swap',
         moduleLabel: 'Đổi lớp',
-        title: 'Lời mời đổi lớp CSD201 (SE1701 ➔ SE1704)',
-        fromUser: { id: 'usr_student_02', fullName: 'Trần Văn Bình', avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150' },
+        title: 'Đề xuất đổi lớp CSD201 (SE1701 sang SE1704)',
+        fromUser: {
+          id: 'usr_mentor_02',
+          fullName: 'Lê Thị Bình',
+          avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
+        },
         createdAt: '2026-09-25T14:30:00Z',
         status: 'Pending',
         linkTo: '/swap/connections',
@@ -237,31 +1116,15 @@ export const newModulesHandlers = [
         id: 'req_02',
         module: 'group',
         moduleLabel: 'Nhóm kết nối',
-        title: 'Yêu cầu gia nhập nhóm SWP391_G04',
-        fromUser: { id: 'usr_student_06', fullName: 'Lê Hoàng Minh', avatarUrl: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150' },
+        title: 'Yêu cầu gia nhập nhóm đồ án SWP391_G04',
+        fromUser: {
+          id: 'usr_student_07',
+          fullName: 'Hoàng Trọng Nghĩa',
+          avatarUrl: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150',
+        },
         createdAt: '2026-09-25T10:15:00Z',
         status: 'Pending',
         linkTo: '/groups/grp_01/manage',
-      },
-      {
-        id: 'req_03',
-        module: 'mentoring',
-        moduleLabel: 'Mentoring',
-        title: 'Đề nghị hỗ trợ môn CSD201: Cấu trúc dữ liệu cây AVL',
-        fromUser: { id: 'usr_student_07', fullName: 'Phạm Thu Hương', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150' },
-        createdAt: '2026-09-24T18:00:00Z',
-        status: 'PENDING_MENTOR_RESPONSE',
-        linkTo: '/mentor/requests',
-      },
-      {
-        id: 'req_04',
-        module: 'chat',
-        moduleLabel: 'Lời mời trò chuyện',
-        title: 'Nguyễn Văn Minh muốn kết nối nhắn tin trực tiếp',
-        fromUser: { id: 'usr_student_08', fullName: 'Nguyễn Văn Minh' },
-        createdAt: '2026-09-26T08:00:00Z',
-        status: 'pending',
-        linkTo: '/chats',
       },
     ];
 
@@ -271,18 +1134,28 @@ export const newModulesHandlers = [
           {
             id: 'req_out_01',
             module: 'club',
-            moduleLabel: 'Đơn ứng tuyển CLB',
-            title: 'Đơn ứng tuyển Ban Chuyên môn - CLB F-Code Gen 10',
-            to: 'F-Code Club',
-            createdAt: '2026-09-23T10:00:00Z',
-            status: 'Submitted',
-            linkTo: '/applications',
+            moduleLabel: 'Đăng ký cơ hội CLB',
+            title: 'Tuyển CTV Ngày hội Văn hóa & Công nghệ Việt - Nhật (Matsuri Tech 2026)',
+            to: 'JS Club',
+            createdAt: '2026-09-24T10:00:00Z',
+            status: 'NeedsMoreInfo',
+            linkTo: '/clubs/registrations/resp_01',
           },
           {
             id: 'req_out_02',
+            module: 'program',
+            moduleLabel: 'Kênh chương trình',
+            title: 'Chia sẻ kinh nghiệm Ôn thi & Thực tập OJT tại doanh nghiệp Nhật Bản',
+            to: 'Ban Quản trị SCS',
+            createdAt: '2026-09-28T16:00:00Z',
+            status: 'PendingReview',
+            linkTo: '/programs/prog_04',
+          },
+          {
+            id: 'req_out_03',
             module: 'mentor_apply',
             moduleLabel: 'Hồ sơ Mentor',
-            title: 'Hồ sơ đăng ký trở thành Mentor SCS',
+            title: 'Hồ sơ đăng ký trở thành Mentor SCS học kỳ Fall 2026',
             to: 'Ban Quản trị SCS',
             createdAt: '2026-09-20T10:00:00Z',
             status: 'NeedsMoreInfo',
@@ -297,9 +1170,27 @@ export const newModulesHandlers = [
         data: [
           {
             id: 'req_hist_01',
+            module: 'program',
+            moduleLabel: 'Tình nguyện',
+            title: 'Đã xác nhận tham gia Chiến dịch Chủ Nhật Xanh: Thu gom pin cũ',
+            createdAt: '2026-09-24T09:00:00Z',
+            status: 'Confirmed',
+            linkTo: '/programs/prog_01',
+          },
+          {
+            id: 'req_hist_02',
+            module: 'club',
+            moduleLabel: 'Sự kiện CLB',
+            title: 'Đã xác nhận tham gia Seminar: Xây dựng hệ thống RAG tiếng Việt',
+            createdAt: '2026-09-25T14:20:00Z',
+            status: 'Confirmed',
+            linkTo: '/clubs/registrations/resp_02',
+          },
+          {
+            id: 'req_hist_03',
             module: 'swap',
             moduleLabel: 'Đổi lớp',
-            title: 'Đã kết nối đổi lớp PRJ301 với Lê Nam',
+            title: 'Đã hoàn tất đổi lớp PRJ301',
             createdAt: '2026-09-18T10:00:00Z',
             status: 'Confirmed',
             linkTo: '/swap/connections',
@@ -308,10 +1199,10 @@ export const newModulesHandlers = [
       });
     }
 
-    return HttpResponse.json({ data: items });
+    return HttpResponse.json({ data: incomingItems });
   }),
 
-  // 7. Student Mentor Application (GET /mentor/applications/me, PUT, POST)
+  // 10. Student Mentor Application (GET /mentor/applications/me, PUT, POST)
   http.get('/api/v1/mentor/applications/me', () => {
     let app = mentorApplications.find((a) => a.userId === 'usr_student_01');
     if (!app) {
@@ -322,7 +1213,7 @@ export const newModulesHandlers = [
         personal: {
           avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
           currentRole: 'student',
-          yearOrGraduation: 'Năm 3 (K17)',
+          yearOrGraduation: 'Năm 3 (K18)',
         },
         education: {
           major: 'Kỹ thuật phần mềm',
@@ -377,7 +1268,10 @@ export const newModulesHandlers = [
       });
       return HttpResponse.json({ data: mentorApplications[idx] });
     }
-    return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Chưa có hồ sơ' } }, { status: 404 });
+    return HttpResponse.json(
+      { error: { code: 'NOT_FOUND', message: 'Chưa có hồ sơ' } },
+      { status: 404 }
+    );
   }),
 
   http.post('/api/v1/mentor/applications/me/withdraw', () => {
@@ -386,10 +1280,13 @@ export const newModulesHandlers = [
       mentorApplications[idx].status = 'Withdrawn';
       return HttpResponse.json({ data: mentorApplications[idx] });
     }
-    return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Không tìm thấy hồ sơ' } }, { status: 404 });
+    return HttpResponse.json(
+      { error: { code: 'NOT_FOUND', message: 'Không tìm thấy hồ sơ' } },
+      { status: 404 }
+    );
   }),
 
-  // 8. Admin Mentor Applications Review (GET /admin/mentor-applications, POST approve/request-info/reject)
+  // 11. Admin Mentor Applications Review
   http.get('/api/v1/admin/mentor-applications', ({ request }) => {
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
@@ -427,7 +1324,10 @@ export const newModulesHandlers = [
       });
       return HttpResponse.json({ data: mentorApplications[idx] });
     }
-    return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Không tìm thấy hồ sơ' } }, { status: 404 });
+    return HttpResponse.json(
+      { error: { code: 'NOT_FOUND', message: 'Không tìm thấy hồ sơ' } },
+      { status: 404 }
+    );
   }),
 
   http.post('/api/v1/admin/mentor-applications/:id/request-info', async ({ params, request }) => {
@@ -445,7 +1345,10 @@ export const newModulesHandlers = [
       });
       return HttpResponse.json({ data: mentorApplications[idx] });
     }
-    return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Không tìm thấy hồ sơ' } }, { status: 404 });
+    return HttpResponse.json(
+      { error: { code: 'NOT_FOUND', message: 'Không tìm thấy hồ sơ' } },
+      { status: 404 }
+    );
   }),
 
   http.post('/api/v1/admin/mentor-applications/:id/reject', async ({ params, request }) => {
@@ -463,6 +1366,9 @@ export const newModulesHandlers = [
       });
       return HttpResponse.json({ data: mentorApplications[idx] });
     }
-    return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Không tìm thấy hồ sơ' } }, { status: 404 });
+    return HttpResponse.json(
+      { error: { code: 'NOT_FOUND', message: 'Không tìm thấy hồ sơ' } },
+      { status: 404 }
+    );
   }),
 ];

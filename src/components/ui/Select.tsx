@@ -9,7 +9,7 @@ export interface SelectOption {
 }
 
 export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
-  options: SelectOption[];
+  options?: SelectOption[];
   value?: string;
   onValueChange?: (value: string) => void;
   placeholder?: string;
@@ -17,7 +17,21 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
 }
 
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, options, value, onValueChange, onChange, placeholder, error, disabled, ...props }, ref) => {
+  (
+    {
+      className,
+      options,
+      value,
+      onValueChange,
+      onChange,
+      placeholder,
+      error,
+      disabled,
+      children,
+      ...props
+    },
+    ref
+  ) => {
     const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
       onValueChange?.(e.target.value);
       onChange?.(e);
@@ -32,7 +46,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           disabled={disabled}
           aria-invalid={error}
           className={cn(
-            'flex h-10 w-full appearance-none rounded-md border border-neutral-300 bg-white px-3 py-2 pr-8 text-sm text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:opacity-75 transition-colors cursor-pointer',
+            'flex h-10 w-full appearance-none rounded-md border border-neutral-300 bg-white px-3 py-2 pr-8 text-sm text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:border-brand-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:opacity-75 transition-colors cursor-pointer',
             !value && placeholder && 'text-neutral-400',
             error && 'border-[#dc3c33] focus-visible:ring-[#dc3c33]/30 focus-visible:border-[#dc3c33]',
             className
@@ -44,13 +58,23 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
               {placeholder}
             </option>
           )}
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value} disabled={opt.disabled} className="text-neutral-900">
-              {opt.label}
-            </option>
-          ))}
+          {options
+            ? options.map((opt) => (
+                <option
+                  key={opt.value}
+                  value={opt.value}
+                  disabled={opt.disabled}
+                  className="text-neutral-900"
+                >
+                  {opt.label}
+                </option>
+              ))
+            : children}
         </select>
-        <ChevronDown className="pointer-events-none absolute right-2.5 top-3 text-neutral-400" size={16} />
+        <ChevronDown
+          className="pointer-events-none absolute right-2.5 top-3 text-neutral-400"
+          size={16}
+        />
       </div>
     );
   }

@@ -1,7 +1,13 @@
+// ============================================================================
+// SCS Status Enums & State Unions (Single Source of Truth — 29/09/2026 Plan)
+// ============================================================================
+
 export type Role =
   | 'student'
   | 'mentor'
   | 'club_manager'
+  | 'club_rep'
+  | 'organizer'
   | 'treasurer'
   | 'system_admin'
   | 'school_admin'
@@ -14,12 +20,25 @@ export type Role =
   | 'SchoolAdmin'
   | 'Admin';
 
-export type UserAccountStatus = 'active' | 'locked' | 'unverified' | 'Active' | 'Locked' | 'Unverified';
+export type UserRole = Role;
 
-export type SwapRequestStatus = 'Open' | 'Connected' | 'Cancelled' | 'open' | 'connected' | 'cancelled';
+export type UserAccountStatus =
+  | 'active'
+  | 'locked'
+  | 'unverified'
+  | 'Active'
+  | 'Locked'
+  | 'Unverified'
+  | 'PendingActivation'
+  | 'Suspended'
+  | 'Banned';
+
+export type AccountStatus = UserAccountStatus;
+
+export type SwapRequestStatus = 'Open' | 'Connected' | 'Cancelled' | 'open' | 'connected' | 'cancelled' | 'Draft' | 'Matched' | 'PendingConfirmation' | 'Completed' | 'Expired';
 export type SwapConnectionStatus = 'Pending' | 'Confirmed' | 'Rejected' | 'Cancelled' | 'pending' | 'confirmed' | 'rejected' | 'cancelled';
 
-export type PostType = 'discussion' | 'question' | 'document' | 'experience';
+export type PostType = 'discussion' | 'question' | 'document' | 'experience' | 'Question' | 'Note' | 'Experience' | 'Resource';
 export type PostCategory =
   | 'knowledge'
   | 'study_experience'
@@ -31,11 +50,26 @@ export type PostCategory =
   | 'project'
   | 'qa'
   | 'mentor_senior';
-export type PostStatus = 'Published' | 'PendingReview' | 'Rejected' | 'Closed' | 'published' | 'pending_review' | 'rejected' | 'closed';
+
+export type PostStatus =
+  | 'Draft'
+  | 'Published'
+  | 'PendingReview'
+  | 'TemporarilyHidden'
+  | 'Hidden'
+  | 'Flagged'
+  | 'Rejected'
+  | 'Closed'
+  | 'Deleted'
+  | 'published'
+  | 'pending_review'
+  | 'rejected'
+  | 'closed';
 
 export type JoinMode = 'direct' | 'approval';
-export type JoinRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'pending' | 'approved' | 'rejected';
+export type JoinRequestStatus = 'Pending' | 'Approved' | 'Accepted' | 'Rejected' | 'Cancelled' | 'pending' | 'approved' | 'rejected';
 
+// Legacy aliases kept for type compatibility
 export type ClubApprovalStatus = 'PendingApproval' | 'Approved' | 'Rejected' | 'pending_approval' | 'approved' | 'rejected';
 export type RecruitmentStatus = 'Draft' | 'Published' | 'Closed' | 'draft' | 'published' | 'closed';
 export type ApplicationStatus = 'Submitted' | 'NeedsSupplement' | 'Screening' | 'Interview' | 'Accepted' | 'Rejected' | 'submitted' | 'needs_supplement' | 'screening' | 'interview' | 'accepted' | 'rejected';
@@ -46,6 +80,58 @@ export type TaskStatus = 'Todo' | 'InProgress' | 'Done' | 'todo' | 'in_progress'
 export type TxType = 'Income' | 'Expense' | 'income' | 'expense';
 export type ExpenseStatus = 'PendingApproval' | 'Approved' | 'Rejected' | 'pending_approval' | 'approved' | 'rejected';
 
+// FE-04 — Club Connection (29/09/2026)
+export type ClubStatus = 'Active' | 'Hidden';
+export type RepresentativeRequestStatus = 'Pending' | 'Verified' | 'Rejected';
+export type OpportunityType = 'Event' | 'MemberRecruitment' | 'CollaboratorRecruitment';
+export type OpportunityStatus = 'Draft' | 'Published' | 'Closed' | 'Expired' | 'Cancelled';
+export type OpportunityResponseStatus =
+  | 'Draft'
+  | 'Submitted'
+  | 'UnderReview'
+  | 'NeedsMoreInfo'
+  | 'Confirmed'
+  | 'Accepted'
+  | 'Rejected'
+  | 'Withdrawn'
+  | 'Expired'
+  | 'Cancelled';
+export type ConnectionInviteStatus = 'Pending' | 'Accepted' | 'Declined' | 'Withdrawn' | 'Cancelled';
+
+// FE-06 — Community Program Registration (29/09/2026)
+export type ProgramType = 'Volunteer' | 'Workshop';
+export type ProgramChannelStatus =
+  | 'Draft'
+  | 'PendingReview'
+  | 'Rejected'
+  | 'Published'
+  | 'Closed'
+  | 'Expired'
+  | 'Cancelled';
+export type ProgramRegistrationStatus =
+  | 'Submitted'
+  | 'Confirmed'
+  | 'Rejected'
+  | 'Withdrawn'
+  | 'Expired'
+  | 'Cancelled';
+export type CoOrganizerStatus = 'Pending' | 'Accepted' | 'Declined' | 'Removed';
+
+// Social & Moderation (29/09/2026)
+export type FollowStatus = 'Pending' | 'Active' | 'Declined' | 'Withdrawn' | 'Cancelled' | 'Ended';
+export type ProfileVisibility = 'members' | 'followers' | 'private';
+export type ReportStatus = 'Open' | 'UnderReview' | 'Resolved' | 'Rejected';
+export type ReportTargetType =
+  | 'post'
+  | 'comment'
+  | 'user'
+  | 'opportunity'
+  | 'program'
+  | 'group'
+  | 'mentor_post'
+  | 'announcement'
+  | 'message';
+
 export type MentorApplicationStatus =
   | 'Draft'
   | 'Submitted'
@@ -55,7 +141,20 @@ export type MentorApplicationStatus =
   | 'Rejected'
   | 'Withdrawn';
 
-export type MentoringRequestStatus = 'PENDING_MENTOR_RESPONSE' | 'ACCEPTED' | 'REJECTED' | 'pending' | 'accepted' | 'rejected';
+export type MentoringRequestStatus =
+  | 'PENDING_MENTOR_RESPONSE'
+  | 'ACCEPTED'
+  | 'REJECTED'
+  | 'pending'
+  | 'accepted'
+  | 'rejected'
+  | 'Pending'
+  | 'Accepted'
+  | 'Declined'
+  | 'Cancelled'
+  | 'InProgress'
+  | 'Completed';
+
 export type SupportMode = 'online' | 'offline' | 'chat' | 'Online' | 'Offline' | 'Chat';
 
 export type NotificationSource =
@@ -65,6 +164,8 @@ export type NotificationSource =
   | 'ClubEvent'
   | 'ClubRole'
   | 'ClubFinance'
+  | 'ClubOpportunity'
+  | 'Program'
   | 'Mentoring'
   | 'Moderation'
   | 'ThreadReply'
@@ -79,9 +180,11 @@ export type NotificationSource =
   | 'club_role'
   | 'club_finance'
   | 'mentoring'
-  | 'moderation';
+  | 'moderation'
+  | 'program'
+  | 'follow';
 
 export type SemanticTier = 'neutral' | 'pending' | 'attention' | 'success' | 'danger' | 'brand';
+export type StatusTier = SemanticTier;
 
 export type FontSizeScale = 'sm' | 'md' | 'lg' | 'xl';
-

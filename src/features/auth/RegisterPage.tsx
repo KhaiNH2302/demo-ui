@@ -3,68 +3,57 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/Card';
+import { Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { FormField } from '@/components/shared/FormField';
+import { AuthAside } from './AuthAside';
+import { GoogleLogoSvg } from './LoginPage';
 import { apiClient, type ApiError } from '@/lib/apiClient';
+import { useAuthStore } from '@/store/authStore';
+import { seedUsers } from '@/mocks/data/users';
+import { seedClubMemberships } from '@/mocks/data/clubs';
+import type { User } from '@/types/entities';
 
-const schoolOptions = [
-  { value: 'Đại học FPT Hà Nội', label: 'Đại học FPT Hà Nội' },
-  { value: 'Đại học FPT TP.HCM', label: 'Đại học FPT TP.HCM' },
-  { value: 'Đại học FPT Đà Nẵng', label: 'Đại học FPT Đà Nẵng' },
-  { value: 'Đại học FPT Quy Nhơn', label: 'Đại học FPT Quy Nhơn' },
-  { value: 'Đại học FPT Cần Thơ', label: 'Đại học FPT Cần Thơ' },
-];
-
-const registerSchema = z
-  .object({
-    fullName: z.string().min(2, 'Họ tên phải từ 2 ký tự trở lên'),
-    email: z.string().email('Email không đúng định dạng').refine((e) => e.endsWith('.edu.vn') || e.includes('@fpt'), {
-      message: 'Vui lòng sử dụng email sinh viên trường (.edu.vn)',
-    }),
-    studentCode: z.string().min(6, 'MSSV không hợp lệ (vd: HE160001)'),
-    school: z.string().min(1, 'Vui lòng chọn trường học'),
-    password: z.string().min(6, 'Mật khẩu phải từ 6 ký tự trở lên'),
-    confirmPassword: z.string().min(6, 'Vui lòng xác nhận mật khẩu'),
-    agreeTerms: z.boolean().refine((val) => val === true, {
-      message: 'Bạn cần đồng ý với điều khoản sử dụng',
-    }),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Mật khẩu xác nhận không khớp',
-    path: ['confirmPassword'],
-  });
+/**
+ * C2 — Đăng ký tài khoản (01-common-screens.md § C2 & SCS_UI_Plan.md § 18.1):
+ * Form ngắn chỉ gồm Họ tên, Email (mọi domain), Mật khẩu (tối thiểu 8 ký tự, có nút hiện/ẩn),
+ * Checkbox Điều khoản & Quyền riêng tư.
+ * MSSV, Trường, Chuyên ngành, Khóa chuyển sang Onboarding (C4) / Hồ sơ cá nhân (C7).
+ */
+const registerSchema = z.object({
+  fullName: z.string().min(2, 'Họ tên phải từ 2 ký tự trở lên'),
+  email: z.string().email('Email không đúng định dạng'),
+  password: z.string().min(8, 'Mật khẩu phải từ 8 ký tự trở lên'),
+  agreeTerms: z.boolean().refine((val) => val === true, {
+    message: 'Bạn cần đồng ý với điều khoản sử dụng và chính sách quyền riêng tư',
+  }),
+});
 
 type RegisterInput = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
 
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
     formState: { errors },
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       fullName: '',
       email: '',
-      studentCode: '',
-      school: 'Đại học FPT Hà Nội',
       password: '',
-      confirmPassword: '',
       agreeTerms: false,
     },
   });
-
-  const selectedSchool = watch('school');
 
   const onSubmit = async (data: RegisterInput) => {
     setLoading(true);
@@ -80,14 +69,61 @@ export default function RegisterPage() {
     }
   };
 
-  return (
-    <Card className="shadow-md">
-      <CardHeader className="text-center pb-2">
-        <CardTitle className="text-xl">Tạo tài khoản mới</CardTitle>
-        <CardDescription>Tham gia cộng đồng kết nối sinh viên SCS</CardDescription>
-      </CardHeader>
+  const handleGoogleOAuth = async () => {
+    setLoadingGoogle(true);
+    setErrorMessage(null);
+    try {
+      const response = (await apiClient.post('/auth/google/mock', {})) as {
+        user: User;
+        accessToken?: string;
+        token?: string;
+        memberships?: unknown[];
+      };
+      login(
+        response.user,
+        response.accessToken || response.token || 'mock_google_jwt',
+        response.memberships as never,
+      );
+      navigate('/', { replace: true });
+    } catch {
+      const fallback = seedUsers[0];
+      const { password: _, ...safeUser } = fallback;
+      const memberships = seedClubMemberships.filter((m) => m.userId === fallback.id);
+      login(safeUser, `mock_jwt_token_${fallback.id}`, memberships);
+      navigate('/', { replace: true });
+    } finally {
+      setLoadingGoogle(false);
+    }
+  };
 
-      <CardContent>
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 max-w-4xl mx-auto rounded-lg border border-neutral-200 bg-white overflow-hidden">
+      {/* Cột trái: Form đăng ký ngắn gọn (C2) */}
+      <div className="lg:col-span-7 p-6 sm:p-8 space-y-5">
+        <div>
+          <h1 className="text-xl font-bold text-neutral-900">Tạo tài khoản</h1>
+          <p className="text-xs text-neutral-500 mt-1">
+            Đăng ký nhanh bằng Google hoặc email bất kỳ
+          </p>
+        </div>
+
+        <Button
+          type="button"
+          variant="secondary"
+          loading={loadingGoogle}
+          onClick={handleGoogleOAuth}
+          leftIcon={<GoogleLogoSvg />}
+          className="w-full h-10 font-medium text-neutral-800 border-neutral-200 hover:bg-neutral-50"
+        >
+          Tiếp tục với Google
+        </Button>
+
+        <div className="relative flex items-center justify-center">
+          <div className="border-t border-neutral-200 w-full" />
+          <span className="bg-white px-3 text-xs text-neutral-400">hoặc</span>
+          <div className="border-t border-neutral-200 w-full" />
+        </div>
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {errorMessage && (
             <Alert tier="danger" onClose={() => setErrorMessage(null)}>
@@ -95,60 +131,87 @@ export default function RegisterPage() {
             </Alert>
           )}
 
-          <FormField label="Họ và tên" required error={errors.fullName?.message}>
-            <Input placeholder="vd: Nguyễn Văn An" {...register('fullName')} error={!!errors.fullName} />
+          <FormField label="Họ tên" required error={errors.fullName?.message}>
+            <Input
+              placeholder="vd: Nguyễn Văn An"
+              {...register('fullName')}
+              error={!!errors.fullName}
+            />
           </FormField>
 
-          <FormField label="Email trường (.edu.vn)" required error={errors.email?.message}>
-            <Input type="email" placeholder="vd: annvhe160001@fpt.edu.vn" {...register('email')} error={!!errors.email} />
+          <FormField label="Email" required error={errors.email?.message}>
+            <Input
+              type="email"
+              placeholder="ban@example.com"
+              {...register('email')}
+              error={!!errors.email}
+            />
           </FormField>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <FormField label="Mã số sinh viên (MSSV)" required error={errors.studentCode?.message}>
-              <Input placeholder="vd: HE160001" {...register('studentCode')} error={!!errors.studentCode} />
-            </FormField>
-
-            <FormField label="Trường" required error={errors.school?.message}>
-              <Select
-                options={schoolOptions}
-                value={selectedSchool}
-                onValueChange={(val) => setValue('school', val)}
-                error={!!errors.school}
+          <FormField
+            label="Mật khẩu (tối thiểu 8 ký tự)"
+            required
+            error={errors.password?.message}
+          >
+            <div className="relative">
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                {...register('password')}
+                error={!!errors.password}
+                className="pr-10"
               />
-            </FormField>
-          </div>
-
-          <FormField label="Mật khẩu" required error={errors.password?.message}>
-            <Input type="password" placeholder="••••••••" {...register('password')} error={!!errors.password} />
-          </FormField>
-
-          <FormField label="Xác nhận mật khẩu" required error={errors.confirmPassword?.message}>
-            <Input type="password" placeholder="••••••••" {...register('confirmPassword')} error={!!errors.confirmPassword} />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </FormField>
 
           <div className="pt-1">
             <label className="flex items-start gap-2 cursor-pointer text-xs text-neutral-600">
-              <input type="checkbox" className="rounded border-neutral-300 text-brand-500 mt-0.5" {...register('agreeTerms')} />
+              <input
+                type="checkbox"
+                className="rounded border-neutral-300 text-brand-600 mt-0.5"
+                {...register('agreeTerms')}
+              />
               <span>
-                Tôi đồng ý với <span className="text-brand-600 underline">Điều khoản dịch vụ</span> và{' '}
-                <span className="text-brand-600 underline">Chính sách bảo mật</span> của SCS.
+                Tôi đồng ý với{' '}
+                <Link to="/terms" target="_blank" className="text-brand-600 underline">
+                  Điều khoản
+                </Link>{' '}
+                &amp;{' '}
+                <Link to="/privacy" target="_blank" className="text-brand-600 underline">
+                  Quyền riêng tư
+                </Link>
               </span>
             </label>
-            {errors.agreeTerms && <p className="text-[11px] text-[#b3261e] mt-1">{errors.agreeTerms.message}</p>}
+            {errors.agreeTerms && (
+              <p className="text-[11px] text-tier-danger-dot mt-1">
+                {errors.agreeTerms.message}
+              </p>
+            )}
           </div>
 
-          <Button type="submit" loading={loading} className="w-full mt-2">
-            Đăng ký tài khoản
+          <Button type="submit" loading={loading} className="w-full">
+            Tạo tài khoản
           </Button>
-        </form>
-      </CardContent>
 
-      <CardFooter className="justify-center border-t border-neutral-100 py-4 text-xs text-neutral-500">
-        Đã có tài khoản?{' '}
-        <Link to="/login" className="text-brand-600 font-semibold ml-1 hover:underline">
-          Đăng nhập
-        </Link>
-      </CardFooter>
-    </Card>
+          <div className="text-center text-xs text-neutral-500 pt-1">
+            Đã có tài khoản?{' '}
+            <Link to="/login" className="text-brand-600 font-semibold hover:underline">
+              Đăng nhập
+            </Link>
+          </div>
+        </form>
+      </div>
+
+      {/* Cột phải: AuthAside (C2) */}
+      <AuthAside variant="register" />
+    </div>
   );
 }

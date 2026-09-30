@@ -8,8 +8,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Switch } from '@/components/ui/Switch';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { toast } from '@/components/ui/Toast';
-import { Settings, Sparkles, Bell, Sliders, Save } from 'lucide-react';
+import { Sparkles, Bell, Sliders, Save } from 'lucide-react';
 import type { SystemSettings } from '@/types/entities';
 
 interface LocalSettings {
@@ -24,12 +26,18 @@ interface LocalSettings {
   };
   privacyDefault: string;
   moderationThreshold: number;
+  autoHideReportThreshold: number;
+  maxActiveProgramChannelsPerStudent: number;
 }
 
 export const SystemSettingsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const isSystemAdmin = user?.roles.includes('SystemAdmin') || user?.roles.includes('SchoolAdmin');
+  const isSystemAdmin =
+    user?.roles.includes('system_admin') ||
+    user?.roles.includes('school_admin') ||
+    user?.roles.includes('SystemAdmin') ||
+    user?.roles.includes('SchoolAdmin');
 
   const settingsQuery = useQuery({
     queryKey: ['admin', 'settings'],
@@ -46,8 +54,10 @@ export const SystemSettingsPage: React.FC = () => {
       emailDigest: true,
       realtimePush: true,
     },
-    privacyDefault: 'public',
+    privacyDefault: 'members',
     moderationThreshold: 0.85,
+    autoHideReportThreshold: 5,
+    maxActiveProgramChannelsPerStudent: 2,
   });
 
   const [isInitialized, setIsInitialized] = useState(false);
@@ -78,7 +88,7 @@ export const SystemSettingsPage: React.FC = () => {
     <div className="space-y-6 max-w-4xl mx-auto">
       <PageHeader
         title="Cấu hình hệ thống"
-        description="Quản lý cài đặt mô-đun AI, luồng thông báo và các tham số kiểm duyệt toàn trường"
+        description="Quản lý cài đặt mô-đun AI, luồng thông báo, ngưỡng tự động tạm ẩn báo cáo và giới hạn mở kênh chương trình"
         breadcrumbs={[
           { label: 'Admin Portal', href: '/admin' },
           { label: 'Cấu hình hệ thống' },
@@ -86,32 +96,122 @@ export const SystemSettingsPage: React.FC = () => {
       />
 
       <QueryBoundary queries={[settingsQuery]}>
-        <Tabs defaultValue="ai" className="w-full">
+        <Tabs defaultValue="moderation" className="w-full">
           <TabsList className="grid grid-cols-3 w-full max-w-md">
+            <TabsTrigger value="moderation" className="flex items-center gap-1.5">
+              <Sliders className="w-3.5 h-3.5" /> Kiểm duyệt & Kênh
+            </TabsTrigger>
             <TabsTrigger value="ai" className="flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" /> Mô-đun AI
             </TabsTrigger>
             <TabsTrigger value="notifications" className="flex items-center gap-1.5">
               <Bell className="w-3.5 h-3.5" /> Thông báo
             </TabsTrigger>
-            <TabsTrigger value="moderation" className="flex items-center gap-1.5">
-              <Sliders className="w-3.5 h-3.5" /> Kiểm duyệt
-            </TabsTrigger>
           </TabsList>
 
-          {/* TAB 1: AI MODULES */}
+          {/* TAB 1: MODERATION & CHANNEL LIMITS */}
+          <TabsContent value="moderation" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-brand-600" /> Ngưỡng kiểm duyệt & Giới hạn mở kênh
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-neutral-800 block">
+                      Ngưỡng tự động tạm ẩn khi bị báo cáo (Auto-hide)
+                    </label>
+                    <Input
+                      type="number"
+                      min={2}
+                      max={20}
+                      value={settings.autoHideReportThreshold}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          autoHideReportThreshold: Number(e.target.value) || 5,
+                        })
+                      }
+                      disabled={!isSystemAdmin}
+                    />
+                    <p className="text-xs text-neutral-500">
+                      Nội dung nhận đủ số lượt báo cáo này sẽ chuyển sang trạng thái{' '}
+                      <code>TemporarilyHidden</code> chờ quản trị viên xét duyệt.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-neutral-800 block">
+                      Giới hạn số kênh Tình nguyện & Workshop mở đồng thời / sinh viên
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={settings.maxActiveProgramChannelsPerStudent}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          maxActiveProgramChannelsPerStudent: Number(e.target.value) || 2,
+                        })
+                      }
+                      disabled={!isSystemAdmin}
+                    />
+                    <p className="text-xs text-neutral-500">
+                      Số kênh tối đa ở trạng thái Chờ duyệt hoặc Đang mở mà một sinh viên được phép đứng tên cùng lúc.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 max-w-md pt-2 border-t border-neutral-100">
+                  <label className="text-xs font-semibold text-neutral-800 block">
+                    Quyền hiển thị hồ sơ mặc định cho tài khoản mới
+                  </label>
+                  <Select
+                    value={settings.privacyDefault}
+                    onChange={(e) =>
+                      setSettings({ ...settings, privacyDefault: e.target.value })
+                    }
+                    options={[
+                      { value: 'members', label: 'Mọi thành viên đăng nhập (members)' },
+                      { value: 'followers', label: 'Chỉ người theo dõi đã chấp nhận (followers)' },
+                      { value: 'private', label: 'Riêng tư (private)' },
+                    ]}
+                  />
+                </div>
+              </CardContent>
+              {isSystemAdmin && (
+                <CardFooter className="border-t border-neutral-100 pt-4 flex justify-end">
+                  <Button
+                    onClick={() => updateSettingsMutation.mutate(settings)}
+                    loading={updateSettingsMutation.isPending}
+                  >
+                    <Save className="w-4 h-4 mr-1.5" /> Lưu thay đổi
+                  </Button>
+                </CardFooter>
+              )}
+            </Card>
+          </TabsContent>
+
+          {/* TAB 2: AI MODULES */}
           <TabsContent value="ai" className="mt-6">
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-primary" /> Bật / Tắt dịch vụ AI theo phân hệ
+                  <Sparkles className="w-4 h-4 text-brand-600" /> Bật / Tắt dịch vụ AI theo phân hệ
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-[var(--surface-muted)] rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-200">
                   <div>
-                    <div className="font-semibold text-sm">Gợi ý hoán đổi lịch học (Swap AI Match)</div>
-                    <span className="text-xs text-[var(--text-muted)]">Tự động tìm kiếm và so sánh lịch rảnh lớp học phần</span>
+                    <div className="font-semibold text-sm text-neutral-900">
+                      Gợi ý hoán đổi lịch học (Swap AI Match)
+                    </div>
+                    <span className="text-xs text-neutral-500">
+                      Tự động tìm kiếm và so sánh lịch rảnh lớp học phần
+                    </span>
                   </div>
                   <Switch
                     checked={settings.aiFeatures.swapMatching}
@@ -125,10 +225,14 @@ export const SystemSettingsPage: React.FC = () => {
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-3 bg-[var(--surface-muted)] rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-200">
                   <div>
-                    <div className="font-semibold text-sm">Gợi ý thành viên & nhóm kết nối (Group AI Match)</div>
-                    <span className="text-xs text-[var(--text-muted)]">Phân tích kỹ năng, đề tài và lịch rảnh biểu đồ</span>
+                    <div className="font-semibold text-sm text-neutral-900">
+                      Gợi ý thành viên & nhóm kết nối (Group AI Match)
+                    </div>
+                    <span className="text-xs text-neutral-500">
+                      Phân tích kỹ năng, đề tài và lịch rảnh
+                    </span>
                   </div>
                   <Switch
                     checked={settings.aiFeatures.groupMatching}
@@ -142,10 +246,14 @@ export const SystemSettingsPage: React.FC = () => {
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-3 bg-[var(--surface-muted)] rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-200">
                   <div>
-                    <div className="font-semibold text-sm">Kết nối Mentor thông minh (Mentoring AI Match)</div>
-                    <span className="text-xs text-[var(--text-muted)]">Đối chiếu nhu cầu học tập với năng lực và lịch rảnh của Mentor</span>
+                    <div className="font-semibold text-sm text-neutral-900">
+                      Kết nối Mentor thông minh (Mentoring AI Match)
+                    </div>
+                    <span className="text-xs text-neutral-500">
+                      Đối chiếu nhu cầu học tập với năng lực của Mentor
+                    </span>
                   </div>
                   <Switch
                     checked={settings.aiFeatures.mentoringMatching}
@@ -160,7 +268,7 @@ export const SystemSettingsPage: React.FC = () => {
                 </div>
               </CardContent>
               {isSystemAdmin && (
-                <CardFooter className="border-t border-[var(--border-subtle)] pt-4 flex justify-end">
+                <CardFooter className="border-t border-neutral-100 pt-4 flex justify-end">
                   <Button
                     onClick={() => updateSettingsMutation.mutate(settings)}
                     loading={updateSettingsMutation.isPending}
@@ -172,19 +280,23 @@ export const SystemSettingsPage: React.FC = () => {
             </Card>
           </TabsContent>
 
-          {/* TAB 2: NOTIFICATIONS */}
+          {/* TAB 3: NOTIFICATIONS */}
           <TabsContent value="notifications" className="mt-6">
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-primary" /> Kênh phát thông báo hệ thống
+                  <Bell className="w-4 h-4 text-brand-600" /> Kênh phát thông báo hệ thống
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-[var(--surface-muted)] rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-200">
                   <div>
-                    <div className="font-semibold text-sm">Gửi Email thông báo tổng hợp (Email Digest)</div>
-                    <span className="text-xs text-[var(--text-muted)]">Gửi email hàng tuần tóm tắt hoạt động nhóm và CLB</span>
+                    <div className="font-semibold text-sm text-neutral-900">
+                      Gửi Email thông báo tổng hợp (Email Digest)
+                    </div>
+                    <span className="text-xs text-neutral-500">
+                      Gửi email hàng tuần tóm tắt hoạt động nhóm, CLB và chương trình
+                    </span>
                   </div>
                   <Switch
                     checked={settings.notifications.emailDigest}
@@ -198,10 +310,14 @@ export const SystemSettingsPage: React.FC = () => {
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-3 bg-[var(--surface-muted)] rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-200">
                   <div>
-                    <div className="font-semibold text-sm">Thông báo tức thời (In-App Push)</div>
-                    <span className="text-xs text-[var(--text-muted)]">Hiện thông báo chuông cho tin nhắn và cập nhật hồ sơ</span>
+                    <div className="font-semibold text-sm text-neutral-900">
+                      Thông báo tức thời (In-App Push)
+                    </div>
+                    <span className="text-xs text-neutral-500">
+                      Hiện thông báo chuông cho tin nhắn và cập nhật trạng thái đơn đăng ký
+                    </span>
                   </div>
                   <Switch
                     checked={settings.notifications.realtimePush}
@@ -216,49 +332,7 @@ export const SystemSettingsPage: React.FC = () => {
                 </div>
               </CardContent>
               {isSystemAdmin && (
-                <CardFooter className="border-t border-[var(--border-subtle)] pt-4 flex justify-end">
-                  <Button
-                    onClick={() => updateSettingsMutation.mutate(settings)}
-                    loading={updateSettingsMutation.isPending}
-                  >
-                    <Save className="w-4 h-4 mr-1.5" /> Lưu thay đổi
-                  </Button>
-                </CardFooter>
-              )}
-            </Card>
-          </TabsContent>
-
-          {/* TAB 3: MODERATION */}
-          <TabsContent value="moderation" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Sliders className="w-4 h-4 text-primary" /> Ngưỡng kiểm duyệt tự động (Auto-flag)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-semibold">Độ nhạy AI gắn cờ vi phạm:</span>
-                    <span className="font-bold text-primary">{Math.round((settings.moderationThreshold || 0.85) * 100)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="0.99"
-                    step="0.01"
-                    value={settings.moderationThreshold || 0.85}
-                    onChange={(e) => setSettings({ ...settings, moderationThreshold: Number(e.target.value) })}
-                    disabled={!isSystemAdmin}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-[var(--text-muted)]">
-                    Bài viết hoặc bình luận có điểm nghi vấn vượt mức ngưỡng này sẽ tự động chuyển vào hàng đợi kiểm duyệt trước khi hiển thị.
-                  </p>
-                </div>
-              </CardContent>
-              {isSystemAdmin && (
-                <CardFooter className="border-t border-[var(--border-subtle)] pt-4 flex justify-end">
+                <CardFooter className="border-t border-neutral-100 pt-4 flex justify-end">
                   <Button
                     onClick={() => updateSettingsMutation.mutate(settings)}
                     loading={updateSettingsMutation.isPending}

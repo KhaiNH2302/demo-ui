@@ -11,38 +11,42 @@ import {
 } from 'lucide-react';
 import { formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/cn';
-import type { Notification, NotificationSource } from '@/types/entities';
+import type { Notification } from '@/types/entities';
 
 const sourceIcons: Record<string, React.ReactNode> = {
-  Swap: <Repeat2 size={16} className="text-brand-500" />,
-  swap: <Repeat2 size={16} className="text-brand-500" />,
-  GroupJoin: <UsersRound size={16} className="text-emerald-500" />,
-  group_join: <UsersRound size={16} className="text-emerald-500" />,
-  ClubApplication: <FileCheck size={16} className="text-amber-500" />,
-  club_application: <FileCheck size={16} className="text-amber-500" />,
-  ClubEvent: <CalendarDays size={16} className="text-indigo-500" />,
-  club_event: <CalendarDays size={16} className="text-indigo-500" />,
-  ClubRole: <ShieldAlert size={16} className="text-purple-500" />,
-  club_role: <ShieldAlert size={16} className="text-purple-500" />,
-  ClubFinance: <Wallet size={16} className="text-blue-500" />,
-  club_finance: <Wallet size={16} className="text-blue-500" />,
-  Mentoring: <GraduationCap size={16} className="text-emerald-600" />,
-  mentoring: <GraduationCap size={16} className="text-emerald-600" />,
-  Moderation: <ShieldAlert size={16} className="text-rose-500" />,
-  moderation: <ShieldAlert size={16} className="text-rose-500" />,
+  Swap: <Repeat2 size={12} className="text-brand-600" />,
+  swap: <Repeat2 size={12} className="text-brand-600" />,
+  GroupJoin: <UsersRound size={12} className="text-emerald-600" />,
+  group_join: <UsersRound size={12} className="text-emerald-600" />,
+  ClubApplication: <FileCheck size={12} className="text-amber-600" />,
+  club_application: <FileCheck size={12} className="text-amber-600" />,
+  ClubEvent: <CalendarDays size={12} className="text-indigo-600" />,
+  club_event: <CalendarDays size={12} className="text-indigo-600" />,
+  ClubRole: <ShieldAlert size={12} className="text-purple-600" />,
+  club_role: <ShieldAlert size={12} className="text-purple-600" />,
+  ClubFinance: <Wallet size={12} className="text-blue-600" />,
+  club_finance: <Wallet size={12} className="text-blue-600" />,
+  Mentoring: <GraduationCap size={12} className="text-emerald-600" />,
+  mentoring: <GraduationCap size={12} className="text-emerald-600" />,
+  Moderation: <ShieldAlert size={12} className="text-rose-600" />,
+  moderation: <ShieldAlert size={12} className="text-rose-600" />,
 };
 
 export interface NotificationItemProps {
   notification: Notification;
   onClick?: (notification: Notification) => void;
+  actions?: React.ReactNode;
   className?: string;
 }
 
 export const NotificationItem: React.FC<NotificationItemProps> = ({
   notification,
   onClick,
+  actions,
   className,
 }) => {
+  const initial = notification.title.trim().charAt(0).toUpperCase() || 'S';
+
   return (
     <div
       onClick={() => onClick?.(notification)}
@@ -52,26 +56,39 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
         className
       )}
     >
-      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 shrink-0 mt-0.5">
-        {sourceIcons[notification.source] || <Bell size={16} />}
+      <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 font-semibold text-xs shrink-0 mt-0.5">
+        {initial}
+        <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white border border-neutral-200 shadow-xs">
+          {sourceIcons[notification.source] || <Bell size={11} className="text-neutral-600" />}
+        </span>
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center justify-between gap-2">
           <h5
             className={cn(
-              'text-xs truncate',
+              'text-sm truncate',
               notification.read ? 'font-medium text-neutral-800' : 'font-semibold text-neutral-900'
             )}
           >
             {notification.title}
           </h5>
-          {!notification.read && <span className="h-2 w-2 rounded-full bg-brand-500 shrink-0" />}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-caption text-neutral-400">
+              {formatRelativeTime(notification.createdAt)}
+            </span>
+            {!notification.read && <span className="h-2 w-2 rounded-full bg-brand-600 shrink-0" />}
+          </div>
         </div>
         <p className="text-meta text-neutral-600 mt-0.5 line-clamp-2">{notification.body}</p>
-        <span className="text-[10px] text-neutral-400 mt-1 block">
-          {formatRelativeTime(notification.createdAt)}
-        </span>
+        {actions && (
+          <div
+            className="mt-2 flex items-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {actions}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -23,50 +23,50 @@ export const CoverHeader: React.FC<CoverHeaderProps> = ({
   className,
 }) => {
   return (
-    <div className={cn('rounded-2xl overflow-hidden border border-neutral-200 bg-white shadow-xs', className)}>
-      {/* Cover Image Banner */}
-      <div className="relative h-40 md:h-52 w-full bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-600 overflow-hidden">
+    <div className={cn('rounded-xl overflow-hidden border border-neutral-200 bg-white shadow-sm', className)}>
+      {/* Cover Image Banner (144px height per 02-shared-components.md § 2.3) */}
+      <div className="relative h-36 md:h-40 w-full bg-gradient-to-br from-accent-500 to-brand-500 overflow-hidden">
         {coverUrl && (
           <img
             src={coverUrl}
             alt={title}
-            className="w-full h-full object-cover opacity-90 transition-opacity"
+            className="w-full h-full object-cover"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
       </div>
 
       {/* Header Info Area */}
-      <div className="px-6 pb-6 pt-0 relative">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12 sm:-mt-14 mb-4">
+      <div className="px-6 pb-5 pt-0 relative">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-11 mb-3">
           <div className="flex items-end gap-4">
-            {/* Logo / Avatar Overlap */}
-            <div className="relative h-24 w-24 rounded-2xl bg-white p-1 ring-4 ring-white shadow-md shrink-0">
+            {/* Logo / Avatar Overlap (88px) */}
+            <div className="relative h-[88px] w-[88px] rounded-xl bg-white p-0.5 ring-4 ring-white shadow-sm shrink-0">
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
                   alt={title}
-                  className="h-full w-full rounded-xl object-cover"
+                  className="h-full w-full rounded-[10px] object-cover"
                 />
               ) : (
-                <div className="h-full w-full rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold text-2xl">
+                <div className="h-full w-full rounded-[10px] bg-brand-50 text-brand-600 flex items-center justify-center font-bold text-2xl">
                   {title.charAt(0)}
                 </div>
               )}
             </div>
 
-            <div className="pb-1">
+            <div className="pb-0.5">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">{title}</h1>
+                <h1 className="text-page-title text-neutral-900">{title}</h1>
                 {badge}
               </div>
-              {subtitle && <p className="text-sm text-neutral-500 mt-0.5">{subtitle}</p>}
-              {children && <div className="mt-2">{children}</div>}
+              {subtitle && <p className="text-meta text-neutral-500 mt-0.5">{subtitle}</p>}
             </div>
           </div>
 
-          {actions && <div className="flex items-center gap-2.5 shrink-0 pb-1">{actions}</div>}
+          {actions && <div className="flex items-center gap-2 shrink-0 pb-0.5 flex-wrap">{actions}</div>}
         </div>
+
+        {children && <div className="pt-2 border-t border-neutral-100">{children}</div>}
       </div>
     </div>
   );

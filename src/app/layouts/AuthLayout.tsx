@@ -1,27 +1,40 @@
 import React from 'react';
 import { Outlet, Link } from 'react-router-dom';
-import { GraduationCap } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { PublicFooter } from '@/components/shared/PublicFooter';
 
 export const AuthLayout: React.FC = () => {
   return (
-    <div className="min-h-screen bg-neutral-50 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center mb-6">
-        <Link to="/" className="inline-flex items-center gap-2.5 font-bold text-2xl text-neutral-900">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500 text-white shadow-md">
-            <GraduationCap size={24} />
+    <div className="min-h-screen bg-neutral-50 flex flex-col justify-between text-neutral-900">
+      {/* Top minimal header */}
+      <header className="h-14 border-b border-neutral-200 bg-white px-4 md:px-8 flex items-center justify-between">
+        <Link to="/welcome" className="flex items-center gap-2 group">
+          <div className="h-8 w-8 rounded-lg bg-brand-600 text-white flex items-center justify-center font-bold text-sm">
+            S
           </div>
-          <span>SCS Portal</span>
+          <span className="font-bold text-base text-neutral-900 tracking-tight">
+            SCS
+          </span>
         </Link>
-        <p className="mt-2 text-xs text-neutral-500">Student Connection System — Hệ thống kết nối sinh viên</p>
-      </div>
+        <Link
+          to="/welcome"
+          className="text-xs font-medium text-neutral-600 hover:text-neutral-900 flex items-center gap-1 transition-colors"
+        >
+          <ArrowLeft size={14} /> Về trang giới thiệu
+        </Link>
+      </header>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <Outlet />
-      </div>
+      {/* Main Outlet */}
+      <main className="flex-1 flex items-center justify-center py-10 px-4 sm:px-6">
+        <div className="w-full max-w-4xl">
+          <Outlet />
+        </div>
+      </main>
 
-      <div className="mt-8 text-center text-xs text-neutral-400">
-        © 2026 SEP490 - G72 (Student Connection System)
-      </div>
+      {/* 1-line Footer */}
+      <PublicFooter />
     </div>
   );
 };
+
+export default AuthLayout;

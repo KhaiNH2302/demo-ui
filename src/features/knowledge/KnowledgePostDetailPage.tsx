@@ -1,16 +1,19 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ContextHeader } from '@/components/shared/ContextHeader';
 import { ThreadCard } from '@/components/shared/ThreadCard';
-import { ReportPostDialog } from './ReportPostDialog';
+import { ReportDialog } from '@/components/shared/ReportDialog';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { LimitNotice } from '@/components/shared/LimitNotice';
+import { UserAvatar } from '@/components/shared/UserAvatar';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useToast } from '@/components/ui/Toast';
 import { useAuthStore } from '@/store/authStore';
+import { useViewer } from '@/lib/viewer';
+import { useGuardedAction, recordGuestPreviewPost } from '@/lib/guestGate';
 import { apiClient } from '@/lib/apiClient';
 import { formatRelativeTime } from '@/lib/format';
 import { seedUsers } from '@/mocks/data/users';
@@ -23,6 +26,7 @@ import {
   X,
   Lock,
   CornerDownRight,
+  Flag,
 } from 'lucide-react';
 import type { KnowledgePost, Comment } from '@/types/entities';
 
@@ -31,18 +35,34 @@ export default function KnowledgePostDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
+  const viewer = useViewer();
+  const canInteract = viewer.can('knowledge.interact');
+  const guard = useGuardedAction();
   const { toast } = useToast();
   const replyInputRef = useRef<HTMLInputElement>(null);
 
   const [sortReplies, setSortReplies] = useState<'top' | 'new'>('top');
   const [replyText, setReplyText] = useState<string>('');
   const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string } | null>(null);
-  const [reportTarget, setReportTarget] = useState<{ type: 'post' | 'comment'; id: string } | null>(null);
+  const [reportTarget, setReportTarget] = useState<{
+    type: 'post' | 'comment';
+    id: string;
+    title: string;
+    authorName?: string;
+    snapshot?: string;
+  } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
+
+  // K7: Check 3-post session preview limit for unauthenticated guests
+  const guestPreviewStatus = useMemo(() => {
+    if (canInteract) return { allowed: true, viewedCount: 0, limit: 3 };
+    return recordGuestPreviewPost(id);
+  }, [id, canInteract]);
 
   const postDetailQuery = useQuery<{ post: KnowledgePost; comments: Comment[] }>({
     queryKey: ['knowledge', 'detail', id],
     queryFn: () => apiClient.get(`/posts/${id}`),
+    enabled: guestPreviewStatus.allowed,
   });
 
   const addCommentMutation = useMutation({
@@ -79,9 +99,17 @@ export default function KnowledgePostDetailPage() {
     mutationFn: () => apiClient.delete(`/posts/${id}`),
     onSuccess: () => {
       toast({ variant: 'default', title: 'Đã xóa bài viết' });
-      navigate('/');
+      navigate('/knowledge');
     },
   });
+
+  if (!guestPreviewStatus.allowed) {
+    return (
+      <div className="max-w-xl mx-auto py-8">
+        <LimitNotice noun="bài viết" remaining={24} alwaysShow />
+      </div>
+    );
+  }
 
   if (postDetailQuery.isLoading) {
     return (
@@ -96,9 +124,11 @@ export default function KnowledgePostDetailPage() {
   if (!data?.post) {
     return (
       <div className="max-w-2xl mx-auto text-center py-16 space-y-3">
-        <h3 className="text-base font-bold text-neutral-900">Bài viết không tồn tại hoặc đã bị xóa</h3>
-        <Button variant="outline" size="sm" onClick={() => navigate('/')}>
-          Về trang chủ
+        <h3 className="text-base font-bold text-neutral-900">
+          Bài viết không tồn tại hoặc đã bị gỡ
+        </h3>
+        <Button variant="outline" size="sm" onClick={() => navigate('/knowledge')}>
+          Về trang Chia sẻ kiến thức
         </Button>
       </div>
     );
@@ -112,7 +142,6 @@ export default function KnowledgePostDetailPage() {
   const rootComments = comments.filter((c) => !c.parentId);
   const getNestedComments = (parentId: string) => comments.filter((c) => c.parentId === parentId);
 
-  // Sorting
   const sortedComments = [...rootComments].sort((a, b) => {
     if (a.isAcceptedAnswer) return -1;
     if (b.isAcceptedAnswer) return 1;
@@ -120,16 +149,23 @@ export default function KnowledgePostDetailPage() {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
-  const handleStartReply = (commentId: string, authorName: string) => {
+  const visibleComments = canInteract ? sortedComments : sortedComments.slice(0, 10);
+  const hiddenCommentsCount = Math.max(0, sortedComments.length - 10);
+
+  const handleStartReply = guard('comment', (commentId: string, authorName: string) => {
     setReplyingTo({ id: commentId, authorName });
     setReplyText(`@${authorName} `);
     setTimeout(() => {
       replyInputRef.current?.focus();
     }, 50);
-  };
+  });
 
   const handleSubmitReply = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canInteract) {
+      guard('comment', () => {})();
+      return;
+    }
     if (!replyText.trim()) return;
     addCommentMutation.mutate({
       content: replyText.trim(),
@@ -139,18 +175,38 @@ export default function KnowledgePostDetailPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-24">
-      {/* ContextHeader */}
-      <ContextHeader backHref="/" title="Thread" />
+      <ContextHeader backHref="/knowledge" title="Chi tiết thảo luận" />
+
+      {!canInteract && (
+        <div className="rounded-lg border border-brand-200 bg-brand-50/70 px-3.5 py-2 text-xs text-brand-700 flex items-center justify-between">
+          <span>
+            Chế độ xem thử cho Khách: đã xem {guestPreviewStatus.viewedCount}/
+            {guestPreviewStatus.limit} bài viết công khai.
+          </span>
+        </div>
+      )}
 
       {/* Main Post Full View */}
       <div className="bg-white rounded-xl">
         <ThreadCard
           post={post}
           variant="detail"
-          onLikeToggle={(pId, liked) => likeMutation.mutate({ postId: pId, liked })}
-          onSaveToggle={(pId, saved) => saveMutation.mutate({ postId: pId, saved })}
+          onLikeToggle={guard('like_post', (pId: string, liked: boolean) =>
+            likeMutation.mutate({ postId: pId, liked })
+          )}
+          onSaveToggle={guard('bookmark_post', (pId: string, saved: boolean) =>
+            saveMutation.mutate({ postId: pId, saved })
+          )}
           onDelete={() => setDeleteDialogOpen(true)}
-          onReport={(pId) => setReportTarget({ type: 'post', id: pId })}
+          onReport={guard('report', () =>
+            setReportTarget({
+              type: 'post',
+              id: post.id,
+              title: post.title || 'Bài viết thảo luận',
+              authorName: post.authorName,
+              snapshot: post.contentMd,
+            })
+          )}
         />
       </div>
 
@@ -175,16 +231,17 @@ export default function KnowledgePostDetailPage() {
       {/* Comment List */}
       <div className="space-y-3 pt-1">
         {comments.length === 0 ? (
-          <div className="text-center py-10 bg-neutral-50 rounded-xl border border-neutral-200 text-xs text-neutral-400">
-            Chưa có câu trả lời nào. Hãy là người đầu tiên tham gia thảo luận!
+          <div className="text-center py-10 bg-neutral-50 rounded-xl border border-neutral-200 text-xs text-neutral-500">
+            Chưa có câu trả lời nào. Hãy là người đầu tiên tham gia thảo luận.
           </div>
         ) : (
-          sortedComments.map((comment) => {
+          visibleComments.map((comment) => {
             const commentAuthor = seedUsers.find((u) => u.id === comment.authorId) || {
               id: comment.authorId,
               fullName: 'Thành viên FPTU',
               avatarUrl: undefined,
               major: 'Sinh viên',
+              cohort: 'K18',
             };
 
             const nested = getNestedComments(comment.id);
@@ -193,13 +250,12 @@ export default function KnowledgePostDetailPage() {
               <div
                 key={comment.id}
                 className={cn(
-                  'bg-white border rounded-xl p-4 space-y-3 transition-all',
+                  'bg-white border rounded-xl p-4 space-y-3 transition-colors',
                   comment.isAcceptedAnswer
-                    ? 'border-tier-success-border bg-tier-success-bg/20 ring-1 ring-tier-success-dot/30'
+                    ? 'border-tier-success-border bg-tier-success-bg/20'
                     : 'border-neutral-200'
                 )}
               >
-                {/* Accepted Answer Badge */}
                 {comment.isAcceptedAnswer && (
                   <div className="flex items-center gap-1.5 text-xs font-bold text-tier-success-text pb-1 border-b border-tier-success-border/50">
                     <CheckCircle2 size={15} className="text-tier-success-dot" />
@@ -207,65 +263,85 @@ export default function KnowledgePostDetailPage() {
                   </div>
                 )}
 
-                {/* Comment Author Header */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2.5">
-                    <Avatar
-                      src={commentAuthor.avatarUrl}
-                      name={commentAuthor.fullName}
+                    <UserAvatar
+                      user={{
+                        id: commentAuthor.id,
+                        fullName: commentAuthor.fullName,
+                        avatarUrl: commentAuthor.avatarUrl,
+                      }}
+                      linkToProfile
                       size="sm"
                     />
                     <div>
                       <span className="text-xs font-bold text-neutral-900 block">
                         {commentAuthor.fullName}
                       </span>
-                      <span className="text-[10px] text-neutral-400">
+                      <span className="text-xs text-neutral-500">
                         {formatRelativeTime(comment.createdAt)}
                       </span>
                     </div>
                   </div>
 
-                  {/* Author Select Best Answer button */}
                   {isAuthor && isQuestion && !comment.isAcceptedAnswer && !isClosed && (
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => acceptAnswerMutation.mutate(comment.id)}
-                      className="text-[11px] h-7 gap-1 text-tier-success-text hover:bg-tier-success-bg"
+                      className="text-xs h-7 gap-1 text-tier-success-text hover:bg-tier-success-bg"
                     >
                       <CheckCircle2 size={13} /> Chọn câu trả lời này
                     </Button>
                   )}
                 </div>
 
-                {/* Content */}
                 <p className="text-xs sm:text-sm text-neutral-800 leading-relaxed whitespace-pre-line">
                   {comment.content}
                 </p>
 
-                {/* Comment Actions */}
-                <div className="flex items-center gap-4 text-xs text-neutral-500 pt-1 border-t border-neutral-100">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      toast({ variant: 'default', title: 'Đã thích phản hồi' });
-                    }}
-                    className="flex items-center gap-1 hover:text-neutral-900 transition-colors"
-                  >
-                    <Heart size={14} />
-                    <span>{comment.likesCount || 0}</span>
-                  </button>
-
-                  {!isClosed && (
+                <div className="flex items-center justify-between text-xs text-neutral-500 pt-1 border-t border-neutral-100">
+                  <div className="flex items-center gap-4">
                     <button
                       type="button"
-                      onClick={() => handleStartReply(comment.id, commentAuthor.fullName)}
-                      className="flex items-center gap-1 hover:text-brand-600 transition-colors font-medium"
+                      onClick={guard('like_post', () => {
+                        toast({ variant: 'default', title: 'Đã thích phản hồi' });
+                      })}
+                      className="flex items-center gap-1 hover:text-neutral-900 transition-colors cursor-pointer"
                     >
-                      <MessageCircle size={14} />
-                      <span>Trả lời</span>
+                      <Heart size={14} />
+                      <span>{comment.likesCount || 0}</span>
                     </button>
-                  )}
+
+                    {!isClosed && (
+                      <button
+                        type="button"
+                        onClick={() => handleStartReply(comment.id, commentAuthor.fullName)}
+                        className="flex items-center gap-1 hover:text-brand-600 transition-colors font-medium cursor-pointer"
+                      >
+                        <MessageCircle size={14} />
+                        <span>Trả lời</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={guard('report', () =>
+                      setReportTarget({
+                        type: 'comment',
+                        id: comment.id,
+                        title: `Bình luận của ${commentAuthor.fullName}`,
+                        authorName: commentAuthor.fullName,
+                        snapshot: comment.content,
+                      })
+                    )}
+                    className="flex items-center gap-1 text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                    title="Báo cáo bình luận"
+                  >
+                    <Flag size={13} />
+                    <span>Báo cáo</span>
+                  </button>
                 </div>
 
                 {/* Nested 1-Level Replies */}
@@ -284,7 +360,7 @@ export default function KnowledgePostDetailPage() {
                             <span className="font-semibold text-neutral-900">
                               {ncAuthor.fullName}
                             </span>
-                            <span className="text-[10px] text-neutral-400">
+                            <span className="text-xs text-neutral-500">
                               {formatRelativeTime(nc.createdAt)}
                             </span>
                           </div>
@@ -300,12 +376,15 @@ export default function KnowledgePostDetailPage() {
             );
           })
         )}
+
+        {!canInteract && hiddenCommentsCount > 0 && (
+          <LimitNotice remaining={hiddenCommentsCount} noun="bình luận" />
+        )}
       </div>
 
       {/* Sticky Bottom Reply Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur-md border-t border-neutral-200 py-3 px-4 shadow-lg">
+      <div className="fixed bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur-md border-t border-neutral-200 py-3 px-4 shadow-sm">
         <div className="max-w-2xl mx-auto space-y-1.5">
-          {/* Active Replying indicator */}
           {replyingTo && (
             <div className="flex items-center justify-between text-xs text-brand-700 bg-brand-50 px-3 py-1 rounded-md">
               <span className="flex items-center gap-1">
@@ -317,18 +396,34 @@ export default function KnowledgePostDetailPage() {
                   setReplyingTo(null);
                   setReplyText('');
                 }}
-                className="text-neutral-400 hover:text-neutral-700 p-0.5"
+                className="text-neutral-400 hover:text-neutral-700 p-0.5 cursor-pointer"
               >
                 <X size={13} />
               </button>
             </div>
           )}
 
-          {!isClosed ? (
+          {isClosed ? (
+            <div className="text-center py-2 text-xs text-neutral-500 bg-neutral-100 rounded-lg flex items-center justify-center gap-1.5">
+              <Lock size={13} /> Tác giả đã đóng thảo luận bài viết này.
+            </div>
+          ) : !canInteract ? (
+            <div className="flex items-center justify-between gap-3 py-1 px-3 rounded-lg bg-neutral-50 border border-neutral-200 text-xs text-neutral-600">
+              <span>Đăng nhập để trả lời</span>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={guard('comment', () => {})}
+              >
+                Đăng nhập
+              </Button>
+            </div>
+          ) : (
             <form onSubmit={handleSubmitReply} className="flex items-center gap-2.5">
               <Avatar
                 src={user?.avatarUrl}
-                name={user?.fullName || 'Sinh viên'}
+                name={user?.fullName || 'Thành viên'}
                 size="sm"
                 className="shrink-0"
               />
@@ -355,20 +450,20 @@ export default function KnowledgePostDetailPage() {
                 <Send size={14} />
               </Button>
             </form>
-          ) : (
-            <div className="text-center py-2 text-xs text-neutral-500 bg-neutral-100 rounded-lg flex items-center justify-center gap-1.5">
-              <Lock size={13} /> Tác giả đã đóng thảo luận bài viết này.
-            </div>
           )}
         </div>
       </div>
 
-      {/* Report Post/Comment Dialog */}
+      {/* Shared Report Dialog */}
       {reportTarget && (
-        <ReportPostDialog
+        <ReportDialog
           open={!!reportTarget}
           onOpenChange={(open) => !open && setReportTarget(null)}
-          postId={reportTarget.id}
+          targetType={reportTarget.type}
+          targetId={reportTarget.id}
+          targetTitle={reportTarget.title}
+          targetAuthorName={reportTarget.authorName}
+          contentSnapshot={reportTarget.snapshot}
         />
       )}
 

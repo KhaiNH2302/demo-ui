@@ -11,7 +11,6 @@ import { AIResultCard } from '@/components/shared/AIResultCard';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { ReasonDialog } from '@/components/shared/ReasonDialog';
-import { StartConversationDialog } from '@/components/shared/StartConversationDialog';
 import { FormField } from '@/components/shared/FormField';
 import { TagInput } from '@/components/shared/TagInput';
 import { ScheduleInput } from '@/components/shared/ScheduleInput';
@@ -467,14 +466,19 @@ export const GroupManagePage: React.FC = () => {
           />
 
           {/* Start Direct Conversation Dialog */}
-          <StartConversationDialog
+          <ReasonDialog
             open={isDirectChatOpen}
             onOpenChange={setIsDirectChatOpen}
-            targetUser={directChatTarget}
-            contextType="group_suggestion"
-            contextId={group.id}
-            contextLabel={`Về lời mời tham gia nhóm ${group.name}`}
-            onSuccess={(conversationId) => navigate(`/chats/${conversationId}`)}
+            title={`Nhắn tin cho ${directChatTarget?.fullName || 'sinh viên'}`}
+            description={`Về lời mời tham gia nhóm ${group.name}`}
+            label="Nội dung tin nhắn"
+            placeholder="Chào bạn, nhóm mình đang tìm thành viên..."
+            confirmLabel="Gửi tin nhắn"
+            onConfirm={() => {
+              toast.success('Đã gửi lời mời trò chuyện');
+              setIsDirectChatOpen(false);
+              navigate('/chats');
+            }}
           />
         </div>
       )}

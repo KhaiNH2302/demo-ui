@@ -1,22 +1,55 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { FilterBar } from '@/components/shared/FilterBar';
 import { NotificationItem } from '@/components/shared/NotificationItem';
+import { EntityRow } from '@/components/shared/EntityRow';
+import { UserAvatar } from '@/components/shared/UserAvatar';
 import { QueryBoundary } from '@/components/shared/QueryBoundary';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Card, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
-import { Bell } from 'lucide-react';
+import { Bell, ChevronDown, ChevronRight, UserPlus } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { queryKeys } from '@/lib/queryKeys';
+import { toast } from '@/components/ui/Toast';
 import type { Notification } from '@/types/entities';
+
+interface FollowRequestItem {
+  id: string;
+  userId: string;
+  fullName: string;
+  avatarUrl?: string;
+  major?: string;
+  cohort?: string;
+  createdAt: string;
+}
+
+const DEFAULT_FOLLOW_REQUESTS: FollowRequestItem[] = [
+  {
+    id: 'fr-1',
+    userId: 'usr-student-4',
+    fullName: 'Phạm Hoàng Nam',
+    major: 'An toàn thông tin',
+    cohort: 'K18',
+    createdAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'fr-2',
+    userId: 'usr-student-5',
+    fullName: 'Đỗ Thu Hà',
+    major: 'Thiết kế đồ họa số',
+    cohort: 'K19',
+    createdAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
+  },
+];
 
 const sourceOptions = [
   { value: '', label: 'Tất cả nguồn' },
   { value: 'Swap', label: 'Đổi lớp' },
-  { value: 'GroupJoin', label: 'Nhóm kết nối' },
+  { value: 'GroupJoin', label: 'Nhóm học tập' },
   { value: 'ClubApplication', label: 'Đơn CLB' },
   { value: 'ClubEvent', label: 'Sự kiện CLB' },
   { value: 'ClubRole', label: 'Vai trò CLB' },
@@ -31,14 +64,43 @@ const statusOptions = [
   { value: 'true', label: 'Đã đọc' },
 ];
 
+type TimeBucket = 'Mới' | 'Hôm nay' | 'Tuần này' | 'Trước đó';
+
+function classifyBucket(item: Notification): TimeBucket {
+  const now = new Date();
+  const created = new Date(item.createdAt);
+  const diffHours = (now.getTime() - created.getTime()) / (1000 * 3600);
+
+  if (!item.read && diffHours <= 6) {
+    return 'Mới';
+  }
+  const isSameDay =
+    now.getFullYear() === created.getFullYear() &&
+    now.getMonth() === created.getMonth() &&
+    now.getDate() === created.getDate();
+  if (isSameDay) {
+    return 'Hôm nay';
+  }
+  if (diffHours <= 24 * 7) {
+    return 'Tuần này';
+  }
+  return 'Trước đó';
+}
+
 export default function NotificationsPage() {
   const [selectedSource, setSelectedSource] = useState('');
   const [selectedRead, setSelectedRead] = useState('');
+  const [followReqsOpen, setFollowReqsOpen] = useState(false);
+  const [followRequests, setFollowRequests] = useState<FollowRequestItem[]>(DEFAULT_FOLLOW_REQUESTS);
+
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const notificationsQuery = useQuery<Notification[]>({
-    queryKey: queryKeys.notifications.list({ source: selectedSource, read: selectedRead ? selectedRead === 'true' : undefined }),
+    queryKey: queryKeys.notifications.list({
+      source: selectedSource,
+      read: selectedRead ? selectedRead === 'true' : undefined,
+    }),
     queryFn: () =>
       apiClient.get('/notifications', {
         params: {
@@ -67,12 +129,109 @@ export default function NotificationsPage() {
     setSelectedRead('');
   };
 
+  const handleFollowRequestAction = (req: FollowRequestItem, action: 'approve' | 'reject') => {
+    setFollowRequests((prev) => prev.filter((r) => r.id !== req.id));
+    toast.success(
+      action === 'approve'
+        ? `Đã xác nhận yêu cầu theo dõi từ ${req.fullName}`
+        : `Đã xóa yêu cầu theo dõi từ ${req.fullName}`
+    );
+  };
+
+  const grouped = useMemo(() => {
+    const items = notificationsQuery.data ?? [];
+    const buckets: Record<TimeBucket, Notification[]> = {
+      Mới: [],
+      'Hôm nay': [],
+      'Tuần này': [],
+      'Trước đó': [],
+    };
+    for (const item of items) {
+      buckets[classifyBucket(item)].push(item);
+    }
+    return buckets;
+  }, [notificationsQuery.data]);
+
+  const bucketOrder: TimeBucket[] = ['Mới', 'Hôm nay', 'Tuần này', 'Trước đó'];
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <PageHeader
         title="Thông báo của bạn"
-        description="Theo dõi cập nhật từ các yêu cầu đổi lớp, ứng tuyển CLB, nhóm kết nối và hoạt động Mentoring"
+        description="Theo dõi cập nhật từ các yêu cầu đổi lớp, cơ hội CLB, nhóm học tập và hoạt động Mentoring"
       />
+
+      {/* Dòng Yêu cầu theo dõi đầu danh sách (05-social-patterns #8) */}
+      {followRequests.length > 0 && (
+        <Card className="overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setFollowReqsOpen((v) => !v)}
+            className="w-full px-4 py-3 flex items-center justify-between gap-3 text-left hover:bg-neutral-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
+                <UserPlus className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-neutral-900">
+                  Yêu cầu theo dõi ({followRequests.length})
+                </div>
+                <div className="text-caption text-neutral-500">
+                  {followRequests.map((r) => r.fullName).join(', ')} muốn theo dõi hồ sơ của bạn
+                </div>
+              </div>
+            </div>
+            {followReqsOpen ? (
+              <ChevronDown className="h-4 w-4 text-neutral-500" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-neutral-500" />
+            )}
+          </button>
+
+          {followReqsOpen && (
+            <div className="border-t border-neutral-200 px-4 divide-y divide-neutral-100">
+              {followRequests.map((req) => (
+                <EntityRow
+                  key={req.id}
+                  href={`/users/${req.userId}`}
+                  leading={
+                    <UserAvatar
+                      user={{
+                        id: req.userId,
+                        fullName: req.fullName,
+                        avatarUrl: req.avatarUrl,
+                      }}
+                      size="sm"
+                      linkToProfile={false}
+                    />
+                  }
+                  title={req.fullName}
+                  subtitle={[req.major, req.cohort].filter(Boolean).join(' · ')}
+                  actions={
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => handleFollowRequestAction(req, 'approve')}
+                      >
+                        Xác nhận
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleFollowRequestAction(req, 'reject')}
+                      >
+                        Xóa
+                      </Button>
+                    </div>
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       <FilterBar
         onClear={handleClearFilters}
@@ -97,20 +256,55 @@ export default function NotificationsPage() {
       <QueryBoundary
         query={notificationsQuery}
         isEmpty={(data) => data.length === 0}
-        empty={<EmptyState icon={Bell} title="Không có thông báo nào" description="Bạn đã cập nhật mọi thông báo mới nhất." />}
+        empty={
+          <EmptyState
+            icon={Bell}
+            title="Không có thông báo nào"
+            description="Bạn đã cập nhật mọi thông báo mới nhất."
+          />
+        }
       >
-        {(data) => (
-          <Card>
-            <CardContent className="p-2 divide-y divide-neutral-100">
-              {data.map((item) => (
-                <NotificationItem
-                  key={item.id}
-                  notification={item}
-                  onClick={handleItemClick}
-                />
-              ))}
-            </CardContent>
-          </Card>
+        {() => (
+          <div className="space-y-4">
+            {bucketOrder.map((bucket) => {
+              const items = grouped[bucket];
+              if (!items || items.length === 0) return null;
+              return (
+                <Card key={bucket}>
+                  <div className="px-4 pt-3 pb-1 text-caption font-semibold text-neutral-500 uppercase tracking-wider">
+                    {bucket}
+                  </div>
+                  <CardContent className="p-2 divide-y divide-neutral-100">
+                    {items.map((item) => {
+                      const needsAction =
+                        !item.read &&
+                        (item.source === 'GroupJoin' ||
+                          item.source === 'Swap' ||
+                          item.source === 'Mentoring');
+                      return (
+                        <NotificationItem
+                          key={item.id}
+                          notification={item}
+                          onClick={handleItemClick}
+                          actions={
+                            needsAction ? (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => handleItemClick(item)}
+                              >
+                                Xem & phản hồi
+                              </Button>
+                            ) : undefined
+                          }
+                        />
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         )}
       </QueryBoundary>
     </div>

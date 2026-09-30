@@ -1,429 +1,513 @@
 import { http, HttpResponse } from 'msw';
 import {
   seedClubs,
-  seedClubMemberships,
-  seedRecruitments,
-  seedApplications,
-  seedClubEvents,
-  seedEventRegistrations,
-  seedEventTasks,
-  seedTransactions,
-  seedExpenses,
-  seedReconciliations,
+  seedClubOpportunities,
+  seedOpportunityResponses,
+  seedClubRepresentativeRequests,
+  seedConnectionInvites,
 } from '../data/clubs';
-import { mockDelay, isScenarioActive } from '../utils';
-import type { Club, ClubApplication, ClubEvent, EventTask, Transaction, ExpenseRequest, Reconciliation, Recruitment } from '@/types/entities';
+import { seedUsers } from '../data/users';
+import { mockDelay } from '../utils';
+import type {
+  Club,
+  ClubOpportunity,
+  OpportunityResponse,
+  ClubRepresentativeRequest,
+} from '@/types/entities';
+import type { OpportunityResponseStatus } from '@/types/status';
+
+function getCurrentUserId(request: Request): string {
+  const authHeader = request.headers.get('Authorization') || '';
+  return authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+}
 
 export const clubHandlers = [
-  // Discovery
+  // 1. Clubs Directory (CL1b, CL2)
   http.get('/api/v1/clubs', async ({ request }) => {
     await mockDelay();
     const url = new URL(request.url);
-    const field = url.searchParams.get('field');
+    const category = url.searchParams.get('category');
     const q = url.searchParams.get('q');
 
-    let list = seedClubs.filter((c) => c.approvalStatus === 'Approved');
-    if (field) list = list.filter((c) => c.field === field);
-    if (q) list = list.filter((c) => c.name.toLowerCase().includes(q.toLowerCase()));
+    let list = seedClubs.filter((c) => c.status !== 'Hidden');
+    if (category && category !== 'all') {
+      list = list.filter((c) => c.category === category || c.field === category);
+    }
+    if (q) {
+      const lower = q.toLowerCase();
+      list = list.filter(
+        (c) =>
+          c.name.toLowerCase().includes(lower) ||
+          (c.code && c.code.toLowerCase().includes(lower)) ||
+          (c.tagline && c.tagline.toLowerCase().includes(lower))
+      );
+    }
 
     return HttpResponse.json({ data: list });
   }),
 
+  http.get('/api/v1/clubs/mine', async ({ request }) => {
+    await mockDelay();
+    const userId = getCurrentUserId(request);
+    const myClubs = seedClubs.filter((c) =>
+      c.representatives?.some((r) => r.userId === userId)
+    );
+    return HttpResponse.json({ data: myClubs });
+  }),
+
+  // 2. Club Opportunities Discovery & Detail (CL1, CL3, CL7, CL8, CL9)
+  http.get('/api/v1/clubs/opportunities', async ({ request }) => {
+    await mockDelay();
+    const url = new URL(request.url);
+    const type = url.searchParams.get('type');
+    const category = url.searchParams.get('category');
+    const clubId = url.searchParams.get('clubId');
+    const status = url.searchParams.get('status');
+    const q = url.searchParams.get('q');
+    const mine = url.searchParams.get('mine');
+    const userId = getCurrentUserId(request);
+
+    let list = [...seedClubOpportunities];
+
+    if (mine === 'true') {
+      const myClubIds = seedClubs
+        .filter((c) => c.representatives?.some((r) => r.userId === userId))
+        .map((c) => c.id);
+      list = list.filter(
+        (o) => o.createdById === userId || myClubIds.includes(o.clubId)
+      );
+    } else if (!status) {
+      list = list.filter((o) => o.status !== 'Draft');
+    }
+
+    if (clubId) list = list.filter((o) => o.clubId === clubId);
+    if (type && type !== 'all') list = list.filter((o) => o.type === type);
+    if (category && category !== 'all') {
+      list = list.filter((o) => o.clubCategory === category);
+    }
+    if (status && status !== 'all') {
+      list = list.filter((o) => o.status === status);
+    }
+    if (q) {
+      const lower = q.toLowerCase();
+      list = list.filter(
+        (o) =>
+          o.title.toLowerCase().includes(lower) ||
+          o.clubName.toLowerCase().includes(lower) ||
+          o.summary.toLowerCase().includes(lower)
+      );
+    }
+
+    return HttpResponse.json({ data: list });
+  }),
+
+  http.get('/api/v1/clubs/opportunities/:oppId', async ({ params, request }) => {
+    await mockDelay();
+    const userId = getCurrentUserId(request);
+    const opp = seedClubOpportunities.find((o) => o.id === params.oppId);
+    if (!opp) {
+      return HttpResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'Không tìm thấy cơ hội CLB' } },
+        { status: 404 }
+      );
+    }
+
+    const myResponse = seedOpportunityResponses.find(
+      (r) => r.opportunityId === opp.id && r.studentId === userId && r.status !== 'Withdrawn'
+    );
+
+    const coParticipants = seedOpportunityResponses
+      .filter(
+        (r) =>
+          r.opportunityId === opp.id &&
+          (r.status === 'Confirmed' || r.status === 'Accepted') &&
+          r.visibleToCoParticipants &&
+          r.studentId !== userId
+      )
+      .map((r) => {
+        const invite = seedConnectionInvites.find(
+          (inv) =>
+            inv.sourceType === 'opportunity' &&
+            inv.sourceId === opp.id &&
+            ((inv.fromUserId === userId && inv.toUserId === r.studentId) ||
+              (inv.fromUserId === r.studentId && inv.toUserId === userId))
+        );
+        return {
+          userId: r.studentId,
+          fullName: r.profileSnapshot.fullName,
+          studentCode: r.profileSnapshot.studentCode,
+          major: r.profileSnapshot.major,
+          cohort: r.profileSnapshot.cohort,
+          avatarUrl: r.profileSnapshot.avatarUrl,
+          positionOrSlot: r.positionName,
+          inviteStatus: invite ? (invite.status === 'Accepted' ? 'Accepted' : 'Pending') : 'none',
+          conversationId: invite?.conversationId || 'conv_02',
+        };
+      });
+
+    return HttpResponse.json({
+      data: {
+        ...opp,
+        myResponse: myResponse || null,
+        coParticipants,
+      },
+    });
+  }),
+
+  // Create / Edit Club Opportunity (CL8)
+  http.post('/api/v1/clubs/opportunities', async ({ request }) => {
+    await mockDelay();
+    const userId = getCurrentUserId(request);
+    const user = seedUsers.find((u) => u.id === userId) || seedUsers[0];
+    const body = (await request.json()) as Partial<ClubOpportunity>;
+    const club = seedClubs.find((c) => c.id === body.clubId) || seedClubs[0];
+
+    const newOpp: ClubOpportunity = {
+      id: `opp_${Date.now()}`,
+      clubId: club.id,
+      clubName: club.name,
+      clubCode: club.code,
+      clubLogo: club.logoUrl,
+      clubCategory: club.category,
+      createdById: user.id,
+      createdByName: user.fullName,
+      type: body.type || 'Event',
+      title: body.title || 'Cơ hội mới',
+      summary: body.summary || '',
+      description: body.description || '',
+      tags: body.tags || [],
+      startAt: body.startAt,
+      endAt: body.endAt,
+      mode: body.mode,
+      locationOrLink: body.locationOrLink,
+      confirmMode: body.confirmMode || 'Instant',
+      expectedCommitment: body.expectedCommitment,
+      positions: body.positions,
+      quota: body.quota || 30,
+      used: 0,
+      submittedCount: 0,
+      registrationDeadline:
+        body.registrationDeadline || new Date(Date.now() + 7 * 86400000).toISOString(),
+      resultDeadline: body.resultDeadline,
+      questions: body.questions || [],
+      status: body.status || 'Published',
+      hasResponses: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    seedClubOpportunities.unshift(newOpp);
+    return HttpResponse.json({ data: newOpp });
+  }),
+
+  http.put('/api/v1/clubs/opportunities/:oppId', async ({ params, request }) => {
+    await mockDelay();
+    const body = (await request.json()) as Partial<ClubOpportunity>;
+    const opp = seedClubOpportunities.find((o) => o.id === params.oppId);
+    if (!opp) {
+      return HttpResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'Không tìm thấy cơ hội' } },
+        { status: 404 }
+      );
+    }
+    Object.assign(opp, body, { updatedAt: new Date().toISOString() });
+    return HttpResponse.json({ data: opp });
+  }),
+
+  // 3. Student Registrations / Responses (CL4, CL5, CL6)
+  http.get('/api/v1/clubs/registrations/me', async ({ request }) => {
+    await mockDelay();
+    const userId = getCurrentUserId(request);
+    const list = seedOpportunityResponses.filter((r) => r.studentId === userId);
+    return HttpResponse.json({ data: list });
+  }),
+
+  http.get('/api/v1/clubs/registrations/:responseId', async ({ params, request }) => {
+    await mockDelay();
+    const userId = getCurrentUserId(request);
+    const resp = seedOpportunityResponses.find((r) => r.id === params.responseId);
+    if (!resp) {
+      return HttpResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'Không tìm thấy đơn đăng ký' } },
+        { status: 404 }
+      );
+    }
+    const opp = seedClubOpportunities.find((o) => o.id === resp.opportunityId);
+    const coParticipants = seedOpportunityResponses
+      .filter(
+        (r) =>
+          r.opportunityId === resp.opportunityId &&
+          (r.status === 'Confirmed' || r.status === 'Accepted') &&
+          r.visibleToCoParticipants &&
+          r.studentId !== userId
+      )
+      .map((r) => ({
+        userId: r.studentId,
+        fullName: r.profileSnapshot.fullName,
+        studentCode: r.profileSnapshot.studentCode,
+        major: r.profileSnapshot.major,
+        cohort: r.profileSnapshot.cohort,
+        avatarUrl: r.profileSnapshot.avatarUrl,
+        positionOrSlot: r.positionName,
+      }));
+
+    return HttpResponse.json({
+      data: {
+        ...resp,
+        opportunity: opp || null,
+        coParticipants,
+      },
+    });
+  }),
+
+  http.post('/api/v1/clubs/opportunities/:oppId/register', async ({ params, request }) => {
+    await mockDelay();
+    const userId = getCurrentUserId(request);
+    const user = seedUsers.find((u) => u.id === userId) || seedUsers[0];
+    const opp = seedClubOpportunities.find((o) => o.id === params.oppId);
+    if (!opp) {
+      return HttpResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'Không tìm thấy cơ hội CLB' } },
+        { status: 404 }
+      );
+    }
+
+    const body = (await request.json()) as {
+      positionId?: string;
+      answers: { questionId: string; questionLabel: string; value: string | string[] }[];
+      note?: string;
+      visibleToCoParticipants?: boolean;
+      isDraft?: boolean;
+    };
+
+    const existingIdx = seedOpportunityResponses.findIndex(
+      (r) => r.opportunityId === opp.id && r.studentId === userId
+    );
+
+    const isInstantEvent =
+      !body.isDraft && opp.type === 'Event' && opp.confirmMode !== 'Approval';
+    const nextStatus: OpportunityResponseStatus = body.isDraft
+      ? 'Draft'
+      : isInstantEvent
+      ? 'Confirmed'
+      : 'Submitted';
+
+    const pos = opp.positions?.find((p) => p.id === body.positionId);
+
+    if (existingIdx !== -1) {
+      const existing = seedOpportunityResponses[existingIdx];
+      existing.positionId = body.positionId ?? existing.positionId;
+      existing.positionName = pos?.name ?? existing.positionName;
+      existing.answers = body.answers;
+      existing.note = body.note;
+      existing.visibleToCoParticipants =
+        body.visibleToCoParticipants ?? existing.visibleToCoParticipants;
+      existing.status = nextStatus;
+      existing.updatedAt = new Date().toISOString();
+      existing.history.push({
+        status: nextStatus,
+        at: new Date().toISOString(),
+        actorName: user.fullName,
+        note: body.isDraft ? 'Lưu bản nháp' : 'Đã cập nhật và gửi lại thông tin đăng ký',
+      });
+      return HttpResponse.json({ data: existing });
+    }
+
+    const created: OpportunityResponse = {
+      id: `resp_${Date.now()}`,
+      opportunityId: opp.id,
+      opportunityTitle: opp.title,
+      opportunityType: opp.type,
+      clubId: opp.clubId,
+      clubName: opp.clubName,
+      clubLogo: opp.clubLogo,
+      studentId: user.id,
+      profileSnapshot: {
+        fullName: user.fullName,
+        studentCode: user.studentCode || 'HE180001',
+        email: user.email,
+        major: user.major || 'Kỹ thuật phần mềm',
+        cohort: user.cohort || 'K18',
+        avatarUrl: user.avatarUrl,
+      },
+      positionId: body.positionId,
+      positionName: pos?.name,
+      answers: body.answers || [],
+      note: body.note,
+      status: nextStatus,
+      visibleToCoParticipants: body.visibleToCoParticipants ?? true,
+      conversationId: 'conv_02',
+      submittedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      history: [
+        {
+          status: nextStatus,
+          at: new Date().toISOString(),
+          actorName: user.fullName,
+          note: isInstantEvent ? 'Xác nhận tự động ngay khi đăng ký' : 'Đã gửi đăng ký',
+        },
+      ],
+    };
+
+    seedOpportunityResponses.unshift(created);
+    opp.hasResponses = true;
+    opp.submittedCount = (opp.submittedCount || 0) + 1;
+    if (isInstantEvent) {
+      opp.used += 1;
+    }
+
+    return HttpResponse.json({ data: created });
+  }),
+
+  http.put('/api/v1/clubs/registrations/:responseId', async ({ params, request }) => {
+    await mockDelay();
+    const body = (await request.json()) as Partial<OpportunityResponse> & {
+      action?: 'withdraw' | 'toggleVisibility';
+    };
+    const resp = seedOpportunityResponses.find((r) => r.id === params.responseId);
+    if (!resp) {
+      return HttpResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'Không tìm thấy đơn' } },
+        { status: 404 }
+      );
+    }
+
+    if (body.action === 'withdraw') {
+      resp.status = 'Withdrawn';
+      resp.updatedAt = new Date().toISOString();
+      resp.history.push({
+        status: 'Withdrawn',
+        at: new Date().toISOString(),
+        actorName: resp.profileSnapshot.fullName,
+        note: 'Sinh viên chủ động rút đăng ký',
+      });
+    } else if (body.action === 'toggleVisibility') {
+      resp.visibleToCoParticipants = Boolean(body.visibleToCoParticipants);
+    } else {
+      Object.assign(resp, body, { updatedAt: new Date().toISOString() });
+    }
+
+    return HttpResponse.json({ data: resp });
+  }),
+
+  // 4. Club Representative Review & Management (CL9, CL10)
+  http.get('/api/v1/clubs/opportunities/:oppId/responses', async ({ params }) => {
+    await mockDelay();
+    const list = seedOpportunityResponses.filter(
+      (r) => r.opportunityId === params.oppId && r.status !== 'Draft'
+    );
+    return HttpResponse.json({ data: list });
+  }),
+
+  http.put('/api/v1/clubs/responses/:responseId/review', async ({ params, request }) => {
+    await mockDelay();
+    const userId = getCurrentUserId(request);
+    const actor = seedUsers.find((u) => u.id === userId);
+    const body = (await request.json()) as {
+      status: OpportunityResponseStatus;
+      feedbackNote?: string;
+    };
+
+    const resp = seedOpportunityResponses.find((r) => r.id === params.responseId);
+    if (!resp) {
+      return HttpResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'Không tìm thấy đơn đăng ký' } },
+        { status: 404 }
+      );
+    }
+
+    const prevStatus = resp.status;
+    resp.status = body.status;
+    if (body.feedbackNote !== undefined) {
+      resp.feedbackNote = body.feedbackNote;
+    }
+    resp.updatedAt = new Date().toISOString();
+    resp.history.push({
+      status: body.status,
+      at: new Date().toISOString(),
+      actorName: actor?.fullName || 'Đại diện CLB',
+      note: body.feedbackNote,
+    });
+
+    const opp = seedClubOpportunities.find((o) => o.id === resp.opportunityId);
+    if (
+      opp &&
+      (body.status === 'Accepted' || body.status === 'Confirmed') &&
+      prevStatus !== 'Accepted' &&
+      prevStatus !== 'Confirmed'
+    ) {
+      opp.used += 1;
+    }
+
+    return HttpResponse.json({ data: resp });
+  }),
+
+  // 5. Representative Requests (CL12)
+  http.get('/api/v1/clubs/representative-requests/me', async ({ request }) => {
+    await mockDelay();
+    const userId = getCurrentUserId(request);
+    const list = seedClubRepresentativeRequests.filter((r) => r.userId === userId);
+    return HttpResponse.json({ data: list });
+  }),
+
+  http.post('/api/v1/clubs/representative-requests', async ({ request }) => {
+    await mockDelay();
+    const userId = getCurrentUserId(request);
+    const user = seedUsers.find((u) => u.id === userId) || seedUsers[0];
+    const body = (await request.json()) as Partial<ClubRepresentativeRequest>;
+
+    const newReq: ClubRepresentativeRequest = {
+      id: `repreq_${Date.now()}`,
+      userId: user.id,
+      userName: user.fullName,
+      studentCode: user.studentCode || 'HE180001',
+      userEmail: user.email,
+      clubId: body.clubId,
+      proposedClub: body.proposedClub,
+      clubName: body.clubName || body.proposedClub?.name || 'Câu lạc bộ',
+      roleNote: body.roleNote || 'Đại diện CLB',
+      evidenceNote: body.evidenceNote || '',
+      evidenceFileName: body.evidenceFileName,
+      status: 'Pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    seedClubRepresentativeRequests.unshift(newReq);
+    return HttpResponse.json({ data: newReq });
+  }),
+
+  // 6. Club Profile Details & Edit (CL2)
   http.get('/api/v1/clubs/:id', async ({ params }) => {
     await mockDelay();
     const club = seedClubs.find((c) => c.id === params.id);
     if (!club) {
-      return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'CLB không tồn tại' } }, { status: 404 });
-    }
-    return HttpResponse.json({ data: club });
-  }),
-
-  http.post('/api/v1/clubs', async ({ request }) => {
-    await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
-    const body = (await request.json()) as Omit<Club, 'id' | 'managerId' | 'approvalStatus' | 'createdAt'>;
-
-    const newClub: Club = {
-      id: `club_${Date.now()}`,
-      name: body.name,
-      description: body.description,
-      field: body.field,
-      managerId: userId,
-      approvalStatus: 'PendingApproval',
-      createdAt: new Date().toISOString(),
-    };
-    seedClubs.push(newClub);
-    return HttpResponse.json({ data: newClub });
-  }),
-
-  // Applications
-  http.post('/api/v1/clubs/:id/applications', async ({ params, request }) => {
-    await mockDelay();
-    if (isScenarioActive('recruitment_closed')) {
       return HttpResponse.json(
-        { error: { code: 'RECRUITMENT_CLOSED', message: 'Đợt tuyển thành viên đã kết thúc hạn nhận đơn' } },
-        { status: 409 }
+        { error: { code: 'NOT_FOUND', message: 'CLB không tồn tại' } },
+        { status: 404 }
       );
     }
-    if (isScenarioActive('recruitment_quota_full')) {
-      return HttpResponse.json(
-        { error: { code: 'QUOTA_FULL', message: 'Đợt tuyển đã đủ chỉ tiêu tiếp nhận' } },
-        { status: 409 }
-      );
-    }
-
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
-    const body = (await request.json()) as { recruitmentId: string; answers: Record<string, string> };
-
-    const newApp: ClubApplication = {
-      id: `app_${Date.now()}`,
-      recruitmentId: body.recruitmentId,
-      clubId: params.id as string,
-      applicantId: userId,
-      answers: body.answers,
-      status: 'Submitted',
-      createdAt: new Date().toISOString(),
-    };
-    seedApplications.unshift(newApp);
-    return HttpResponse.json({ data: newApp });
-  }),
-
-  http.get('/api/v1/applications/me', async ({ request }) => {
-    await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
-
-    const myApps = seedApplications.filter((a) => a.applicantId === userId);
-    return HttpResponse.json({ data: myApps });
-  }),
-
-  http.put('/api/v1/applications/:id/supplement', async ({ params, request }) => {
-    await mockDelay();
-    const body = (await request.json()) as { answers: Record<string, string> };
-    const app = seedApplications.find((a) => a.id === params.id);
-    if (!app) {
-      return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Đơn không tồn tại' } }, { status: 404 });
-    }
-    app.answers = body.answers;
-    app.status = 'Submitted';
-    delete app.supplementNote;
-    return HttpResponse.json({ data: app });
-  }),
-
-  // Workspace
-  http.get('/api/v1/clubs/:id/dashboard-summary', async ({ params }) => {
-    await mockDelay();
-    const clubId = params.id as string;
-    const eventsCount = seedClubEvents.filter((e) => e.clubId === clubId && e.status !== 'Finished').length;
-    const tasksCount = seedEventTasks.length;
-    const pendingApps = seedApplications.filter((a) => a.clubId === clubId && a.status === 'Submitted').length;
-    const pendingExpenses = seedExpenses.filter((e) => e.clubId === clubId && e.status === 'PendingApproval').length;
+    const opportunities = seedClubOpportunities.filter(
+      (o) => o.clubId === club.id && o.status !== 'Draft'
+    );
     return HttpResponse.json({
       data: {
-        eventsCount,
-        tasksCount,
-        pendingApps,
-        pendingExpenses,
+        ...club,
+        opportunities,
       },
     });
   }),
 
-  http.get('/api/v1/clubs/:id/events', async ({ params }) => {
-    await mockDelay();
-    const events = seedClubEvents.filter((e) => e.clubId === params.id);
-    return HttpResponse.json({ data: events });
-  }),
-
-  http.post('/api/v1/clubs/:id/events', async ({ params, request }) => {
-    await mockDelay();
-    const body = (await request.json()) as Omit<ClubEvent, 'id' | 'clubId' | 'status'>;
-    const newEvt: ClubEvent = {
-      id: `evt_${Date.now()}`,
-      clubId: params.id as string,
-      ...body,
-      status: 'Published',
-    };
-    seedClubEvents.unshift(newEvt);
-    return HttpResponse.json({ data: newEvt });
-  }),
-
-  http.get('/api/v1/clubs/:id/events/:eid', async ({ params }) => {
-    await mockDelay();
-    const evt = seedClubEvents.find((e) => e.id === params.eid);
-    if (!evt) {
-      return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Sự kiện không tồn tại' } }, { status: 404 });
-    }
-    const registrations = seedEventRegistrations.filter((r) => r.eventId === params.eid);
-    const tasks = seedEventTasks.filter((t) => t.eventId === params.eid);
-    return HttpResponse.json({ data: { ...evt, registrations, tasks } });
-  }),
-
-  http.post('/api/v1/clubs/:id/events/:eid/register', async ({ params, request }) => {
-    await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
-
-    const existing = seedEventRegistrations.find((r) => r.eventId === params.eid && r.userId === userId);
-    if (existing) {
-      const idx = seedEventRegistrations.indexOf(existing);
-      seedEventRegistrations.splice(idx, 1);
-      return HttpResponse.json({ data: { registered: false } });
-    }
-
-    seedEventRegistrations.push({
-      eventId: params.eid as string,
-      userId,
-      checkedIn: false,
-      registeredAt: new Date().toISOString(),
-    });
-    return HttpResponse.json({ data: { registered: true } });
-  }),
-
-  http.post('/api/v1/clubs/:id/events/:eid/checkin/:userId', async ({ params }) => {
-    await mockDelay();
-    const reg = seedEventRegistrations.find((r) => r.eventId === params.eid && r.userId === params.userId);
-    if (reg) {
-      reg.checkedIn = true;
-    }
-    return HttpResponse.json({ data: { success: true } });
-  }),
-
-  http.put('/api/v1/clubs/:id/events/:eid', async ({ params, request }) => {
-    await mockDelay();
-    const body = (await request.json()) as Partial<ClubEvent>;
-    const evt = seedClubEvents.find((e) => e.id === params.eid);
-    if (evt) Object.assign(evt, body);
-    return HttpResponse.json({ data: evt });
-  }),
-
-  http.get('/api/v1/clubs/:id/tasks', async ({ request }) => {
-    await mockDelay();
-    const url = new URL(request.url);
-    const eventId = url.searchParams.get('eventId');
-    const assigneeId = url.searchParams.get('assigneeId');
-
-    let list = [...seedEventTasks];
-    if (eventId) list = list.filter((t) => t.eventId === eventId);
-    if (assigneeId) list = list.filter((t) => t.assigneeId === assigneeId);
-    return HttpResponse.json({ data: list });
-  }),
-
-  http.post('/api/v1/clubs/:id/events/:eid/tasks', async ({ params, request }) => {
-    await mockDelay();
-    const body = (await request.json()) as { assigneeId: string; title: string; note?: string };
-    const newTask: EventTask = {
-      id: `tsk_${Date.now()}`,
-      eventId: params.eid as string,
-      assigneeId: body.assigneeId,
-      title: body.title,
-      status: 'Todo',
-      note: body.note,
-    };
-    seedEventTasks.push(newTask);
-    return HttpResponse.json({ data: newTask });
-  }),
-
-  http.put('/api/v1/tasks/:id', async ({ params, request }) => {
-    await mockDelay();
-    const body = (await request.json()) as Partial<EventTask>;
-    const task = seedEventTasks.find((t) => t.id === params.id);
-    if (task) Object.assign(task, body);
-    return HttpResponse.json({ data: task });
-  }),
-
-  http.get('/api/v1/clubs/:id/members', async ({ params }) => {
-    await mockDelay();
-    const members = seedClubMemberships.filter((m) => m.clubId === params.id);
-    return HttpResponse.json({ data: members });
-  }),
-
-  http.put('/api/v1/clubs/:id/members/:userId', async ({ params, request }) => {
-    await mockDelay();
-    if (isScenarioActive('forbidden')) {
-      return HttpResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'Bạn không đủ quyền hạn thực hiện thao tác này' } },
-        { status: 403 }
-      );
-    }
-    const body = (await request.json()) as { role?: any; status?: any; reason?: string };
-    const member = seedClubMemberships.find((m) => m.clubId === params.id && m.userId === params.userId);
-    if (member) {
-      if (body.role) member.role = body.role;
-      if (body.status) member.status = body.status;
-    }
-    return HttpResponse.json({ data: member });
-  }),
-
-  http.get('/api/v1/clubs/:id/recruitments', async ({ params }) => {
-    await mockDelay();
-    const recs = seedRecruitments.filter((r) => r.clubId === params.id);
-    return HttpResponse.json({ data: recs });
-  }),
-
-  http.post('/api/v1/clubs/:id/recruitments', async ({ params, request }) => {
-    await mockDelay();
-    const body = (await request.json()) as Omit<Recruitment, 'id' | 'clubId' | 'acceptedCount'>;
-    const newRec = {
-      id: `rec_${Date.now()}`,
-      clubId: params.id as string,
-      ...body,
-      acceptedCount: 0,
-    };
-    seedRecruitments.unshift(newRec);
-    return HttpResponse.json({ data: newRec });
-  }),
-
-  http.get('/api/v1/clubs/:id/recruitments/:rid/applications', async ({ params }) => {
-    await mockDelay();
-    const apps = seedApplications.filter((a) => a.recruitmentId === params.rid);
-    return HttpResponse.json({ data: apps });
-  }),
-
-  http.put('/api/v1/clubs/:id/applications/:aid', async ({ params, request }) => {
-    await mockDelay();
-    const body = (await request.json()) as Partial<ClubApplication>;
-    const app = seedApplications.find((a) => a.id === params.aid);
-    if (app) {
-      Object.assign(app, body);
-      if (body.status === 'Accepted') {
-        const existingMem = seedClubMemberships.find((m) => m.clubId === app.clubId && m.userId === app.applicantId);
-        if (!existingMem) {
-          seedClubMemberships.push({
-            clubId: app.clubId,
-            userId: app.applicantId,
-            role: 'member',
-            status: 'Active',
-            contributionScore: 10,
-            joinedAt: new Date().toISOString(),
-          });
-        }
-      }
-    }
-    return HttpResponse.json({ data: app });
-  }),
-
-  // Finance
-  http.get('/api/v1/clubs/:id/finance/summary', async ({ params }) => {
-    await mockDelay();
-    const clubId = params.id as string;
-    const txs = seedTransactions.filter((t) => t.clubId === clubId);
-    const totalIncome = txs.filter((t) => t.type === 'Income').reduce((s, t) => s + t.amount, 0);
-    const totalExpense = txs.filter((t) => t.type === 'Expense').reduce((s, t) => s + t.amount, 0);
-    const balance = totalIncome - totalExpense;
-
-    return HttpResponse.json({
-      data: {
-        balance,
-        totalIncome,
-        totalExpense,
-        monthlyStats: [
-          { month: 'T06', income: 3000000, expense: 1200000 },
-          { month: 'T07', income: 4500000, expense: 2000000 },
-          { month: 'T08', income: 2000000, expense: 1500000 },
-          { month: 'T09', income: 6500000, expense: 850000 },
-        ],
-      },
-    });
-  }),
-
-  http.get('/api/v1/clubs/:id/finance/transactions', async ({ params }) => {
-    await mockDelay();
-    const txs = seedTransactions.filter((t) => t.clubId === params.id);
-    return HttpResponse.json({ data: txs });
-  }),
-
-  http.post('/api/v1/clubs/:id/finance/transactions', async ({ params, request }) => {
-    await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_treasurer_04';
-    const body = (await request.json()) as { amount: number; description: string; type?: 'Income' | 'Expense' };
-
-    const newTx: Transaction = {
-      id: `tx_${Date.now()}`,
-      clubId: params.id as string,
-      type: body.type || 'Income',
-      amount: body.amount,
-      description: body.description,
-      recordedBy: userId,
-      createdAt: new Date().toISOString(),
-    };
-    seedTransactions.unshift(newTx);
-    return HttpResponse.json({ data: newTx });
-  }),
-
-  http.get('/api/v1/clubs/:id/finance/expenses', async ({ params }) => {
-    await mockDelay();
-    const exps = seedExpenses.filter((e) => e.clubId === params.id);
-    return HttpResponse.json({ data: exps });
-  }),
-
-  http.post('/api/v1/clubs/:id/finance/expenses', async ({ params, request }) => {
-    await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_treasurer_04';
-    const body = (await request.json()) as { amount: number; purpose: string };
-
-    const newExp: ExpenseRequest = {
-      id: `exp_${Date.now()}`,
-      clubId: params.id as string,
-      amount: body.amount,
-      purpose: body.purpose,
-      requestedBy: userId,
-      status: 'PendingApproval',
-      createdAt: new Date().toISOString(),
-    };
-    seedExpenses.unshift(newExp);
-    return HttpResponse.json({ data: newExp });
-  }),
-
-  http.put('/api/v1/clubs/:id/finance/expenses/:eid', async ({ params, request }) => {
-    await mockDelay();
-    const body = (await request.json()) as { status: 'Approved' | 'Rejected'; approverNote?: string };
-    const exp = seedExpenses.find((e) => e.id === params.eid);
-    if (exp) {
-      exp.status = body.status;
-      exp.approverNote = body.approverNote;
-      if (body.status === 'Approved') {
-        seedTransactions.unshift({
-          id: `tx_${Date.now()}`,
-          clubId: exp.clubId,
-          type: 'Expense',
-          amount: exp.amount,
-          description: `[Đã duyệt] ${exp.purpose}`,
-          recordedBy: exp.requestedBy,
-          createdAt: new Date().toISOString(),
-        });
-      }
-    }
-    return HttpResponse.json({ data: exp });
-  }),
-
-  http.get('/api/v1/clubs/:id/finance/reconciliations', async ({ params }) => {
-    await mockDelay();
-    const recs = seedReconciliations.filter((r) => r.clubId === params.id);
-    return HttpResponse.json({ data: recs });
-  }),
-
-  http.post('/api/v1/clubs/:id/finance/reconciliations', async ({ params, request }) => {
-    await mockDelay();
-    const body = (await request.json()) as Omit<Reconciliation, 'id' | 'clubId' | 'createdAt'>;
-    const newRec: Reconciliation = {
-      id: `rec_${Date.now()}`,
-      clubId: params.id as string,
-      ...body,
-      createdAt: new Date().toISOString(),
-    };
-    seedReconciliations.unshift(newRec);
-    return HttpResponse.json({ data: newRec });
-  }),
-
-  http.put('/api/v1/clubs/:id/settings', async ({ params, request }) => {
+  http.put('/api/v1/clubs/:id', async ({ params, request }) => {
     await mockDelay();
     const body = (await request.json()) as Partial<Club>;
     const club = seedClubs.find((c) => c.id === params.id);
-    if (club) Object.assign(club, body);
+    if (!club) {
+      return HttpResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'CLB không tồn tại' } },
+        { status: 404 }
+      );
+    }
+    Object.assign(club, body);
     return HttpResponse.json({ data: club });
   }),
 ];

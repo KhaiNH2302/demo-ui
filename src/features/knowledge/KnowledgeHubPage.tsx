@@ -1,74 +1,165 @@
 import React, { useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import {
-  BookOpen,
   Plus,
-  Flame,
-  Search,
-  MessageCircle,
-  Sparkles,
+  SlidersHorizontal,
+  X,
+  Check,
+  SearchX,
+  HelpCircle,
+  BookOpen,
+  Briefcase,
+  MessagesSquare,
+  FileText,
+  Zap,
   TrendingUp,
-  Award,
-  Filter,
+  FolderGit2,
+  BadgeCheck,
+  Lightbulb,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
-import { PageHeader } from '@/components/shared/PageHeader';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
+import { Badge } from '@/components/ui/Badge';
 import { ThreadComposer } from '@/components/shared/ThreadComposer';
-import { ThreadCard } from '@/components/shared/ThreadCard';
-import { ReportPostDialog } from './ReportPostDialog';
+import { KnowledgeListItem } from '@/components/shared/KnowledgeListItem';
+import { ReportDialog } from '@/components/shared/ReportDialog';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { LimitNotice } from '@/components/shared/LimitNotice';
 import { useToast } from '@/components/ui/Toast';
+import { useAuthStore } from '@/store/authStore';
+import { useViewer } from '@/lib/viewer';
+import { useGuardedAction } from '@/lib/guestGate';
 import type { KnowledgePost } from '@/types/entities';
-import type { PostCategory } from '@/types/status';
+
+const CATEGORY_OPTIONS = [
+  { value: 'all', label: 'Tất cả danh mục' },
+  { value: 'knowledge', label: 'Chia sẻ kiến thức' },
+  { value: 'study_experience', label: 'Kinh nghiệm học tập' },
+  { value: 'internship', label: 'Kinh nghiệm thực tập' },
+  { value: 'interview', label: 'Kinh nghiệm phỏng vấn' },
+  { value: 'document', label: 'Tài liệu môn học' },
+  { value: 'tips', label: 'Tips & Tricks' },
+  { value: 'career', label: 'Career Sharing' },
+  { value: 'project', label: 'Chia sẻ dự án' },
+  { value: 'qa', label: 'Hỏi đáp' },
+  { value: 'mentor_senior', label: 'Kinh nghiệm Mentor/Senior' },
+];
+
+const SUBJECT_OPTIONS = [
+  { value: 'all', label: 'Tất cả môn học' },
+  { value: 'CSD201', label: 'CSD201 · Cấu trúc dữ liệu & Giải thuật' },
+  { value: 'PRJ301', label: 'PRJ301 · Java Web Applications' },
+  { value: 'SWP391', label: 'SWP391 · Software Project' },
+  { value: 'DBI202', label: 'DBI202 · Database Systems' },
+  { value: 'MAS291', label: 'MAS291 · Statistics & Probability' },
+  { value: 'PRN231', label: 'PRN231 · .NET & Web API' },
+];
+
+const SORT_OPTIONS = [
+  { value: 'new', label: 'Mới nhất' },
+  { value: 'hot', label: 'Nổi bật' },
+  { value: 'discussed', label: 'Nhiều thảo luận' },
+  { value: 'unanswered', label: 'Chưa có trả lời' },
+];
 
 export const KnowledgeHubPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'discover';
-  const selectedCategory = searchParams.get('category') || 'all';
-  const selectedSubject = searchParams.get('subject') || 'all';
-  const sort = searchParams.get('sort') || 'hot';
-
-  const [composerOpen, setComposerOpen] = useState(false);
-  const [reportPostId, setReportPostId] = useState<string | null>(null);
-  const [deletePostId, setDeletePostId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-
+  const viewer = useViewer();
+  const canBrowse = viewer.can('knowledge.browse');
+  const canCompose = viewer.can('compose');
+  const guard = useGuardedAction();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const categories: { key: string; label: string; count: number }[] = [
-    { key: 'all', label: 'Tất cả danh mục', count: 128 },
-    { key: 'knowledge', label: 'Chia sẻ kiến thức', count: 42 },
-    { key: 'study_experience', label: 'Kinh nghiệm học tập', count: 28 },
-    { key: 'internship', label: 'Thực tập & OJT', count: 19 },
-    { key: 'interview', label: 'Phỏng vấn tuyển dụng', count: 15 },
-    { key: 'document', label: 'Tài liệu môn học', count: 35 },
-    { key: 'tips', label: 'Tips & Tricks', count: 22 },
-    { key: 'career', label: 'Career & Hướng nghiệp', count: 14 },
-    { key: 'project', label: 'Dự án sinh viên', count: 18 },
-    { key: 'qa', label: 'Hỏi đáp bài tập', count: 31 },
-    { key: 'mentor_senior', label: 'Kinh nghiệm từ Mentor/Senior', count: 16 },
-  ];
+  const activeTab = searchParams.get('tab') || 'discover';
+  const myPostsSubTab = searchParams.get('subTab') || 'published';
+  const selectedCategory = searchParams.get('category') || 'all';
+  const selectedSubject = searchParams.get('subject') || 'all';
+  const sort = searchParams.get('sort') || 'new';
+  const searchQuery = searchParams.get('q') || '';
+  const hasFile = searchParams.get('hasFile') === 'true';
 
-  const subjects = ['all', 'CSD201', 'PRJ301', 'SWP391', 'DBI202', 'MAS291', 'PRN231'];
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
+  const [followModalOpen, setFollowModalOpen] = useState(false);
+  const [reportPost, setReportPost] = useState<KnowledgePost | null>(null);
+  const [deletePostId, setDeletePostId] = useState<string | null>(null);
 
-  // Query Posts
-  const { data: posts, isLoading } = useQuery<KnowledgePost[]>({
-    queryKey: ['knowledge', 'posts', { activeTab, selectedCategory, selectedSubject, sort }],
+  // 1. Fetch Followed Subjects
+  const { data: followedSubjectsRes } = useQuery<{ data: string[] } | string[]>({
+    queryKey: ['subjects', 'following'],
+    queryFn: () => apiClient.get('/subjects/following'),
+    enabled: canBrowse,
+  });
+  const followedSubjects: string[] = Array.isArray(followedSubjectsRes)
+    ? followedSubjectsRes
+    : (followedSubjectsRes as any)?.data || ['CSD201', 'SWP391'];
+
+  // 2. Fetch Unanswered Questions for Sidebar (Chưa có trả lời)
+  const { data: unansweredRes } = useQuery<{ data: KnowledgePost[] } | KnowledgePost[]>({
+    queryKey: ['knowledge', 'unanswered-sidebar'],
     queryFn: () =>
       apiClient.get('/posts', {
+        params: { sort: 'unanswered', type: 'question' },
+      }),
+    enabled: canBrowse,
+  });
+  const unansweredQuestions: KnowledgePost[] = Array.isArray(unansweredRes)
+    ? unansweredRes.slice(0, 4)
+    : (unansweredRes as any)?.data?.slice(0, 4) || [];
+
+  // 3. Fetch Posts based on Mode (Guest preview vs Member tab)
+  const { data: postsRes, isLoading } = useQuery<{ data: KnowledgePost[]; meta?: { total: number; limited?: boolean } } | KnowledgePost[]>({
+    queryKey: [
+      'knowledge',
+      'posts',
+      { canBrowse, activeTab, myPostsSubTab, selectedCategory, selectedSubject, sort, searchQuery, hasFile },
+    ],
+    queryFn: () => {
+      if (!canBrowse) {
+        return apiClient.get('/public/posts/preview');
+      }
+
+      if (activeTab === 'mine') {
+        if (myPostsSubTab === 'saved') {
+          return apiClient.get('/posts/saved');
+        }
+        return apiClient.get('/posts/me', {
+          params: {
+            status:
+              myPostsSubTab === 'pending'
+                ? 'PendingReview'
+                : myPostsSubTab === 'rejected'
+                ? 'Rejected'
+                : 'Published',
+          },
+        });
+      }
+
+      return apiClient.get('/posts', {
         params: {
           category: selectedCategory !== 'all' ? selectedCategory : undefined,
           subject: selectedSubject !== 'all' ? selectedSubject : undefined,
           sort,
+          q: searchQuery || undefined,
           tab: activeTab,
         },
-      }),
+      });
+    },
   });
+
+  // Extract array safely
+  const rawPosts: KnowledgePost[] = Array.isArray(postsRes)
+    ? postsRes
+    : (postsRes as any)?.data || [];
+  const displayedPosts = canBrowse ? rawPosts : rawPosts.slice(0, 3);
+  const totalCount = (postsRes as any)?.meta?.total ?? rawPosts.length;
 
   const likeMutation = useMutation({
     mutationFn: ({ id, liked }: { id: string; liked: boolean }) =>
@@ -86,6 +177,15 @@ export const KnowledgeHubPage: React.FC = () => {
     },
   });
 
+  const followSubjectMutation = useMutation({
+    mutationFn: ({ code, follow }: { code: string; follow: boolean }) =>
+      follow ? apiClient.post(`/subjects/${code}/follow`) : apiClient.delete(`/subjects/${code}/follow`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects', 'following'] });
+      toast({ title: 'Đã cập nhật theo dõi môn học' });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiClient.delete(`/posts/${id}`),
     onSuccess: () => {
@@ -95,246 +195,485 @@ export const KnowledgeHubPage: React.FC = () => {
     },
   });
 
-  const setTab = (tab: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set('tab', tab);
-    setSearchParams(newParams);
+  const setParam = (key: string, value: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (!value || value === 'all' || value === '') {
+      next.delete(key);
+    } else {
+      next.set(key, value);
+    }
+    setSearchParams(next);
   };
 
-  const setCategory = (cat: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set('category', cat);
-    setSearchParams(newParams);
+  const handleTabChange = (tab: string) => {
+    if (!canBrowse && tab !== 'discover') {
+      guard('auth', () => {})();
+      return;
+    }
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tab);
+    if (tab !== 'mine') next.delete('subTab');
+    setSearchParams(next);
   };
 
-  const setSubject = (sub: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set('subject', sub);
-    setSearchParams(newParams);
+  const clearAllFilters = () => {
+    const next = new URLSearchParams();
+    if (activeTab) next.set('tab', activeTab);
+    setSearchParams(next);
   };
 
-  const setSort = (s: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set('sort', s);
-    setSearchParams(newParams);
-  };
+  const hasActiveFilters =
+    selectedCategory !== 'all' ||
+    selectedSubject !== 'all' ||
+    searchQuery.trim().length > 0 ||
+    sort !== 'new' ||
+    hasFile;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        variant="band"
-        icon={BookOpen}
-        title="Knowledge Sharing"
-        description="Diễn đàn chia sẻ kiến thức, kinh nghiệm học tập, tài liệu và hỏi đáp bài tập trong trường"
-        actions={
-          <button
-            type="button"
+    <div className={canBrowse ? 'max-w-[1080px] mx-auto space-y-6' : 'max-w-[720px] mx-auto space-y-6'}>
+      {/* 1. Page Header: Title + Subtitle + Write Post Button (when canCompose) */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight">
+            Knowledge Sharing
+          </h1>
+          {!canBrowse && (
+            <p className="text-sm text-neutral-500">
+              Bạn đang xem 3 bài chọn lọc trong tuần.
+            </p>
+          )}
+        </div>
+        {canCompose && (
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<Plus size={16} />}
             onClick={() => setComposerOpen(true)}
-            className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all"
+            className="h-9 px-4"
           >
-            <Plus size={16} />
-            <span>Viết bài mới</span>
-          </button>
-        }
-      />
+            Viết bài
+          </Button>
+        )}
+      </div>
 
-      {/* Main Tabs */}
-      <Tabs value={activeTab} onValueChange={setTab} className="w-full space-y-6">
-        <TabsList className="bg-neutral-100 p-1 rounded-xl">
-          <TabsTrigger value="discover" className="rounded-lg text-xs font-semibold">
-            Khám phá
-          </TabsTrigger>
-          <TabsTrigger value="following" className="rounded-lg text-xs font-semibold">
-            Đang theo dõi
-          </TabsTrigger>
-          <TabsTrigger value="mine" className="rounded-lg text-xs font-semibold">
-            Bài viết của tôi
-          </TabsTrigger>
-          <TabsTrigger value="saved" className="rounded-lg text-xs font-semibold">
-            Đã lưu
-          </TabsTrigger>
-        </TabsList>
+      {/* 2. Three Underline Tabs (hidden for Guest per K7 & GU5.2) */}
+      {canBrowse && (
+        <div className="border-b border-neutral-200">
+          <div className="flex items-center gap-8 -mb-px">
+            {[
+              { key: 'discover', label: 'Khám phá' },
+              { key: 'following', label: 'Đang theo dõi' },
+              { key: 'mine', label: 'Của tôi' },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => handleTabChange(tab.key)}
+                className={`py-3 text-sm font-medium transition-colors border-b-2 cursor-pointer ${
+                  activeTab === tab.key
+                    ? 'border-neutral-900 text-neutral-900 font-semibold'
+                    : 'border-transparent text-neutral-500 hover:text-neutral-900'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
-        {/* 10 Category Chips Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-          {categories.map((cat) => (
+      {/* Sub-tabs if activeTab === 'mine' */}
+      {canBrowse && activeTab === 'mine' && (
+        <div className="flex items-center gap-2 bg-neutral-100 p-1 rounded-lg w-fit text-xs font-semibold">
+          {[
+            { key: 'published', label: 'Đã đăng' },
+            { key: 'pending', label: 'Chờ duyệt' },
+            { key: 'rejected', label: 'Bị từ chối' },
+            { key: 'saved', label: 'Đã lưu' },
+          ].map((st) => (
             <button
-              key={cat.key}
+              key={st.key}
               type="button"
-              onClick={() => setCategory(cat.key)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all shadow-2xs ${
-                selectedCategory === cat.key
-                  ? 'bg-brand-600 text-white shadow-xs'
-                  : 'bg-white border border-neutral-200 text-neutral-700 hover:border-brand-200 hover:bg-brand-50/50'
+              onClick={() => setParam('subTab', st.key)}
+              className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
+                myPostsSubTab === st.key
+                  ? 'bg-white text-neutral-900 shadow-xs'
+                  : 'text-neutral-600 hover:text-neutral-900'
               }`}
             >
-              <span>{cat.label}</span>
+              {st.label}
             </button>
           ))}
         </div>
+      )}
 
-        {/* Main Content Layout: 2 Columns */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left / Center (2/3): Composer + Filter + Posts Feed */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Quick Thread Composer */}
+      {/* 3. 1-Row Toolbar (height 40px) — hidden for Guest per K7 & GU5.2 */}
+      {canBrowse && (
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Search Input */}
+          <div className="flex-1 min-w-[200px]">
+            <Input
+              placeholder="Tìm bài viết, môn học, tag..."
+              value={searchQuery}
+              onChange={(e) => setParam('q', e.target.value)}
+              className="h-10 text-sm"
+            />
+          </div>
+
+          {/* Category Select */}
+          <div className="w-48 shrink-0">
+            <Select
+              options={CATEGORY_OPTIONS}
+              value={selectedCategory}
+              onValueChange={(val) => setParam('category', val)}
+            />
+          </div>
+
+          {/* Subject Select */}
+          <div className="w-44 shrink-0">
+            <Select
+              options={SUBJECT_OPTIONS}
+              value={selectedSubject}
+              onValueChange={(val) => setParam('subject', val)}
+            />
+          </div>
+
+          {/* Sort Select */}
+          <div className="w-36 shrink-0">
+            <Select
+              options={SORT_OPTIONS}
+              value={sort}
+              onValueChange={(val) => setParam('sort', val)}
+            />
+          </div>
+
+          {/* Extra Filters Popover Button */}
+          <button
+            type="button"
+            onClick={() => setFilterPopoverOpen(!filterPopoverOpen)}
+            className={`h-10 w-10 flex items-center justify-center rounded-lg border transition-colors cursor-pointer relative ${
+              hasFile
+                ? 'border-brand-500 text-brand-600 bg-brand-50'
+                : 'border-neutral-200 text-neutral-600 hover:bg-neutral-50'
+            }`}
+            aria-label="Thêm bộ lọc"
+          >
+            <SlidersHorizontal size={16} />
+            {hasFile && (
+              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-brand-600" />
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Extra Filters Popover Drawer / Dropdown */}
+      {canBrowse && filterPopoverOpen && (
+        <div className="p-4 bg-white rounded-lg border border-neutral-200 shadow-xs flex flex-wrap items-center justify-between gap-4 text-xs text-neutral-700">
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hasFile}
+                onChange={(e) => setParam('hasFile', e.target.checked ? 'true' : null)}
+                className="rounded border-neutral-300 text-brand-600"
+              />
+              <span>Chỉ hiện bài có tệp đính kèm</span>
+            </label>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFilterPopoverOpen(false)}
+            className="text-xs text-neutral-500 hover:text-neutral-900 font-medium cursor-pointer"
+          >
+            Đóng
+          </button>
+        </div>
+      )}
+
+      {/* Active Filter Chips Row */}
+      {canBrowse && hasActiveFilters && (
+        <div className="flex items-center gap-2 flex-wrap text-xs pt-1">
+          {searchQuery && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-neutral-100 text-neutral-800">
+              Từ khóa: "{searchQuery}"
+              <button
+                type="button"
+                onClick={() => setParam('q', null)}
+                className="hover:text-neutral-900 ml-0.5 cursor-pointer"
+              >
+                <X size={12} />
+              </button>
+            </span>
+          )}
+          {selectedCategory !== 'all' && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-neutral-100 text-neutral-800">
+              {CATEGORY_OPTIONS.find((c) => c.value === selectedCategory)?.label}
+              <button
+                type="button"
+                onClick={() => setParam('category', null)}
+                className="hover:text-neutral-900 ml-0.5 cursor-pointer"
+              >
+                <X size={12} />
+              </button>
+            </span>
+          )}
+          {selectedSubject !== 'all' && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-neutral-100 text-neutral-800">
+              Môn: {selectedSubject}
+              <button
+                type="button"
+                onClick={() => setParam('subject', null)}
+                className="hover:text-neutral-900 ml-0.5 cursor-pointer"
+              >
+                <X size={12} />
+              </button>
+            </span>
+          )}
+          {hasFile && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-neutral-100 text-neutral-800">
+              Có tệp đính kèm
+              <button
+                type="button"
+                onClick={() => setParam('hasFile', null)}
+                className="hover:text-neutral-900 ml-0.5 cursor-pointer"
+              >
+                <X size={12} />
+              </button>
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={clearAllFilters}
+            className="text-neutral-500 hover:text-neutral-900 underline text-xs cursor-pointer ml-1"
+          >
+            Xóa lọc
+          </button>
+        </div>
+      )}
+
+      {/* 4. Main Layout (2-Column when canBrowse, 1-Column when Guest) */}
+      <div className={canBrowse ? 'grid grid-cols-1 xl:grid-cols-12 gap-8 items-start' : 'space-y-6'}>
+        {/* Main Post List Column */}
+        <div className={canBrowse ? 'xl:col-span-8 space-y-4' : 'space-y-6'}>
+          {isLoading ? (
+            <LoadingSkeleton count={canBrowse ? 6 : 3} />
+          ) : displayedPosts.length === 0 ? (
+            <div className="py-12 text-center space-y-3">
+              <SearchX size={32} className="mx-auto text-neutral-300" />
+              <p className="text-sm font-medium text-neutral-700">
+                {searchQuery
+                  ? `Không có bài nào khớp với từ khóa "${searchQuery}"`
+                  : 'Chưa có bài viết nào trong mục này.'}
+              </p>
+              {canCompose && (
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setComposerOpen(true)}
+                  >
+                    Đặt câu hỏi cho chủ đề này
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="divide-y divide-neutral-100">
+              {displayedPosts.map((post) => (
+                <KnowledgeListItem
+                  key={post.id}
+                  post={post}
+                  showBookmark={canBrowse}
+                  onLikeToggle={(id, liked) => likeMutation.mutate({ id, liked })}
+                  onSaveToggle={(id, saved) => saveMutation.mutate({ id, saved })}
+                />
+              ))}
+            </div>
+          )}
+
+          {!canBrowse && (
+            <LimitNotice
+              remaining={Math.max(12, totalCount - 3)}
+              noun="bài viết"
+            />
+          )}
+        </div>
+
+        {/* 5. Sticky Sidebar Column (280px / 4 cols) — shown when canBrowse */}
+        {canBrowse && (
+          <aside className="hidden xl:block xl:col-span-4 space-y-8 sticky top-20">
+            {/* Mục 1: Môn bạn theo dõi */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-neutral-900">
+                  Môn bạn theo dõi
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setFollowModalOpen(true)}
+                  className="text-xs text-brand-600 hover:underline cursor-pointer font-medium"
+                >
+                  + Theo dõi môn khác
+                </button>
+              </div>
+
+              {followedSubjects.length === 0 ? (
+                <div className="text-xs text-neutral-500 space-y-2">
+                  <p>Theo dõi môn học để lọc nhanh bài viết.</p>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {['CSD201', 'SWP391', 'PRJ301', 'DBI202'].map((subj) => (
+                      <button
+                        key={subj}
+                        type="button"
+                        onClick={() => followSubjectMutation.mutate({ code: subj, follow: true })}
+                        className="px-2.5 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-semibold cursor-pointer"
+                      >
+                        + {subj}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {followedSubjects.map((subj) => (
+                    <button
+                      key={subj}
+                      type="button"
+                      onClick={() => setParam('subject', selectedSubject === subj ? null : subj)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                        selectedSubject === subj
+                          ? 'bg-neutral-900 text-white'
+                          : 'bg-neutral-100 text-neutral-800 hover:bg-neutral-200'
+                      }`}
+                    >
+                      {subj}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Mục 2: Chưa có trả lời (3-5 câu hỏi qa chưa có trả lời) */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-neutral-900">
+                  Chưa có trả lời
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setParam('sort', 'unanswered')}
+                  className="text-xs text-brand-600 hover:underline cursor-pointer font-medium"
+                >
+                  Xem tất cả
+                </button>
+              </div>
+
+              <div className="space-y-2.5 text-xs">
+                {unansweredQuestions.length === 0 ? (
+                  <p className="text-neutral-500">Tất cả câu hỏi đều đã được phản hồi.</p>
+                ) : (
+                  unansweredQuestions.map((q) => {
+                    const qTitle =
+                      q.title || q.contentMd.split('\n')[0] || 'Câu hỏi học tập';
+                    return (
+                      <Link
+                        key={q.id}
+                        to={`/knowledge/${q.id}`}
+                        className="block text-neutral-700 hover:text-brand-600 truncate transition-colors"
+                      >
+                        · {qTitle}
+                      </Link>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </aside>
+        )}
+      </div>
+
+      {/* Composer Dialog (Viết bài mới) */}
+      <Dialog open={composerOpen} onOpenChange={setComposerOpen}>
+        <DialogContent className="max-w-xl p-0 overflow-hidden">
+          <div className="p-4 border-b border-neutral-100 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-neutral-900">
+              Viết bài mới
+            </h2>
+          </div>
+          <div className="p-4">
             <ThreadComposer
+              variant="sheet"
               onPosted={() => {
-                queryClient.invalidateQueries({ queryKey: ['knowledge', 'posts'] });
                 setComposerOpen(false);
+                queryClient.invalidateQueries({ queryKey: ['knowledge', 'posts'] });
+                toast({ title: 'Đã đăng bài viết thành công' });
               }}
             />
-
-            {/* Filter & Sort Bar */}
-            <div className="p-3 bg-white rounded-2xl border border-neutral-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-1.5 overflow-x-auto">
-                <span className="text-xs font-medium text-neutral-400 mr-1">Môn học:</span>
-                {subjects.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setSubject(s)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                      selectedSubject === s
-                        ? 'bg-brand-50 text-brand-700'
-                        : 'text-neutral-600 hover:bg-neutral-100'
-                    }`}
-                  >
-                    {s === 'all' ? 'Tất cả' : s}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-1 bg-neutral-100 p-0.5 rounded-lg text-xs">
-                <button
-                  type="button"
-                  onClick={() => setSort('hot')}
-                  className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
-                    sort === 'hot' ? 'bg-white text-brand-700 shadow-xs' : 'text-neutral-500 hover:text-neutral-900'
-                  }`}
-                >
-                  Nổi bật
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSort('new')}
-                  className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
-                    sort === 'new' ? 'bg-white text-brand-700 shadow-xs' : 'text-neutral-500 hover:text-neutral-900'
-                  }`}
-                >
-                  Mới nhất
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSort('unanswered')}
-                  className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
-                    sort === 'unanswered' ? 'bg-white text-brand-700 shadow-xs' : 'text-neutral-500 hover:text-neutral-900'
-                  }`}
-                >
-                  Chưa trả lời
-                </button>
-              </div>
-            </div>
-
-            {/* Thread Posts List */}
-            {isLoading ? (
-              <LoadingSkeleton count={3} />
-            ) : !posts || posts.length === 0 ? (
-              <EmptyState
-                title="Chưa có bài viết nào"
-                description="Hãy là người đầu tiên chia sẻ kiến thức hoặc đặt câu hỏi cho chủ đề này nhé!"
-              />
-            ) : (
-              <div className="space-y-4">
-                {posts.map((post) => (
-                  <ThreadCard
-                    key={post.id}
-                    post={post}
-                    onLikeToggle={(id, liked) => likeMutation.mutate({ id, liked })}
-                    onSaveToggle={(id, saved) => saveMutation.mutate({ id, saved })}
-                    onReport={(id) => setReportPostId(id)}
-                    onDelete={(id) => setDeletePostId(id)}
-                  />
-                ))}
-              </div>
-            )}
           </div>
+        </DialogContent>
+      </Dialog>
 
-          {/* Right Column (1/3): Sidebar Widgets */}
-          <div className="space-y-5">
-            {/* 1. Category Directory Widget */}
-            <div className="p-5 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-3">
-              <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
-                <Sparkles size={16} className="text-brand-600" />
-                <span>Danh mục chuyên đề</span>
-              </h3>
-              <div className="space-y-1 text-xs">
-                {categories.slice(1).map((cat) => (
-                  <button
-                    key={cat.key}
-                    type="button"
-                    onClick={() => setCategory(cat.key)}
-                    className={`w-full flex items-center justify-between p-2 rounded-xl transition-colors text-left ${
-                      selectedCategory === cat.key
-                        ? 'bg-brand-50 text-brand-700 font-bold'
-                        : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
-                    }`}
-                  >
-                    <span>{cat.label}</span>
-                    <span className="text-[11px] text-neutral-400 font-normal">{cat.count} bài</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 2. Top Active Authors */}
-            <div className="p-5 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-3">
-              <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
-                <Award size={16} className="text-amber-500" />
-                <span>Tác giả tích cực tuần này</span>
-              </h3>
-              <div className="space-y-3 text-xs">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-9 w-9 rounded-full bg-brand-100 text-brand-700 font-bold flex items-center justify-center shrink-0">
-                    TB
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="font-bold text-neutral-900 block truncate">Trần Quốc Bảo</span>
-                    <span className="text-[11px] text-neutral-400">14 bài viết • 120 lời cảm ơn</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <div className="h-9 w-9 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center shrink-0">
-                    LH
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="font-bold text-neutral-900 block truncate">Lê Hoàng Minh</span>
-                    <span className="text-[11px] text-neutral-400">9 bài viết • 85 lời cảm ơn</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+      {/* Follow Subjects Modal */}
+      <Dialog open={followModalOpen} onOpenChange={setFollowModalOpen}>
+        <DialogContent className="max-w-md p-6 space-y-4">
+          <DialogHeader>
+            <DialogTitle className="text-lg">Theo dõi môn học</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-neutral-600">
+            Chọn các môn học bạn quan tâm để lọc nhanh bài viết và nhận thông báo khi có thảo luận mới.
+          </p>
+          <div className="grid grid-cols-2 gap-2 pt-2">
+            {['CSD201', 'PRJ301', 'SWP391', 'DBI202', 'MAS291', 'PRN231', 'LAB211', 'MAD101'].map((subj) => {
+              const isFollowing = followedSubjects.includes(subj);
+              return (
+                <button
+                  key={subj}
+                  type="button"
+                  onClick={() =>
+                    followSubjectMutation.mutate({ code: subj, follow: !isFollowing })
+                  }
+                  className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
+                    isFollowing
+                      ? 'border-brand-500 bg-brand-50 text-brand-700'
+                      : 'border-neutral-200 text-neutral-700 hover:border-neutral-300'
+                  }`}
+                >
+                  <span>{subj}</span>
+                  {isFollowing && <Check size={14} />}
+                </button>
+              );
+            })}
           </div>
-        </div>
-      </Tabs>
+          <div className="flex justify-end pt-2">
+            <Button size="sm" onClick={() => setFollowModalOpen(false)}>
+              Hoàn tất
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      {/* Dialogs */}
-      {reportPostId && (
-        <ReportPostDialog
-          open={!!reportPostId}
-          onOpenChange={(open) => !open && setReportPostId(null)}
-          postId={reportPostId}
+      {/* Report Dialog */}
+      {reportPost && (
+        <ReportDialog
+          open={!!reportPost}
+          onOpenChange={(open) => !open && setReportPost(null)}
+          targetType="post"
+          targetId={reportPost.id}
+          targetTitle={reportPost.title || reportPost.contentMd.split('\n')[0]}
+          targetAuthorName={reportPost.authorName || 'Sinh viên'}
+          contentSnapshot={reportPost.contentMd?.slice(0, 100)}
         />
       )}
 
+      {/* Confirm Delete Dialog */}
       {deletePostId && (
         <ConfirmDialog
           open={!!deletePostId}
           onOpenChange={(open) => !open && setDeletePostId(null)}
           title="Xóa bài viết?"
-          description="Hành động này không thể hoàn tác. Tất cả các câu trả lời và thảo luận trong bài viết này cũng sẽ bị gỡ bỏ."
+          description="Hành động này không thể hoàn tác. Bài viết và toàn bộ bình luận sẽ bị gỡ bỏ."
           confirmLabel="Xóa bài viết"
-          variant="destructive"
+          danger
           onConfirm={() => deleteMutation.mutate(deletePostId)}
         />
       )}

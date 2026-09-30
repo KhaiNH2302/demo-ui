@@ -4,11 +4,15 @@ import { Mail, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { apiClient } from '@/lib/apiClient';
+import { useAuthStore } from '@/store/authStore';
+import { seedUsers } from '@/mocks/data/users';
+import { seedClubMemberships } from '@/mocks/data/clubs';
 
 export default function VerifyEmailPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const email = (location.state as { email?: string })?.email || 'sinhvien@fpt.edu.vn';
+  const login = useAuthStore((s) => s.login);
+  const email = (location.state as { email?: string })?.email || 'ban@example.com';
 
   const [status, setStatus] = useState<'pending' | 'verified' | 'expired'>('pending');
   const [loading, setLoading] = useState(false);
@@ -26,6 +30,14 @@ export default function VerifyEmailPage() {
     }
   };
 
+  const handleEnterHome = () => {
+    const fallback = seedUsers.find((u) => u.email === 'newbie@fpt.edu.vn') || seedUsers[0];
+    const { password: _, ...safeUser } = fallback;
+    const memberships = seedClubMemberships.filter((m) => m.userId === fallback.id);
+    login(safeUser, `mock_jwt_token_${fallback.id}`, memberships);
+    navigate('/', { replace: true });
+  };
+
   const handleResend = () => {
     setResendCountdown(60);
     const interval = setInterval(() => {
@@ -40,27 +52,26 @@ export default function VerifyEmailPage() {
   };
 
   return (
-    <Card className="shadow-md text-center p-2">
+    <Card className="max-w-md mx-auto text-center p-2">
       {status === 'pending' && (
         <>
           <CardHeader className="items-center pb-2">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-50 text-brand-600 mb-2">
-              <Mail size={28} />
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-600 mb-2">
+              <Mail size={24} />
             </div>
-            <CardTitle className="text-xl">Kiểm tra hộp thư của bạn</CardTitle>
+            <CardTitle className="text-lg">Xác nhận email</CardTitle>
             <CardDescription className="max-w-xs">
-              Chúng tôi đã gửi link xác nhận đến địa chỉ <strong>{email}</strong>. Vui lòng kiểm tra và xác thực để kích hoạt tài khoản.
+              Chúng tôi đã gửi liên kết xác nhận đến địa chỉ <strong>{email}</strong>.
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-4 pt-4">
-            {/* Demo button to simulate email link click */}
-            <div className="p-3 bg-brand-50/50 rounded-lg border border-brand-100">
-              <p className="text-[11px] text-neutral-500 mb-2">
-                (Môi trường Demo: Không có email thật gửi đi, hãy nhấn nút dưới đây để giả lập xác minh)
+          <CardContent className="space-y-4 pt-3">
+            <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+              <p className="text-xs text-neutral-500 mb-2">
+                Môi trường Demo: Nhấn nút bên dưới để giả lập bấm liên kết xác nhận email.
               </p>
               <Button onClick={handleSimulateVerify} loading={loading} size="sm" className="w-full">
-                Giả lập click link xác minh email
+                Xác nhận email ngay
               </Button>
             </div>
 
@@ -72,7 +83,9 @@ export default function VerifyEmailPage() {
                 disabled={resendCountdown > 0}
                 className="text-xs"
               >
-                {resendCountdown > 0 ? `Gửi lại sau (${resendCountdown}s)` : 'Chưa nhận được? Gửi lại email'}
+                {resendCountdown > 0
+                  ? `Gửi lại sau (${resendCountdown}s)`
+                  : 'Gửi lại email xác nhận'}
               </Button>
             </div>
           </CardContent>
@@ -82,18 +95,22 @@ export default function VerifyEmailPage() {
       {status === 'verified' && (
         <>
           <CardHeader className="items-center pb-2">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#e7f7ee] text-[#16794a] mb-2">
-              <CheckCircle2 size={32} />
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-tier-good-bg text-tier-good-fg mb-2">
+              <CheckCircle2 size={28} />
             </div>
-            <CardTitle className="text-xl text-[#16794a]">Xác minh thành công!</CardTitle>
+            <CardTitle className="text-lg text-tier-good-fg">Đã xác nhận email</CardTitle>
             <CardDescription>
-              Tài khoản của bạn đã được kích hoạt. Hãy đăng nhập để bắt đầu sử dụng SCS.
+              Tài khoản của bạn đã sẵn sàng. Vào Trang chủ để bắt đầu kết nối.
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="pt-4">
-            <Button onClick={() => navigate('/login')} className="w-full" rightIcon={<ArrowRight size={16} />}>
-              Đến trang đăng nhập
+          <CardContent className="pt-3">
+            <Button
+              onClick={handleEnterHome}
+              className="w-full"
+              rightIcon={<ArrowRight size={16} />}
+            >
+              Vào Trang chủ
             </Button>
           </CardContent>
         </>
@@ -102,18 +119,18 @@ export default function VerifyEmailPage() {
       {status === 'expired' && (
         <>
           <CardHeader className="items-center pb-2">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#fdecec] text-[#dc3c33] mb-2">
-              <AlertTriangle size={32} />
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-tier-danger-bg text-tier-danger-fg mb-2">
+              <AlertTriangle size={28} />
             </div>
-            <CardTitle className="text-xl text-[#dc3c33]">Link xác minh hết hạn</CardTitle>
+            <CardTitle className="text-lg text-tier-danger-fg">Liên kết đã hết hạn</CardTitle>
             <CardDescription>
-              Link xác minh đã hết hạn hoặc không hợp lệ. Vui lòng yêu cầu gửi lại.
+              Liên kết xác nhận không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu gửi lại.
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="pt-4">
+          <CardContent className="pt-3">
             <Button onClick={handleResend} className="w-full">
-              Gửi lại link xác minh mới
+              Gửi lại email xác nhận
             </Button>
           </CardContent>
         </>
@@ -121,7 +138,7 @@ export default function VerifyEmailPage() {
 
       <CardFooter className="justify-center border-t border-neutral-100 py-3 text-xs text-neutral-400">
         <Link to="/login" className="hover:underline text-neutral-500">
-          Quay lại trang đăng nhập
+          Đổi email / Quay lại đăng nhập
         </Link>
       </CardFooter>
     </Card>

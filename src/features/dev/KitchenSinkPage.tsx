@@ -1,58 +1,40 @@
 import React, { useState } from 'react';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { GreetingHeader } from '@/components/shared/GreetingHeader';
-import { HighlightReel } from '@/components/shared/HighlightReel';
-import { DiscoverCarousel } from '@/components/shared/DiscoverCarousel';
-import { ActionSummaryBanner } from '@/components/shared/ActionSummaryBanner';
-import { FeedCard } from '@/components/shared/FeedCard';
-import { CoverHeader } from '@/components/shared/CoverHeader';
-import { AvatarStack } from '@/components/shared/AvatarStack';
-import { StatusBadge } from '@/components/shared/StatusBadge';
-import { StatusTimeline } from '@/components/shared/StatusTimeline';
-import { AIResultCard } from '@/components/shared/AIResultCard';
 import { AIFallbackBanner } from '@/components/shared/AIFallbackBanner';
 import { DisclaimerBanner } from '@/components/shared/DisclaimerBanner';
-import { UserMiniCard } from '@/components/shared/UserMiniCard';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { TagInput } from '@/components/shared/TagInput';
 import { ScheduleInput } from '@/components/shared/ScheduleInput';
-import { ScheduleCompare } from '@/components/shared/ScheduleCompare';
-import { SummaryCard } from '@/components/shared/SummaryCard';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton';
-import { AttachmentList } from '@/components/shared/AttachmentList';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { ReasonDialog } from '@/components/shared/ReasonDialog';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { DateBadge } from '@/components/shared/DateBadge';
+import { UpcomingList } from '@/components/shared/UpcomingList';
+import { EntityRow } from '@/components/shared/EntityRow';
+import { StatRow } from '@/components/shared/StatRow';
+import { ListToolbar } from '@/components/shared/ListToolbar';
+import { ActiveFilterChips } from '@/components/shared/ActiveFilterChips';
+import { ActivityCard } from '@/components/shared/ActivityCard';
+import { ActionCard } from '@/components/shared/ActionCard';
+import { ImageGallery } from '@/components/shared/ImageGallery';
+import { CoverImagePicker } from '@/components/shared/CoverImagePicker';
+import { ImageUploader } from '@/components/shared/ImageUploader';
+import { LimitNotice } from '@/components/shared/LimitNotice';
+import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Chip } from '@/components/ui/Chip';
+import { Pagination } from '@/components/ui/Pagination';
 import { Input } from '@/components/ui/Input';
-import { Textarea } from '@/components/ui/Textarea';
 import { Select } from '@/components/ui/Select';
 import { Switch } from '@/components/ui/Switch';
-import { Progress } from '@/components/ui/Progress';
 import { Alert } from '@/components/ui/Alert';
-import { Stepper } from '@/components/ui/Stepper';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { toast } from '@/components/ui/Toast';
-import {
-  Sparkles,
-  Users,
-  CheckCircle,
-  Info,
-  AlertTriangle,
-  XCircle,
-  Shield,
-  MessageCircle,
-  Repeat2,
-  Calendar,
-  Building2,
-  GraduationCap,
-  Inbox,
-  ArrowRight,
-} from 'lucide-react';
-import type { ScheduleSlot } from '@/types/entities';
+import { Inbox } from 'lucide-react';
+import type { ScheduleSlot, MediaImageItem } from '@/types/entities';
 
 export const KitchenSinkPage: React.FC = () => {
   const [tags, setTags] = useState(['React', 'TypeScript', 'TailwindCSS', 'Spring Boot']);
@@ -64,12 +46,34 @@ export const KitchenSinkPage: React.FC = () => {
   const [segmentedVal, setSegmentedVal] = useState('overview');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [reasonOpen, setReasonOpen] = useState(false);
+  const [page, setPage] = useState(2);
+  const [searchQ, setSearchQ] = useState('');
+  const [coverImg, setCoverImg] = useState<string | null>(
+    'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1200&auto=format&fit=crop&q=80'
+  );
+  const [galleryImgs, setGalleryImgs] = useState<MediaImageItem[]>([
+    {
+      id: 'g1',
+      url: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&auto=format&fit=crop&q=80',
+      caption: 'Thảo luận nhóm đồ án SWP391',
+    },
+    {
+      id: 'g2',
+      url: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=1200&auto=format&fit=crop&q=80',
+      caption: 'Buổi chia sẻ của Mentor F-Code',
+    },
+    {
+      id: 'g3',
+      url: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=1200&auto=format&fit=crop&q=80',
+      caption: 'Chiến dịch Chủ Nhật Xanh',
+    },
+  ]);
 
   return (
     <div className="space-y-12 max-w-5xl mx-auto pb-20">
       <PageHeader
         title="Kitchen Sink — Design System Showcase"
-        description="Trưng bày và kiểm thử trực quan toàn bộ UI Primitives, 5 Semantic Tiers và Shared Business Components theo SCS Design System specs"
+        description="Trưng bày và kiểm thử trực quan toàn bộ UI Primitives, 5 Semantic Tiers và Shared Business Components theo SCS Design System (04-reuse-plan & 05-social-patterns)"
         breadcrumb={[
           { label: 'Trang chủ', href: '/' },
           { label: 'Dev' },
@@ -106,10 +110,10 @@ export const KitchenSinkPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 2. BUTTONS & TOASTS */}
+      {/* 2. BUTTONS, CHIPS & PAGINATION */}
       <section className="space-y-4">
         <h2 className="text-xl font-bold border-b border-neutral-200 pb-2 text-neutral-900">
-          2. Nút bấm & Toast Notifications
+          2. Buttons, Chip & Pagination (R1 Primitives)
         </h2>
         <div className="flex flex-wrap gap-3 items-center">
           <Button variant="primary" onClick={() => toast.success('Thao tác thành công!')}>
@@ -126,15 +130,186 @@ export const KitchenSinkPage: React.FC = () => {
           </Button>
           <Button variant="ghost">Ghost Button</Button>
           <Button loading>Loading Button</Button>
-          <Button variant="primary" size="sm">Small</Button>
-          <Button variant="primary" size="lg">Large</Button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 items-center pt-2">
+          <Chip selected count={24}>Tất cả</Chip>
+          <Chip>Hỏi đáp môn học</Chip>
+          <Chip>#CSD201</Chip>
+          <Chip onRemove={() => toast.info('Đã xóa chip')}>Bộ lọc: Hòa Lạc</Chip>
+        </div>
+
+        <Pagination page={page} pageSize={10} total={95} onChange={setPage} />
+      </section>
+
+      {/* 3. REUSABLE BLOCKS (R3): DateBadge, UpcomingList, EntityRow, StatRow, ListToolbar */}
+      <section className="space-y-4">
+        <h2 className="text-xl font-bold border-b border-neutral-200 pb-2 text-neutral-900">
+          3. Khối ghép tái sử dụng (R3 Shared Blocks)
+        </h2>
+
+        <StatRow
+          items={[
+            { label: 'Cần bạn phản hồi', value: 4, tone: 'warning', active: true },
+            { label: 'Đang chờ người khác', value: 2, tone: 'default' },
+            { label: 'Đã xử lý 30 ngày qua', value: 18, tone: 'success' },
+          ]}
+        />
+
+        <ListToolbar
+          search={{
+            value: searchQ,
+            onChange: setSearchQ,
+            placeholder: 'Tìm kiếm hoạt động, nhóm, câu hỏi...',
+          }}
+        />
+
+        <ActiveFilterChips
+          filters={[
+            { key: 'type', label: 'Loại', valueLabel: 'Workshop' },
+            { key: 'mode', label: 'Hình thức', valueLabel: 'Offline' },
+          ]}
+          onRemove={(k) => toast.info(`Xóa lọc ${k}`)}
+          onClearAll={() => toast.info('Đã xóa tất cả bộ lọc')}
+        />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-card-title text-neutral-900">DateBadge & UpcomingList</h3>
+              <DateBadge date="2026-10-04T14:00:00Z" size="md" />
+            </div>
+            <UpcomingList
+              items={[
+                {
+                  id: 'u1',
+                  title: 'Code Camp Fall 2026: Git Flow & CI/CD',
+                  organizerName: 'F-Code Club · Tòa Gamma',
+                  startAt: '2026-10-04T14:00:00Z',
+                  href: '/clubs/opportunities/opp_01',
+                },
+                {
+                  id: 'u2',
+                  title: 'Chiến dịch Chủ Nhật Xanh: Thu gom pin cũ',
+                  organizerName: 'Tình nguyện · Ký túc xá Dom A',
+                  startAt: '2026-10-03T07:30:00Z',
+                  href: '/programs/prog_01',
+                },
+              ]}
+              viewAllHref="/events"
+            />
+          </Card>
+
+          <Card className="p-4 space-y-2">
+            <h3 className="text-card-title text-neutral-900">EntityRow</h3>
+            <div className="divide-y divide-neutral-100">
+              <EntityRow
+                leading={
+                  <UserAvatar
+                    user={{ id: 'u1', fullName: 'Trần Minh Cường' }}
+                    size="sm"
+                    linkToProfile={false}
+                  />
+                }
+                title="Trần Minh Cường"
+                subtitle="Kỹ thuật phần mềm · K17 · Chủ nhiệm F-Code"
+                badge={<Badge tier="pending">Đại diện CLB</Badge>}
+                actions={<Button size="sm" variant="secondary">Nhắn tin</Button>}
+              />
+              <EntityRow
+                leading={
+                  <UserAvatar
+                    user={{ id: 'u2', fullName: 'Lê Thị Bình' }}
+                    size="sm"
+                    linkToProfile={false}
+                  />
+                }
+                title="Lê Thị Bình"
+                subtitle="Mentor môn CSD201, PRJ301"
+                badge={<Badge tier="success">Mentor</Badge>}
+                actions={<Button size="sm" variant="primary">Theo dõi</Button>}
+              />
+            </div>
+          </Card>
         </div>
       </section>
 
-      {/* 3. ALERTS & BANNERS */}
+      {/* 4. ACTIVITY CORE (R5): ActivityCard & ActionCard */}
       <section className="space-y-4">
         <h2 className="text-xl font-bold border-b border-neutral-200 pb-2 text-neutral-900">
-          3. Alerts & Banners
+          4. Activity Core (R5 — Dùng chung cho FE-04 CLB & FE-06 Chương trình)
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <ActivityCard
+            id="opp_01"
+            href="/clubs/opportunities/opp_01"
+            coverImageUrl="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1200&auto=format&fit=crop&q=80"
+            galleryCount={2}
+            typeBadge={{ label: 'Sự kiện CLB', variant: 'info' }}
+            organizer={{ name: 'F-Code Club', verified: true }}
+            title="Code Camp Fall 2026: Thực chiến Git Flow & CI/CD cho đồ án SWP391"
+            startAt="2026-10-04T14:00:00Z"
+            locationOrMode="Hội trường Gamma, ĐH FPT"
+            registeredCount={54}
+            capacity={80}
+            actionSlot={
+              <Button size="sm" variant="secondary">
+                Xem & đăng ký
+              </Button>
+            }
+          />
+
+          <div className="space-y-4">
+            <ActionCard
+              statusBadge={<Badge tier="success">Sẽ tham gia ✓</Badge>}
+              capacityBar={{ current: 32, max: 50, label: 'Tình nguyện viên xác nhận' }}
+              metaRows={[{ label: 'Hạn đăng ký', value: '02/10/2026 · 20:00' }]}
+              primaryAction={
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => toast.info('Mở hội thoại BTC')}
+                >
+                  Trao đổi với BTC
+                </Button>
+              }
+              note="Tập trung lúc 07:15 tại Sân chính Tòa Alpha."
+            />
+            <LimitNotice noun="chương trình" count={6} alwaysShow />
+          </div>
+        </div>
+      </section>
+
+      {/* 5. MEDIA UPLOAD & GALLERY */}
+      <section className="space-y-4">
+        <h2 className="text-xl font-bold border-b border-neutral-200 pb-2 text-neutral-900">
+          5. Media & Hình ảnh (ImageGallery, CoverImagePicker, ImageUploader)
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="p-4 space-y-3">
+            <h3 className="text-card-title text-neutral-900">ImageGallery (Bấm để mở Lightbox)</h3>
+            <ImageGallery images={galleryImgs} />
+          </Card>
+
+          <Card className="p-4 space-y-4">
+            <CoverImagePicker
+              value={coverImg}
+              onChange={setCoverImg}
+              aspect="16/9"
+            />
+            <ImageUploader
+              value={galleryImgs}
+              onChange={setGalleryImgs}
+              maxImages={6}
+            />
+          </Card>
+        </div>
+      </section>
+
+      {/* 6. ALERTS & BANNERS */}
+      <section className="space-y-4">
+        <h2 className="text-xl font-bold border-b border-neutral-200 pb-2 text-neutral-900">
+          6. Alerts & Banners
         </h2>
         <div className="space-y-3">
           <DisclaimerBanner />
@@ -143,368 +318,106 @@ export const KitchenSinkPage: React.FC = () => {
             Đây là thông điệp hiển thị mức độ Neutral dành cho hướng dẫn sử dụng.
           </Alert>
           <Alert variant="attention" title="Yêu cầu bổ sung hồ sơ">
-            Hồ sơ ứng tuyển của bạn cần cập nhật thêm CV và thông tin liên hệ.
-          </Alert>
-          <Alert variant="danger" title="Lỗi kết nối">
-            Không thể xác thực phiên làm việc, vui lòng đăng nhập lại.
+            Hồ sơ ứng tuyển của bạn cần cập nhật thêm thông tin liên hệ.
           </Alert>
         </div>
       </section>
 
-      {/* 4. SOCIAL SURFACE COMPONENTS */}
+      {/* 7. FORM & SCHEDULE INPUTS */}
       <section className="space-y-4">
         <h2 className="text-xl font-bold border-b border-neutral-200 pb-2 text-neutral-900">
-          4. Social Surface & Feed Components (C6, C6b)
+          7. Form Controls, TagInput & ScheduleInput
         </h2>
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">GreetingHeader & HighlightReel (Story Tray)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <GreetingHeader fullName="Nguyễn Hoàng Khải" />
-              <HighlightReel
-                items={[
-                  { id: '1', label: 'F-Code Club', icon: Building2, isNew: true, href: '/clubs' },
-                  { id: '2', label: 'Mentor Java', icon: GraduationCap, isNew: true, href: '/mentoring/browse' },
-                  { id: '3', label: 'Nhóm SWP391', icon: Users, isNew: true, href: '/groups' },
-                  { id: '4', label: 'CLB Tiếng Anh', icon: Building2, href: '/clubs' },
-                  { id: '5', label: 'Workshop AI', icon: Calendar, href: '/clubs' },
-                ]}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">ActionSummaryBanner (Thu gọn 1 dòng)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ActionSummaryBanner
-                items={[
-                  { id: '1', type: 'swap', title: 'Lời mời đổi lớp PRN231 cần xác nhận', count: 2, linkTo: '/swap/connections' },
-                  { id: '2', type: 'group', title: 'Yêu cầu gia nhập nhóm SWP391', count: 1, linkTo: '/groups/me' },
-                  { id: '3', type: 'club', title: 'Đơn tuyển CLB JS Club có lịch phỏng vấn', count: 1, linkTo: '/applications' },
-                ]}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">DiscoverCarousel ("Gợi ý cho bạn" cuộn ngang)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DiscoverCarousel
-                items={[
-                  {
-                    id: 'd1',
-                    type: 'group',
-                    title: 'Nhóm Luyện Thuật Toán CSD201',
-                    subtitle: 'Đại học FPT • 3/5 thành viên',
-                    score: 94,
-                    reason: 'Phù hợp mục tiêu ôn thi Practical Exam và rảnh tối T3/T5',
-                    linkTo: '/groups',
-                    tags: ['Java', 'CSD201'],
-                  },
-                  {
-                    id: 'd2',
-                    type: 'mentor',
-                    title: 'Mentor Hoàng Văn Nam',
-                    subtitle: 'Kỹ sư Fullstack • Cựu sinh viên FPTU',
-                    score: 89,
-                    reason: 'Chuyên môn sâu về React, Spring Boot & Capstone SWP391',
-                    linkTo: '/mentoring/browse',
-                    tags: ['React', 'Spring Boot'],
-                  },
-                ]}
-              />
-            </CardContent>
-          </Card>
-
+        <Card className="p-5 space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FeedCard
-              variant="post"
-              kind="knowledge"
-              author={{ name: 'Lê Hoàng Long', subtitle: 'Đại học FPT', time: '2 giờ trước' }}
-              actions={
-                <>
-                  <span className="text-xs text-neutral-400 flex items-center gap-1.5">
-                    <MessageCircle size={14} /> 12 thảo luận
-                  </span>
-                  <Button size="sm" variant="ghost">
-                    Đọc chi tiết <ArrowRight size={14} className="ml-1" />
-                  </Button>
-                </>
-              }
-            >
-              <h4 className="text-sm font-bold text-neutral-900">
-                Tổng hợp bộ đề ôn thi Practical Exam CSD201 có lời giải mẫu Tree & Graph
-              </h4>
-              <p className="text-xs text-neutral-600 line-clamp-2">
-                Tài liệu bao gồm 15 bài toán cốt lõi môn Cấu trúc dữ liệu và Giải thuật thường ra trong đề thi Practical Exam.
-              </p>
-            </FeedCard>
-
-            <FeedCard
-              variant="suggestion"
-              kind="swap-match"
-              aiTag="Gợi ý đổi lớp phù hợp với bạn"
-              actions={
-                <Button size="sm" variant="outline" className="ml-auto">
-                  Xem & gửi lời mời <ArrowRight size={14} className="ml-1" />
-                </Button>
-              }
-            >
-              <div className="flex items-center gap-2.5">
-                <UserAvatar name="Trần Văn Minh" size="sm" />
-                <div className="text-sm">
-                  <span className="font-semibold text-neutral-900">Trần Văn Minh</span>{' '}
-                  <span className="text-neutral-500">đang có lớp SE1701 khớp đúng lớp bạn muốn đổi</span>
-                </div>
-              </div>
-            </FeedCard>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. COMMUNITY & PROFILE HEADERS */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-bold border-b border-neutral-200 pb-2 text-neutral-900">
-          5. Community Headers & Avatar Components
-        </h2>
-        <div className="space-y-6">
-          <CoverHeader
-            title="Câu lạc bộ Kỹ thuật Phần mềm F-Code"
-            subtitle="Học thuật & Công nghệ • Thành lập 2014"
-            badge={<Badge tier="brand">Đang tuyển thành viên</Badge>}
-            actions={
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">Chia sẻ</Button>
-                <Button variant="primary" size="sm">Ứng tuyển ngay</Button>
-              </div>
-            }
-          >
-            <div className="flex items-center gap-4 text-xs text-neutral-600">
-              <div className="flex items-center gap-2">
-                <AvatarStack
-                  users={[
-                    { name: 'Khải' },
-                    { name: 'Long' },
-                    { name: 'Minh' },
-                    { name: 'Hà' },
-                    { name: 'Nam' },
-                  ]}
-                />
-                <span className="font-medium">128 thành viên</span>
-              </div>
-              <span>•</span>
-              <span>15 sự kiện đã tổ chức</span>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-neutral-700">Họ và tên</label>
+              <Input defaultValue="Nguyễn Văn An" />
             </div>
-          </CoverHeader>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">UserMiniCard & UserAvatar</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <UserMiniCard
-                  user={{ id: 'u1', fullName: 'Nguyễn Hoàng Khải', school: 'FPT University Hà Nội' }}
-                  subtitle="Sinh viên K16 • CNPM"
-                  action={<Button size="sm" variant="outline">Xem hồ sơ</Button>}
-                />
-                <UserMiniCard
-                  user={{ id: 'u2', fullName: 'ThS. Trần Thị Mai', school: 'Khoa CNTT - ĐH FPT' }}
-                  subtitle="Mentor môn PRN231, SWP391"
-                  action={<Badge tier="success">Mentor</Badge>}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">StatusBadge Bảng Tra Toàn Hệ Thống</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2 pt-1">
-                <StatusBadge group="swapRequest" value="Open" />
-                <StatusBadge group="swapRequest" value="Connected" />
-                <StatusBadge group="swapConnection" value="Pending" />
-                <StatusBadge group="post" value="Published" />
-                <StatusBadge group="post" value="PendingReview" />
-                <StatusBadge group="application" value="Interview" />
-                <StatusBadge group="membership" value="Active" />
-                <StatusBadge group="expense" value="Approved" />
-                <StatusBadge group="task" value="InProgress" />
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. AI & COMPARISON COMPONENTS */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-bold border-b border-neutral-200 pb-2 text-neutral-900">
-          6. AI Matching & Schedule Comparison
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <AIResultCard
-            score={96}
-            confidence={0.92}
-            reasons={[
-              'Trùng khớp hoàn hảo nguyện vọng môn CSD201',
-              'Lịch rảnh tối Thứ 3 và Thứ 5 tương thích 100%',
-              'Cùng định hướng tham gia Capstone Project',
-            ]}
-          >
-            <div className="p-3 bg-white rounded-lg border border-brand-100 flex items-center justify-between">
-              <UserMiniCard
-                user={{ id: 'u_match', fullName: 'Trần Minh Đức', school: 'FPT University' }}
-                subtitle="Đang có lớp SE1701 cần đổi sang SE1704"
-                linkToProfile={false}
-              />
-              <Button size="sm">Gửi lời mời</Button>
-            </div>
-          </AIResultCard>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">ScheduleCompare (So sánh lịch song song)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ScheduleCompare
-                labelA="Lịch của bạn"
-                slotsA={[
-                  { day: 'Mon', start: '18:00', end: '20:00' },
-                  { day: 'Wed', start: '18:00', end: '20:00' },
-                ]}
-                labelB="Lịch đối tác"
-                slotsB={[
-                  { day: 'Mon', start: '18:00', end: '20:00' },
-                  { day: 'Thu', start: '19:00', end: '21:00' },
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-neutral-700">Chuyên ngành</label>
+              <Select
+                options={[
+                  { value: 'SE', label: 'Kỹ thuật phần mềm' },
+                  { value: 'AI', label: 'Trí tuệ nhân tạo' },
                 ]}
               />
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">StatusTimeline (Tiến trình Tuyển sinh / Xét đơn)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <StatusTimeline
-              steps={[
-                { key: '1', label: 'Đã nộp đơn', state: 'done' },
-                { key: '2', label: 'Sàng lọc hồ sơ', state: 'done' },
-                { key: '3', label: 'Phỏng vấn chuyên môn', state: 'current' },
-                { key: '4', label: 'Công bố kết quả', state: 'upcoming' },
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-neutral-700">Kỹ năng chuyên môn</label>
+            <TagInput value={tags} onChange={setTags} />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-neutral-700">Khung giờ rảnh trong tuần</label>
+            <ScheduleInput value={schedule} onChange={setSchedule} />
+          </div>
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center gap-2">
+              <Switch checked={switchVal} onCheckedChange={setSwitchVal} />
+              <span className="text-xs text-neutral-700">
+                Cho phép gợi ý nhóm học tập tự động
+              </span>
+            </div>
+            <SegmentedControl
+              value={segmentedVal}
+              onValueChange={setSegmentedVal}
+              options={[
+                { value: 'overview', label: 'Tổng quan' },
+                { value: 'details', label: 'Chi tiết' },
               ]}
             />
-          </CardContent>
+          </div>
         </Card>
       </section>
 
-      {/* 7. FORM INPUTS & SCHEDULE */}
+      {/* 8. DIALOGS & STATES */}
       <section className="space-y-4">
         <h2 className="text-xl font-bold border-b border-neutral-200 pb-2 text-neutral-900">
-          7. Form Inputs, TagInput & ScheduleInput
+          8. Dialogs, EmptyState, ErrorState & Skeletons
         </h2>
-        <Card>
-          <CardContent className="p-6 space-y-6">
-            <div>
-              <label className="text-xs font-semibold text-neutral-700 block mb-2">TagInput (Kỹ năng & Lĩnh vực):</label>
-              <TagInput value={tags} onChange={setTags} placeholder="Nhập kỹ năng và gõ Enter..." />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-neutral-700 block mb-2">ScheduleInput (Lịch rảnh tự khai):</label>
-              <ScheduleInput value={schedule} onChange={setSchedule} />
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-neutral-100">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-neutral-700">Cho phép AI gợi ý matching:</span>
-                <Switch checked={switchVal} onCheckedChange={setSwitchVal} />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setConfirmOpen(true)}>
-                  Mở ConfirmDialog
-                </Button>
-                <Button variant="destructive" size="sm" onClick={() => setReasonOpen(true)}>
-                  Mở ReasonDialog
-                </Button>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-neutral-700 block mb-2">SegmentedControl (Pill tabs):</label>
-              <SegmentedControl
-                options={[
-                  { value: 'overview', label: 'Tổng quan' },
-                  { value: 'events', label: 'Sự kiện' },
-                  { value: 'tasks', label: 'Nhiệm vụ' },
-                  { value: 'chat', label: 'Chat chung' },
-                ]}
-                value={segmentedVal}
-                onValueChange={setSegmentedVal}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* 8. SKELETONS & EMPTY STATES */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-bold border-b border-neutral-200 pb-2 text-neutral-900">
-          8. Feedback States (Skeleton, Empty, Error)
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="p-4">
-            <h4 className="text-xs font-bold text-neutral-500 mb-3 uppercase">LoadingSkeleton</h4>
-            <LoadingSkeleton variant="card" count={1} />
-          </Card>
-          <Card>
-            <EmptyState
-              icon={Inbox}
-              title="Chưa có yêu cầu nào"
-              description="Hãy tạo yêu cầu mới để bắt đầu ghép đôi"
-              actionLabel="Tạo yêu cầu"
-              onAction={() => toast.info('Bấm tạo yêu cầu')}
-            />
-          </Card>
-          <Card>
-            <ErrorState
-              message="Không thể tải danh sách kết nối do mạng gián đoạn"
-              onRetry={() => toast.info('Đang tải lại dữ liệu...')}
-            />
-          </Card>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => setConfirmOpen(true)}>
+            Mở ConfirmDialog
+          </Button>
+          <Button variant="destructive" onClick={() => setReasonOpen(true)}>
+            Mở ReasonDialog
+          </Button>
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <EmptyState
+            icon={Inbox}
+            title="Chưa có dữ liệu"
+            description="Trạng thái rỗng mẫu chuẩn hóa."
+          />
+          <ErrorState
+            title="Không tải được dữ liệu"
+            message="Đã xảy ra lỗi kết nối máy chủ."
+            onRetry={() => toast.info('Đang thử lại...')}
+          />
+        </div>
+        <LoadingSkeleton variant="thread-list" count={2} />
       </section>
 
-      {/* Dialogs */}
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="Xác nhận hủy yêu cầu đổi lớp"
-        description="Bạn có chắc chắn muốn hủy yêu cầu đổi lớp PRN231 không? Hành động này sẽ thông báo tới các đối tác liên quan."
+        title="Xác nhận thao tác"
+        description="Bạn có chắc chắn muốn thực hiện hành động này?"
         onConfirm={() => {
-          toast.success('Đã hủy yêu cầu');
           setConfirmOpen(false);
+          toast.success('Đã xác nhận!');
         }}
       />
 
       <ReasonDialog
         open={reasonOpen}
         onOpenChange={setReasonOpen}
-        title="Từ chối đơn ứng tuyển"
-        description="Vui lòng nhập lý do từ chối để gửi thông báo giải thích cho ứng viên."
-        reasonLabel="Lý do từ chối"
-        reasonPlaceholder="Ví dụ: Chưa đạt yêu cầu kinh nghiệm chuyên môn..."
+        title="Nhập lý do từ chối"
+        description="Lý do sẽ được gửi thông báo trực tiếp tới sinh viên."
         onConfirm={(reason) => {
-          toast.info(`Đã từ chối với lý do: "${reason}"`);
           setReasonOpen(false);
+          toast.info(`Đã gửi lý do: ${reason}`);
         }}
       />
     </div>

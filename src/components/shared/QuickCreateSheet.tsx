@@ -1,110 +1,145 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  ArrowLeftRight,
+  BookOpen,
+  Building2,
+  Camera,
+  GraduationCap,
+  HeartHandshake,
+  Users,
+} from 'lucide-react';
+import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from '@/components/ui/Dialog';
-import {
-  SquarePen,
-  MessageCirclePlus,
-  Repeat2,
-  UsersRound,
-  GraduationCap,
-  Building2,
-  ArrowRight,
-} from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
 
-export interface QuickCreateSheetProps {
+interface QuickCreateSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onOpenStoryComposer?: () => void;
 }
 
-export const QuickCreateSheet: React.FC<QuickCreateSheetProps> = ({ open, onOpenChange }) => {
+export const QuickCreateSheet: React.FC<QuickCreateSheetProps> = ({
+  open,
+  onOpenChange,
+  onOpenStoryComposer,
+}) => {
   const navigate = useNavigate();
+  const representedClubs = useAuthStore((s) => s.representedClubs);
+  const hasRepresentedClub = representedClubs.length > 0;
 
-  const options = [
+  const actions = [
     {
-      title: 'Đăng thread',
-      description: 'Chia sẻ kinh nghiệm học tập, tài liệu hoặc đặt câu hỏi',
-      icon: SquarePen,
-      action: () => navigate('/'),
+      key: 'story',
+      title: 'Đăng tin 24h (Story)',
+      description: 'Chia sẻ khoảnh khắc học tập, câu lạc bộ hoặc thông báo ngắn trong ngày',
+      icon: Camera,
+      onClick: () => {
+        onOpenChange(false);
+        onOpenStoryComposer?.();
+      },
     },
     {
-      title: 'Tin nhắn mới',
-      description: 'Gửi lời mời trò chuyện trực tiếp hoặc trao đổi',
-      icon: MessageCirclePlus,
-      action: () => navigate('/chats'),
+      key: 'knowledge',
+      title: 'Đặt câu hỏi / Chia sẻ bài viết',
+      description: 'Đăng câu hỏi học thuật, ghi chú môn học hoặc kinh nghiệm thực tập',
+      icon: BookOpen,
+      onClick: () => {
+        onOpenChange(false);
+        navigate('/knowledge/new');
+      },
     },
     {
-      title: 'Đăng đổi lớp',
-      description: 'Tìm đối tác hoán đổi lớp học phần trong kỳ',
-      icon: Repeat2,
-      action: () => navigate('/swap/new'),
+      key: 'swap',
+      title: 'Tạo yêu cầu đổi lớp',
+      description: 'Đăng lớp hiện tại và ca học mong muốn để hệ thống gợi ý ghép đôi',
+      icon: ArrowLeftRight,
+      onClick: () => {
+        onOpenChange(false);
+        navigate('/swap/new');
+      },
     },
     {
-      title: 'Tạo nhóm kết nối',
-      description: 'Lập nhóm làm đồ án SWP391, Capstone hoặc ôn thi',
-      icon: UsersRound,
-      action: () => navigate('/groups/new'),
+      key: 'group',
+      title: 'Tạo nhóm học tập',
+      description: 'Tìm thành viên cùng môn học, đồ án hoặc ôn thi cuối kỳ',
+      icon: Users,
+      onClick: () => {
+        onOpenChange(false);
+        navigate('/groups/new');
+      },
     },
     {
-      title: 'Tìm Mentor bằng AI',
-      description: 'Phân tích môn học và tự động ghép đôi người hướng dẫn',
+      key: 'program',
+      title: 'Mở kênh Tình nguyện / Workshop',
+      description: 'Tổ chức chiến dịch tình nguyện hoặc buổi chia sẻ kỹ năng cho sinh viên',
+      icon: HeartHandshake,
+      onClick: () => {
+        onOpenChange(false);
+        navigate('/programs/new');
+      },
+    },
+    {
+      key: 'mentoring',
+      title: 'Tìm Mentor hỗ trợ',
+      description: 'Gửi yêu cầu 1-1 tới sinh viên khóa trên đã hoàn thành tốt môn học',
       icon: GraduationCap,
-      action: () => navigate('/mentoring/ai'),
+      onClick: () => {
+        onOpenChange(false);
+        navigate('/mentoring');
+      },
     },
     {
-      title: 'Đăng ký CLB mới',
-      description: 'Nộp hồ sơ thành lập tổ chức hoặc CLB sinh viên mới',
+      key: 'club',
+      title: hasRepresentedClub ? 'Đăng cơ hội CLB mới' : 'Yêu cầu đại diện CLB',
+      description: hasRepresentedClub
+        ? 'Mở đăng ký sự kiện, tuyển thành viên hoặc tuyển cộng tác viên cho CLB'
+        : 'Xác minh quyền đại diện để quản lý hồ sơ và đăng cơ hội cho CLB của bạn',
       icon: Building2,
-      action: () => navigate('/clubs/register'),
+      onClick: () => {
+        onOpenChange(false);
+        navigate(hasRepresentedClub ? '/clubs/manage/new' : '/clubs/represent');
+      },
     },
   ];
 
-  const handleSelect = (action: () => void) => {
-    onOpenChange(false);
-    action();
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg p-6">
-        <DialogHeader className="pb-2">
-          <DialogTitle className="text-xl font-bold text-neutral-900">Tạo nội dung mới</DialogTitle>
-          <DialogDescription className="text-xs text-neutral-500">
-            Chọn loại hoạt động bạn muốn khởi tạo trên hệ thống SCS
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Tạo mới trên SCS</DialogTitle>
+          <DialogDescription>
+            Chọn loại nội dung hoặc yêu cầu bạn muốn đăng tải lên cộng đồng
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-2 py-2">
-          {options.map((opt, idx) => {
-            const Icon = opt.icon;
+        <div className="grid grid-cols-1 gap-2 mt-2">
+          {actions.map((item) => {
+            const Icon = item.icon;
             return (
-              <div
-                key={idx}
-                onClick={() => handleSelect(opt.action)}
-                className="group flex items-center justify-between p-3.5 rounded-xl border border-neutral-200/80 bg-white hover:border-brand-500 hover:bg-brand-50/20 transition-all cursor-pointer shadow-xs"
+              <button
+                key={item.key}
+                type="button"
+                onClick={item.onClick}
+                className="flex items-start gap-3.5 p-3 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 hover:border-neutral-300 text-left transition-colors cursor-pointer group"
               >
-                <div className="flex items-center gap-3.5">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100 text-neutral-600 border border-neutral-200 shrink-0 transition-transform group-hover:scale-105 group-hover:bg-brand-50 group-hover:text-brand-600">
-                    <Icon size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-neutral-900 group-hover:text-brand-600 transition-colors">
-                      {opt.title}
-                    </h4>
-                    <p className="text-xs text-neutral-500 line-clamp-1 mt-0.5">
-                      {opt.description}
-                    </p>
-                  </div>
+                <div className="p-2 rounded-lg shrink-0 bg-brand-50 text-brand-600 group-hover:bg-brand-100 transition-colors">
+                  <Icon className="h-5 w-5" />
                 </div>
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-50 text-neutral-400 group-hover:bg-brand-500 group-hover:text-white transition-all">
-                  <ArrowRight size={13} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-neutral-900 group-hover:text-brand-600 transition-colors">
+                    {item.title}
+                  </div>
+                  <p className="text-caption text-neutral-500 mt-0.5 leading-relaxed">
+                    {item.description}
+                  </p>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
