@@ -194,7 +194,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const KindIcon = kindMeta?.icon;
 
   return (
-    <div className={cn('flex h-full w-full bg-white overflow-hidden relative', className)}>
+    <div className={cn('flex h-full w-full bg-surface overflow-hidden relative', className)}>
       <input
         type="file"
         ref={imageInputRef}
@@ -213,9 +213,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       />
 
       {/* Main Chat Stream Column */}
-      <div className="flex-1 flex flex-col h-full min-w-0 bg-white">
+      <div className="flex-1 flex flex-col h-full min-w-0 bg-surface">
         {/* Messenger Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 bg-white z-10 shadow-2xs">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 bg-surface z-10 shadow-2xs">
           <div className="flex items-center gap-3 min-w-0">
             <div className="relative shrink-0">
               <Avatar
@@ -224,12 +224,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 size="md"
                 className="ring-1 ring-neutral-200"
               />
-              <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-tier-success-dot border-2 border-white" />
+              <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-tier-success-dot border-2 border-surface" />
             </div>
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-neutral-900 truncate">
+                <h4 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 truncate">
                   {conversation?.title || 'Cuộc trò chuyện'}
                 </h4>
                 {kindMeta && KindIcon && (
@@ -253,7 +253,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               onClick={() => {
                 toast({ variant: 'default', title: 'Đang kết nối cuộc gọi thoại...' });
               }}
-              className="p-2 rounded-lg hover:bg-neutral-100 hover:text-brand-600 transition-colors"
+              className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-brand-600 transition-colors"
               title="Bắt đầu cuộc gọi thoại"
             >
               <Phone size={18} />
@@ -264,7 +264,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               onClick={() => {
                 toast({ variant: 'default', title: 'Đang kết nối cuộc gọi video...' });
               }}
-              className="p-2 rounded-lg hover:bg-neutral-100 hover:text-brand-600 transition-colors"
+              className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-brand-600 transition-colors"
               title="Bắt đầu cuộc gọi video"
             >
               <Video size={18} />
@@ -274,7 +274,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               type="button"
               onClick={() => setSearchInChat(!searchInChat)}
               className={cn(
-                'p-2 rounded-lg hover:bg-neutral-100 transition-colors',
+                'p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors',
                 searchInChat ? 'bg-brand-50 text-brand-600' : 'hover:text-brand-600'
               )}
               title="Tìm kiếm trong cuộc trò chuyện"
@@ -299,7 +299,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="p-2 rounded-lg hover:bg-neutral-100 hover:text-neutral-900 transition-colors"
+                  className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
                 >
                   <MoreVertical size={18} />
                 </button>
@@ -321,14 +321,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
         {/* Search Bar in Chat (Toggleable) */}
         {searchInChat && (
-          <div className="p-2 bg-neutral-50 border-b border-neutral-100 flex items-center gap-2">
+          <div className="p-2 bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 flex items-center gap-2">
             <Search size={14} className="text-neutral-400 ml-2" />
             <input
               type="text"
               value={chatSearchKeyword}
               onChange={(e) => setChatSearchKeyword(e.target.value)}
               placeholder="Tìm kiếm nội dung tin nhắn trong cuộc trò chuyện này..."
-              className="flex-1 bg-white border border-neutral-200 rounded-lg px-3 py-1.5 text-xs outline-hidden focus:border-brand-500"
+              className="flex-1 bg-surface border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs outline-hidden focus:border-brand-500 text-neutral-900 dark:text-neutral-100"
               autoFocus
             />
             {chatSearchKeyword && (
@@ -387,7 +387,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         )}
 
         {/* Message Stream */}
-        <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-neutral-50/30">
+        <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-neutral-50/30 dark:bg-neutral-900/30">
           {filteredMessages.length === 0 ? (
             <div className="text-center py-12 text-xs text-neutral-400">
               {chatSearchKeyword
@@ -415,14 +415,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
         {/* ReadOnly banner */}
         {readOnly && (
-          <div className="p-3 bg-neutral-100 border-t border-neutral-200 text-xs text-neutral-600 text-center flex items-center justify-center gap-1.5">
+          <div className="p-3 bg-neutral-100 dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700 text-xs text-neutral-600 dark:text-neutral-400 text-center flex items-center justify-center gap-1.5">
             <Lock size={14} /> {readOnlyReason}
           </div>
         )}
 
         {/* Messenger Rich Bottom Bar */}
         {!readOnly && (
-          <div className="border-t border-neutral-100 bg-white p-3 space-y-2 relative">
+          <div className="border-t border-neutral-200 dark:border-neutral-700 bg-surface p-3 space-y-2 relative">
             {/* Pre-attached Image & File previews */}
             {(attachedImages.length > 0 || attachedFiles.length > 0) && (
               <div className="flex flex-wrap gap-2 pb-1">
@@ -442,7 +442,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 {attachedFiles.map((file, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-2 p-1.5 pr-2 bg-neutral-100 border border-neutral-200 rounded-lg text-xs"
+                    className="flex items-center gap-2 p-1.5 pr-2 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs"
                   >
                     <Paperclip size={13} className="text-brand-600 shrink-0" />
                     <span className="font-medium truncate max-w-[120px]">{file.name}</span>
@@ -460,13 +460,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
             {/* Emoji Picker Popover */}
             {showEmojiPicker && (
-              <div className="absolute bottom-full left-4 mb-2 bg-white border border-neutral-200 rounded-2xl p-3 shadow-xl z-20 w-72 grid grid-cols-8 gap-2">
+              <div className="absolute bottom-full left-4 mb-2 bg-surface border border-neutral-200 dark:border-neutral-700 rounded-2xl p-3 shadow-xl z-20 w-72 grid grid-cols-8 gap-2">
                 {EMOJI_LIST.map((emoji) => (
                   <button
                     key={emoji}
                     type="button"
                     onClick={() => handleEmojiClick(emoji)}
-                    className="text-lg hover:scale-130 transition-transform p-1 rounded-md hover:bg-neutral-100 flex items-center justify-center cursor-pointer"
+                    className="text-lg hover:scale-130 transition-transform p-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center justify-center cursor-pointer"
                   >
                     {emoji}
                   </button>
@@ -481,7 +481,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 <button
                   type="button"
                   onClick={() => imageInputRef.current?.click()}
-                  className="p-2 rounded-full hover:bg-neutral-100 hover:text-brand-600 transition-colors"
+                  className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-brand-600 transition-colors"
                   title="Đính kèm ảnh"
                 >
                   <ImageIcon size={19} />
@@ -489,7 +489,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2 rounded-full hover:bg-neutral-100 hover:text-brand-600 transition-colors"
+                  className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-brand-600 transition-colors"
                   title="Đính kèm tệp tài liệu"
                 >
                   <Paperclip size={19} />
@@ -498,7 +498,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                   type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   className={cn(
-                    'p-2 rounded-full hover:bg-neutral-100 transition-colors',
+                    'p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors',
                     showEmojiPicker ? 'text-brand-600 bg-brand-50' : 'hover:text-brand-600'
                   )}
                   title="Chọn biểu cảm emoji"
@@ -508,7 +508,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               </div>
 
               {/* Input Box */}
-              <div className="flex-1 min-w-0 bg-neutral-100 hover:bg-neutral-50 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-500/30 focus-within:border-brand-400 rounded-2xl border border-transparent transition-all px-3.5 py-2">
+              <div className="flex-1 min-w-0 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 focus-within:bg-surface focus-within:ring-2 focus-within:ring-brand-500/30 focus-within:border-brand-400 rounded-2xl border border-transparent transition-all px-3.5 py-2">
                 <textarea
                   ref={textareaRef}
                   value={inputText}
@@ -517,7 +517,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                   placeholder="Nhập tin nhắn... (Enter gửi, Shift+Enter xuống dòng)"
                   rows={1}
                   disabled={isPendingInvitation && isSenderOfInvitation}
-                  className="w-full text-xs sm:text-sm text-neutral-900 placeholder:text-neutral-400 bg-transparent border-none outline-hidden resize-none max-h-24 leading-relaxed"
+                  className="w-full text-xs sm:text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 bg-transparent border-none outline-hidden resize-none max-h-24 leading-relaxed"
                 />
               </div>
 
@@ -572,9 +572,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               className="fixed inset-0 bg-neutral-900/40 backdrop-blur-xs"
               onClick={() => setShowInfoSidebar(false)}
             />
-            <div className="relative w-80 max-w-full bg-white h-full shadow-2xl z-10 flex flex-col">
-              <div className="p-3 border-b border-neutral-100 flex items-center justify-between">
-                <span className="font-bold text-xs text-neutral-900">Chi tiết cuộc trò chuyện</span>
+            <div className="relative w-80 max-w-full bg-surface h-full shadow-2xl z-10 flex flex-col">
+              <div className="p-3 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between">
+                <span className="font-bold text-xs text-neutral-900 dark:text-neutral-100">Chi tiết cuộc trò chuyện</span>
                 <button
                   type="button"
                   onClick={() => setShowInfoSidebar(false)}

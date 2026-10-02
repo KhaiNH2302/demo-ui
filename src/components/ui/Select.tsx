@@ -53,7 +53,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           disabled={disabled}
           aria-invalid={error}
           className={cn(
-            'flex h-10 w-full appearance-none rounded-md border border-neutral-300 bg-white px-3 py-2 pr-8 text-sm text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:border-brand-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:opacity-75 transition-colors cursor-pointer',
+            'flex h-10 w-full appearance-none rounded-md border border-neutral-300 dark:border-neutral-700 bg-surface px-3 py-2 pr-8 text-sm text-neutral-900 dark:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:border-brand-500 disabled:cursor-not-allowed disabled:bg-neutral-100 dark:disabled:bg-neutral-800 disabled:opacity-75 transition-colors cursor-pointer',
             !value && placeholder && 'text-neutral-400',
             error && 'border-[#dc3c33] focus-visible:ring-[#dc3c33]/30 focus-visible:border-[#dc3c33]',
             selectClasses
@@ -61,7 +61,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           {...props}
         >
           {placeholder && (
-            <option value="" disabled>
+            <option value="" disabled className="text-neutral-400 bg-surface">
               {placeholder}
             </option>
           )}
@@ -71,7 +71,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                   key={opt.value}
                   value={opt.value}
                   disabled={opt.disabled}
-                  className="text-neutral-900"
+                  className="text-neutral-900 dark:text-neutral-100 bg-surface"
                 >
                   {opt.label}
                 </option>

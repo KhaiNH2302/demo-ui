@@ -52,7 +52,7 @@ export const ReviewDrawer: React.FC<ReviewDrawerProps> = ({
         </div>
 
         {actions && (
-          <div className="pt-4 mt-6 border-t border-neutral-200 flex items-center justify-end gap-2 sticky bottom-0 bg-white py-3">
+          <div className="pt-4 mt-6 border-t border-neutral-200 flex items-center justify-end gap-2 sticky bottom-0 bg-surface py-3">
             {actions}
           </div>
         )}

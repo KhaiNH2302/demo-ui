@@ -11,7 +11,7 @@ import { AvatarStack } from '@/components/shared/AvatarStack';
 import { UserMiniCard } from '@/components/shared/UserMiniCard';
 import { ChatWindow } from '@/components/shared/ChatWindow';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
+import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';

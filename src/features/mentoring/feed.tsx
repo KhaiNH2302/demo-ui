@@ -36,7 +36,7 @@ export const MentoringPostCard: React.FC<MentoringPostCardProps> = ({
   return (
     <div
       className={cn(
-        'rounded-lg border border-neutral-200 bg-white transition-colors hover:border-neutral-300',
+        'rounded-lg border border-neutral-200 bg-surface transition-colors hover:border-neutral-300',
         isCompact ? 'p-3.5 space-y-2.5' : 'p-4 space-y-3',
         className,
       )}

@@ -72,7 +72,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   return (
     <div
       className={cn(
-        'group rounded-lg border border-neutral-200 bg-white overflow-hidden flex flex-col justify-between transition-colors hover:border-neutral-300',
+        'group rounded-lg border border-neutral-200 bg-surface overflow-hidden flex flex-col justify-between transition-colors hover:border-neutral-300',
         className,
       )}
     >

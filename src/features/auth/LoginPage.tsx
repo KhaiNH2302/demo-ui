@@ -195,7 +195,7 @@ export default function LoginPage() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 rounded-lg border border-neutral-200 bg-white overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 rounded-lg border border-neutral-200 bg-surface overflow-hidden">
         {/* Cột trái: Form đăng nhập (C1) */}
         <div className="lg:col-span-7 p-6 sm:p-8 space-y-5">
           <div>
@@ -212,7 +212,7 @@ export default function LoginPage() {
             loading={loadingGoogle}
             onClick={handleGoogleOAuth}
             leftIcon={<GoogleLogoSvg />}
-            className="w-full h-10 font-medium text-neutral-800 border-neutral-200 hover:bg-neutral-50"
+            className="w-full h-10 font-medium text-neutral-800 border-neutral-200 hover:bg-neutral-100"
           >
             Tiếp tục với Google
           </Button>
@@ -220,7 +220,7 @@ export default function LoginPage() {
           {/* Dải phân cách "hoặc" */}
           <div className="relative flex items-center justify-center">
             <div className="border-t border-neutral-200 w-full" />
-            <span className="bg-white px-3 text-xs text-neutral-400">hoặc</span>
+            <span className="bg-surface px-3 text-xs text-neutral-400">hoặc</span>
             <div className="border-t border-neutral-200 w-full" />
           </div>
 
@@ -304,7 +304,7 @@ export default function LoginPage() {
               key={acc.email}
               type="button"
               onClick={() => handleQuickLogin(acc.email)}
-              className="text-left rounded-md border border-neutral-200 bg-white px-3 py-2 hover:border-brand-400 transition-colors cursor-pointer"
+              className="text-left rounded-md border border-neutral-200 bg-surface px-3 py-2 hover:border-brand-400 transition-colors cursor-pointer"
             >
               <div className="text-xs font-semibold text-neutral-900">{acc.name}</div>
               <div className="text-[11px] text-neutral-500 truncate">{acc.roleLabel}</div>

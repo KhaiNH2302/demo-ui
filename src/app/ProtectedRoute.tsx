@@ -154,6 +154,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
+  // Redirect new student to /onboarding if mandatory Step 1 education is missing
+  const isCompleted = localStorage.getItem('scs_onboarding_completed') === 'true';
+  const lacksMandatoryEdu = user.roles.includes('student') && (!user.school || !user.studentCode || !user.major);
+  if (lacksMandatoryEdu && !isCompleted && location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   const effectiveRoles: Role[] = [];
   if (requireRoles) effectiveRoles.push(...requireRoles);
   if (requireRole) {

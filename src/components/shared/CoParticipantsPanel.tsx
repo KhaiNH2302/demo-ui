@@ -122,7 +122,7 @@ export const CoParticipantsPanel: React.FC<CoParticipantsPanelProps> = ({
             return (
               <div
                 key={p.userId}
-                className="flex items-center justify-between gap-3 p-3 rounded-lg border border-neutral-200 bg-white"
+                className="flex items-center justify-between gap-3 p-3 rounded-lg border border-neutral-200 bg-surface"
               >
                 <Link to={`/users/${p.userId}`} className="flex items-center gap-2.5 min-w-0 group">
                   {p.avatarUrl ? (

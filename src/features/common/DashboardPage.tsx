@@ -17,6 +17,7 @@ import { FeedInsert } from '@/components/shared/FeedInsert';
 import { EntityRow } from '@/components/shared/EntityRow';
 import { DateBadge } from '@/components/shared/DateBadge';
 import { UpcomingList } from '@/components/shared/UpcomingList';
+import { LegalDialog } from '@/components/shared/LegalDialog';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
@@ -243,6 +244,7 @@ export const DashboardPage: React.FC = () => {
   const { user } = useAuthStore();
 
   const [feedTab, setFeedTab] = useState<'for_you' | 'following'>('for_you');
+  const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
 
   // C6.0 Line 1: Pending guest action before login
   const [pendingAction, setPendingAction] = useState<PendingGuestAction | null>(() =>
@@ -435,7 +437,7 @@ export const DashboardPage: React.FC = () => {
 
         {/* C6.T.2 — TodayPanel ("Hôm nay") */}
         {todayItems.length > 0 && (
-          <section className="rounded-lg border border-neutral-200 bg-white overflow-hidden">
+          <section className="rounded-lg border border-neutral-200 bg-surface overflow-hidden">
             <div className="px-4 py-2.5 border-b border-neutral-200 flex items-center justify-between">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
                 Hôm nay
@@ -473,7 +475,7 @@ export const DashboardPage: React.FC = () => {
               <Link
                 key={sp.id}
                 to={sp.href}
-                className="shrink-0 inline-flex items-center gap-2 rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-xs hover:bg-neutral-50"
+                className="shrink-0 inline-flex items-center gap-2 rounded-md border border-neutral-200 bg-surface px-2.5 py-1.5 text-xs hover:bg-neutral-100"
               >
                 {sp.logoUrl ? (
                   <img
@@ -501,7 +503,7 @@ export const DashboardPage: React.FC = () => {
         <ThreadComposer onPosted={handlePostCreated} />
 
         {/* Feed Tab SegmentedControl */}
-        <div className="sticky top-14 z-10 bg-white/95 backdrop-blur-xs py-2 border-b border-neutral-200 flex items-center justify-between">
+        <div className="sticky top-14 z-10 bg-surface/95 backdrop-blur-xs py-2 border-b border-neutral-200 flex items-center justify-between">
           <SegmentedControl
             options={[
               { value: 'for_you', label: 'Dành cho bạn' },
@@ -566,7 +568,7 @@ export const DashboardPage: React.FC = () => {
                       <div
                         key={q.id}
                         onClick={() => navigate(`/knowledge/${q.id}`)}
-                        className="p-3 rounded-md bg-white border border-neutral-200 hover:border-neutral-300 transition-colors cursor-pointer flex items-center justify-between gap-3"
+                        className="p-3 rounded-md bg-surface border border-neutral-200 hover:border-neutral-300 transition-colors cursor-pointer flex items-center justify-between gap-3"
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -632,7 +634,7 @@ export const DashboardPage: React.FC = () => {
       {/* Desktop Right Column (≥1280px, width 300px sticky) */}
       <aside className="hidden xl:block w-[300px] shrink-0 sticky top-20 space-y-5">
         {/* C6.T.3 — Box 1: Không gian của bạn (MySpacesList) */}
-        <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
+        <div className="bg-surface border border-neutral-200 rounded-lg overflow-hidden">
           <div className="px-4 py-2.5 border-b border-neutral-200 flex items-center justify-between">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
               Không gian của bạn
@@ -677,7 +679,7 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* Box 2: Môn học theo dõi */}
-        <div className="bg-white border border-neutral-200 rounded-lg p-4 space-y-3">
+        <div className="bg-surface border border-neutral-200 rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-neutral-900">Môn bạn theo dõi</h3>
             <Link to="/knowledge" className="text-xs font-medium text-brand-600 hover:underline">
@@ -732,17 +734,33 @@ export const DashboardPage: React.FC = () => {
             Trợ giúp
           </Link>
           <span>·</span>
-          <Link to="/terms" className="hover:underline">
+          <button
+            type="button"
+            onClick={() => setLegalModal('terms')}
+            className="hover:underline cursor-pointer"
+          >
             Điều khoản
-          </Link>
+          </button>
           <span>·</span>
-          <Link to="/privacy" className="hover:underline">
+          <button
+            type="button"
+            onClick={() => setLegalModal('privacy')}
+            className="hover:underline cursor-pointer"
+          >
             Quyền riêng tư
-          </Link>
+          </button>
           <span>·</span>
           <span>© SCS 2026</span>
         </div>
       </aside>
+
+      {legalModal && (
+        <LegalDialog
+          open={!!legalModal}
+          onOpenChange={(open) => !open && setLegalModal(null)}
+          type={legalModal}
+        />
+      )}
     </div>
   );
 };

@@ -193,7 +193,7 @@ export const ProgramDetailPage: React.FC = () => {
                       <Link
                         key={co.userId}
                         to={`/users/${co.userId}`}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-neutral-200 text-caption hover:border-brand-300"
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-neutral-200 text-caption hover:border-brand-300"
                       >
                         <span className="font-semibold text-neutral-800">{co.fullName}</span>
                         <span className="text-neutral-500">Đồng tổ chức</span>
@@ -201,7 +201,7 @@ export const ProgramDetailPage: React.FC = () => {
                     ) : (
                       <div
                         key={co.userId}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-neutral-200 text-caption"
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-neutral-200 text-caption"
                       >
                         <span className="font-semibold text-neutral-800">{co.fullName}</span>
                         <span className="text-neutral-500">Đồng tổ chức</span>
@@ -431,7 +431,7 @@ export const ProgramDetailPage: React.FC = () => {
                   </div>
                 )}
                 {myReg.feedbackNote && (
-                  <p className="text-caption text-neutral-700 bg-white p-2.5 rounded border border-neutral-200">
+                  <p className="text-caption text-neutral-700 bg-surface p-2.5 rounded border border-neutral-200">
                     {myReg.feedbackNote}
                   </p>
                 )}

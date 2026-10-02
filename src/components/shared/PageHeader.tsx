@@ -40,7 +40,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
     return (
       <div
         className={cn(
-          'bg-white border-b border-neutral-200 px-4 sm:px-6 md:px-8 py-5 -mx-4 sm:-mx-6 md:-mx-8 -mt-6 mb-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4',
+          'bg-surface border-b border-neutral-200 px-4 sm:px-6 md:px-8 py-5 -mx-4 sm:-mx-6 md:-mx-8 -mt-6 mb-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4',
           className
         )}
       >

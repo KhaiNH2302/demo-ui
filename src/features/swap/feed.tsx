@@ -25,7 +25,7 @@ export const SwapMatchRow: React.FC<SwapMatchRowProps> = ({ item, className }) =
   return (
     <div
       className={cn(
-        'rounded-lg border border-neutral-200 bg-white p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors hover:border-neutral-300',
+        'rounded-lg border border-neutral-200 bg-surface p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors hover:border-neutral-300',
         className,
       )}
     >

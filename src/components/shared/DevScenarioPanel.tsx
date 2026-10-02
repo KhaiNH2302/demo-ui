@@ -51,21 +51,21 @@ export const DevScenarioPanel: React.FC = () => {
           variant="secondary"
           size="sm"
           onClick={() => setIsOpen(true)}
-          className="shadow-lg border border-neutral-300 bg-white/95 backdrop-blur text-xs gap-1.5"
+          className="shadow-lg border border-neutral-300 dark:border-neutral-600 bg-white/95 dark:bg-neutral-800/95 backdrop-blur text-xs gap-1.5"
           leftIcon={<Sliders size={14} className="text-brand-600" />}
         >
           Dev Scenarios
         </Button>
       ) : (
-        <div className="w-80 rounded-xl border border-neutral-200 bg-white/98 backdrop-blur shadow-2xl p-4 animate-in slide-in-from-bottom-5">
-          <div className="flex items-center justify-between border-b border-neutral-100 pb-2 mb-3">
-            <h4 className="text-xs font-bold text-neutral-900 flex items-center gap-1.5">
+        <div className="w-80 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white/98 dark:bg-neutral-900/98 backdrop-blur shadow-2xl p-4 animate-in slide-in-from-bottom-5">
+          <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-700 pb-2 mb-3">
+            <h4 className="text-xs font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
               <Sliders size={14} className="text-brand-600" /> Dev Scenarios & Seed Accounts
             </h4>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="text-neutral-400 hover:text-neutral-700 p-0.5"
+              className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 p-0.5"
             >
               <X size={14} />
             </button>
@@ -86,8 +86,8 @@ export const DevScenarioPanel: React.FC = () => {
                       onClick={() => switchAccount(u)}
                       className={`text-left p-1.5 rounded-md border text-[11px] transition-colors flex items-center justify-between ${
                         isCurrent
-                          ? 'border-brand-500 bg-brand-50 text-brand-800 font-semibold'
-                          : 'border-neutral-200 hover:bg-neutral-50 text-neutral-700'
+                          ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10 text-brand-800 dark:text-brand-300 font-semibold'
+                          : 'border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
                       }`}
                     >
                       <span className="truncate">{u.fullName.split(' ').slice(-1)[0]} ({u.roles[0]})</span>
@@ -98,14 +98,14 @@ export const DevScenarioPanel: React.FC = () => {
               </div>
             </div>
 
-            <div className="border-t border-neutral-100 pt-2.5">
+            <div className="border-t border-neutral-100 dark:border-neutral-700 pt-2.5">
               <span className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider block mb-2">
                 Kịch bản giả lập lỗi/edge case:
               </span>
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {scenarios.map((s) => (
                   <div key={s.key} className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-neutral-700 truncate">{s.label}</span>
+                    <span className="text-[11px] text-neutral-700 dark:text-neutral-300 truncate">{s.label}</span>
                     <Switch
                       checked={!!activeScenarios[s.key]}
                       onCheckedChange={(checked) => toggleScenario(s.key, checked)}

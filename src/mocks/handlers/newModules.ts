@@ -483,12 +483,25 @@ export const newModulesHandlers = [
       list = list.filter((e) => e.sourceType === 'program' && (e as any).programType === 'Workshop');
     }
 
-    if (tab === 'registered') {
+    const from = url.searchParams.get('from');
+    const to = url.searchParams.get('to');
+    const registered = url.searchParams.get('registered');
+
+    if (tab === 'registered' || registered === 'true') {
       list = list.filter((e) => e.registeredByMe);
     } else if (tab === 'past') {
       list = list.filter((e) => e.status === 'Finished');
-    } else {
+    } else if (tab === 'upcoming') {
       list = list.filter((e) => e.status !== 'Finished');
+    }
+
+    if (from) {
+      const fromTime = new Date(from).getTime();
+      list = list.filter((e) => new Date(e.endAt || e.startAt).getTime() >= fromTime);
+    }
+    if (to) {
+      const toTime = new Date(to).getTime();
+      list = list.filter((e) => new Date(e.startAt).getTime() <= toTime);
     }
 
     return HttpResponse.json({ data: list });

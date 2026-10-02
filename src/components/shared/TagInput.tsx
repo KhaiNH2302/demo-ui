@@ -52,14 +52,14 @@ export const TagInput: React.FC<TagInputProps> = ({
 
   return (
     <div className={cn('space-y-2', className)}>
-      <div className="flex flex-wrap items-center gap-1.5 min-h-10 w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary transition-colors">
+      <div className="flex flex-wrap items-center gap-1.5 min-h-10 w-full rounded-md border border-neutral-300 dark:border-neutral-600 bg-surface px-3 py-1.5 text-sm focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary transition-colors">
         {activeTags.map((tag, idx) => (
-          <Badge key={idx} tier="neutral" size="sm" className="gap-1 pr-1 bg-neutral-100 text-neutral-800">
+          <Badge key={idx} tier="neutral" size="sm" className="gap-1 pr-1 bg-neutral-100 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200">
             {tag}
             <button
               type="button"
               onClick={() => removeTag(idx)}
-              className="text-neutral-400 hover:text-neutral-700 cursor-pointer"
+              className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer"
             >
               <X size={12} />
             </button>
@@ -73,7 +73,7 @@ export const TagInput: React.FC<TagInputProps> = ({
             onKeyDown={handleKeyDown}
             onBlur={() => inputVal && addTag(inputVal)}
             placeholder={activeTags.length === 0 ? placeholder : ''}
-            className="flex-1 min-w-[120px] bg-transparent outline-none text-xs text-neutral-900 placeholder:text-neutral-400"
+            className="flex-1 min-w-[120px] bg-transparent outline-none text-xs text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400"
           />
         )}
       </div>
@@ -86,7 +86,7 @@ export const TagInput: React.FC<TagInputProps> = ({
               key={s}
               type="button"
               onClick={() => addTag(s)}
-              className="rounded bg-neutral-100 px-1.5 py-0.5 text-neutral-600 hover:bg-neutral-200 transition-colors cursor-pointer"
+              className="rounded bg-neutral-100 dark:bg-neutral-700 px-1.5 py-0.5 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors cursor-pointer"
             >
               + {s}
             </button>

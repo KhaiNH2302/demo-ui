@@ -1,10 +1,69 @@
 import { http, HttpResponse } from 'msw';
 import { seedSwapRequests, seedSwapConnections } from '../data/swap';
+import { seedCourseOfferings } from '../data/courseOfferings';
+import { seedUsers } from '../data/users';
 import { seedConversations, seedMessages } from '../data/conversations';
 import { mockDelay, isScenarioActive } from '../utils';
-import type { SwapRequest, SwapConnection, AiSwapMatch } from '@/types/entities';
+import type { SwapRequest, SwapConnection, AiSwapMatch, User } from '@/types/entities';
 
 export const swapHandlers = [
+  // Course Offerings for Combobox
+  http.get('/api/v1/course-offerings', async ({ request }) => {
+    await mockDelay(100, 200);
+    const url = new URL(request.url);
+    const q = (url.searchParams.get('q') || '').toLowerCase().trim();
+
+    let list = [...seedCourseOfferings];
+    if (q) {
+      list = list.filter(
+        (o) =>
+          o.courseCode.toLowerCase().includes(q) ||
+          o.courseName.toLowerCase().includes(q) ||
+          (o.subjectCode && o.subjectCode.toLowerCase().includes(q)),
+      );
+    }
+    return HttpResponse.json({ data: list });
+  }),
+
+  // Explore other requests (Block C)
+  http.get('/api/v1/swap-requests/explore', async ({ request }) => {
+    await mockDelay(200, 400);
+    const url = new URL(request.url);
+    const offeringId = url.searchParams.get('offeringId');
+    const q = (url.searchParams.get('q') || '').toLowerCase().trim();
+    const sort = url.searchParams.get('sort') || 'newest';
+    const excludeIds = (url.searchParams.get('excludeIds') || '').split(',').filter(Boolean);
+    const authHeader = request.headers.get('Authorization') || '';
+    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+
+    let list = seedSwapRequests.filter(
+      (r) => r.studentId !== userId && r.status === 'Open' && !excludeIds.includes(r.id),
+    );
+
+    if (offeringId && offeringId !== 'all') {
+      list = list.filter((r) => r.offeringId === offeringId);
+    }
+
+    if (q) {
+      list = list.filter((r) => {
+        const off = seedCourseOfferings.find((o) => o.id === r.offeringId);
+        return (
+          r.currentClassCode.toLowerCase().includes(q) ||
+          r.targetClassCode.toLowerCase().includes(q) ||
+          (off && (off.courseCode.toLowerCase().includes(q) || off.courseName.toLowerCase().includes(q)))
+        );
+      });
+    }
+
+    if (sort === 'random') {
+      list = [...list].sort(() => 0.5 - Math.random());
+    } else {
+      list = [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+
+    return HttpResponse.json({ data: list });
+  }),
+
   http.get('/api/v1/swap-requests', async ({ request }) => {
     await mockDelay();
     const url = new URL(request.url);
@@ -16,17 +75,33 @@ export const swapHandlers = [
     if (status) {
       list = list.filter((r) => r.status === status);
     }
-    return HttpResponse.json({ data: list });
+
+    // Attach computed lock status & pendingConnectionCount
+    const enriched = list.map((r) => {
+      const pendingConns = seedSwapConnections.filter(
+        (c) => (c.requestAId === r.id || c.requestBId === r.id) && c.status === 'Pending',
+      );
+      return {
+        ...r,
+        pendingConnectionCount: pendingConns.length,
+        locked: r.status !== 'Open' || pendingConns.length > 0,
+      };
+    });
+
+    return HttpResponse.json({ data: enriched });
   }),
 
   http.post('/api/v1/swap-requests', async ({ request }) => {
     await mockDelay();
     const authHeader = request.headers.get('Authorization') || '';
     const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
-    const body = (await request.json()) as Omit<SwapRequest, 'id' | 'studentId' | 'status' | 'version' | 'createdAt' | 'updatedAt'>;
+    const body = (await request.json()) as Omit<
+      SwapRequest,
+      'id' | 'studentId' | 'status' | 'version' | 'createdAt' | 'updatedAt'
+    >;
 
     const existingOpen = seedSwapRequests.find(
-      (r) => r.studentId === userId && r.offeringId === body.offeringId && r.status === 'Open'
+      (r) => r.studentId === userId && r.offeringId === body.offeringId && r.status === 'Open',
     );
     if (existingOpen) {
       return HttpResponse.json(
@@ -37,7 +112,7 @@ export const swapHandlers = [
             details: { existingRequestId: existingOpen.id },
           },
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -48,8 +123,11 @@ export const swapHandlers = [
       currentClassCode: body.currentClassCode,
       targetClassCode: body.targetClassCode,
       schedule: body.schedule,
+      note: body.note,
       status: 'Open',
       version: 1,
+      locked: false,
+      pendingConnectionCount: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -58,13 +136,70 @@ export const swapHandlers = [
     return HttpResponse.json({ data: newReq });
   }),
 
-  http.get('/api/v1/swap-requests/:id', async ({ params }) => {
+  http.get('/api/v1/swap-requests/:id', async ({ params, request }) => {
     await mockDelay();
     const req = seedSwapRequests.find((r) => r.id === params.id);
     if (!req) {
-      return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Yêu cầu không tồn tại' } }, { status: 404 });
+      return HttpResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'Yêu cầu không tồn tại' } },
+        { status: 404 },
+      );
     }
-    return HttpResponse.json({ data: req });
+
+    const authHeader = request.headers.get('Authorization') || '';
+    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const isOwner = req.studentId === userId;
+
+    const pendingConns = seedSwapConnections.filter(
+      (c) => (c.requestAId === req.id || c.requestBId === req.id) && c.status === 'Pending',
+    );
+    const isLocked = req.status !== 'Open' || pendingConns.length > 0;
+
+    const ownerUser = seedUsers.find((u) => u.id === req.studentId) || {
+      id: req.studentId,
+      fullName: 'Sinh viên FPT',
+      cohort: 'K18',
+      major: 'Kỹ thuật phần mềm',
+    };
+
+    // My request in same course offering
+    const myRequestInSameOffering = seedSwapRequests.find(
+      (r) => r.studentId === userId && r.offeringId === req.offeringId && r.status === 'Open',
+    );
+
+    // Existing connection between us
+    const existingConnection = seedSwapConnections.find(
+      (c) =>
+        ((c.initiatorId === userId && c.recipientId === req.studentId) ||
+          (c.initiatorId === req.studentId && c.recipientId === userId)) &&
+        c.status !== 'Rejected',
+    );
+
+    let matchLabel = undefined;
+    let aiScore = undefined;
+    if (myRequestInSameOffering) {
+      const isPerfect =
+        myRequestInSameOffering.currentClassCode === req.targetClassCode &&
+        myRequestInSameOffering.targetClassCode === req.currentClassCode;
+      matchLabel = isPerfect ? '★ Đối ứng hoàn hảo' : '◐ Khớp một chiều';
+      aiScore = isPerfect ? 92 : 74;
+    }
+
+    return HttpResponse.json({
+      data: {
+        ...req,
+        locked: isLocked,
+        pendingConnectionCount: pendingConns.length,
+        owner: ownerUser,
+        viewerContext: {
+          isOwner,
+          myRequestInSameOffering,
+          connection: existingConnection,
+          matchLabel,
+          aiScore,
+        },
+      },
+    });
   }),
 
   http.put('/api/v1/swap-requests/:id', async ({ params, request }) => {
@@ -73,15 +208,54 @@ export const swapHandlers = [
     const req = seedSwapRequests.find((r) => r.id === params.id);
 
     if (!req) {
-      return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Yêu cầu không tồn tại' } }, { status: 404 });
-    }
-
-    if (isScenarioActive('swap_version_conflict') || (body.version !== undefined && body.version !== req.version)) {
       return HttpResponse.json(
-        { error: { code: 'VERSION_CONFLICT', message: 'Yêu cầu đã được cập nhật hoặc kết nối bởi thao tác khác. Vui lòng tải lại.' } },
-        { status: 409 }
+        { error: { code: 'NOT_FOUND', message: 'Yêu cầu không tồn tại' } },
+        { status: 404 },
       );
     }
+
+    if (
+      isScenarioActive('swap_version_conflict') ||
+      (body.version !== undefined && body.version !== req.version)
+    ) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'VERSION_CONFLICT',
+            message:
+              'Yêu cầu đã được cập nhật hoặc kết nối bởi thao tác khác. Vui lòng tải lại.',
+          },
+        },
+        { status: 409 },
+      );
+    }
+
+    // Check hard lock rule (section 5.3)
+    const pendingConns = seedSwapConnections.filter(
+      (c) => (c.requestAId === req.id || c.requestBId === req.id) && c.status === 'Pending',
+    );
+    const isHardLocked = pendingConns.length > 0;
+
+    const isAttemptingToChangeClassOrSchedule =
+      (body.currentClassCode !== undefined && body.currentClassCode !== req.currentClassCode) ||
+      (body.targetClassCode !== undefined && body.targetClassCode !== req.targetClassCode) ||
+      (body.schedule !== undefined && JSON.stringify(body.schedule) !== JSON.stringify(req.schedule));
+
+    if (isHardLocked && isAttemptingToChangeClassOrSchedule) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'REQUEST_LOCKED',
+            message:
+              'Đang có lời mời kết nối chờ phản hồi nên mã lớp và lịch học tạm thời bị khóa. Bạn chỉ có thể sửa ghi chú.',
+          },
+        },
+        { status: 409 },
+      );
+    }
+
+    // Never allow changing offeringId per spec 5.2
+    delete (body as any).offeringId;
 
     Object.assign(req, body);
     req.version += 1;
@@ -96,6 +270,14 @@ export const swapHandlers = [
     if (req) {
       req.status = 'Cancelled';
       req.updatedAt = new Date().toISOString();
+
+      // Automatically cancel any pending connections
+      seedSwapConnections.forEach((c) => {
+        if ((c.requestAId === req.id || c.requestBId === req.id) && c.status === 'Pending') {
+          c.status = 'Rejected';
+          c.respondedAt = new Date().toISOString();
+        }
+      });
     }
     return HttpResponse.json({ data: { success: true } });
   }),

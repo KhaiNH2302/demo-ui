@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { FilterSelect } from '@/components/shared/FilterSelect';
 import { formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { conversationKindMeta } from '@/lib/statusMeta';
@@ -70,15 +71,15 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   }, [items, folder, sourceFilter, searchQuery]);
 
   return (
-    <div className={cn('flex flex-col h-full bg-white overflow-hidden', className)}>
+    <div className={cn('flex flex-col h-full bg-surface overflow-hidden', className)}>
       {/* Header with Title and "Tin nhắn mới" SquarePen button */}
-      <div className="p-3.5 border-b border-neutral-100 flex items-center justify-between shrink-0">
-        <h3 className="text-base font-bold text-neutral-900">Tin nhắn</h3>
+      <div className="p-3.5 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between shrink-0">
+        <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100">Tin nhắn</h3>
         {onNewMessage && (
           <button
             type="button"
             onClick={onNewMessage}
-            className="p-2 rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-600 transition-colors flex items-center gap-1 text-xs font-semibold cursor-pointer"
+            className="p-2 rounded-lg bg-brand-50 dark:bg-brand-500/10 hover:bg-brand-100 dark:hover:bg-brand-500/20 text-brand-600 transition-colors flex items-center gap-1 text-xs font-semibold cursor-pointer"
             title="Tạo tin nhắn mới"
           >
             <SquarePen size={16} />
@@ -87,16 +88,16 @@ export const ConversationList: React.FC<ConversationListProps> = ({
         )}
       </div>
 
-      {/* Search Input */}
-      <div className="p-3 border-b border-neutral-100 shrink-0">
-        <div className="relative">
+      {/* Search Input & Filter dropdown */}
+      <div className="p-2.5 border-b border-neutral-200 dark:border-neutral-700 shrink-0 flex items-center gap-2">
+        <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm kiếm cuộc trò chuyện..."
-            className="w-full pl-8 pr-7 py-1.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg focus:bg-white focus:border-brand-500 focus:outline-hidden transition-all"
+            placeholder="Tìm kiếm..."
+            className="w-full pl-8 pr-7 py-1.5 text-xs bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg focus:bg-surface focus:border-brand-500 focus:outline-hidden transition-all text-neutral-900 dark:text-neutral-100"
           />
           {searchQuery && (
             <button
@@ -108,10 +109,25 @@ export const ConversationList: React.FC<ConversationListProps> = ({
             </button>
           )}
         </div>
+
+        {folder === 'inbox' && (
+          <FilterSelect
+            label="Nguồn"
+            value={sourceFilter}
+            onChange={(v) => setSourceFilter(v as any)}
+            options={[
+              { value: 'all', label: 'Tất cả' },
+              { value: 'direct', label: 'Trực tiếp' },
+              { value: 'groups_clubs', label: 'Nhóm & CLB' },
+              { value: 'swap', label: 'Đổi lớp' },
+              { value: 'mentoring', label: 'Mentoring' },
+            ]}
+          />
+        )}
       </div>
 
       {/* Tabs: Hộp thư / Lời mời */}
-      <div className="p-2 border-b border-neutral-100 shrink-0">
+      <div className="p-2 border-b border-neutral-200 dark:border-neutral-700 shrink-0">
         <SegmentedControl
           options={[
             { value: 'inbox', label: 'Hộp thư' },
@@ -127,35 +143,8 @@ export const ConversationList: React.FC<ConversationListProps> = ({
         />
       </div>
 
-      {/* Source Filter Chips (inbox only) */}
-      {folder === 'inbox' && (
-        <div className="flex gap-1.5 p-2 overflow-x-auto border-b border-neutral-100 text-[11px] scrollbar-none shrink-0">
-          {[
-            { id: 'all', label: 'Tất cả' },
-            { id: 'direct', label: 'Trực tiếp' },
-            { id: 'groups_clubs', label: 'Nhóm & CLB' },
-            { id: 'swap', label: 'Đổi lớp' },
-            { id: 'mentoring', label: 'Mentoring' },
-          ].map((src) => (
-            <button
-              key={src.id}
-              type="button"
-              onClick={() => setSourceFilter(src.id)}
-              className={cn(
-                'shrink-0 px-2.5 py-1 rounded-full border transition-all cursor-pointer font-medium',
-                sourceFilter === src.id
-                  ? 'bg-brand-50 text-brand-700 border-brand-300'
-                  : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'
-              )}
-            >
-              {src.label}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Conversation list */}
-      <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-neutral-100">
+      <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
         {filteredConversations.length === 0 ? (
           <div className="p-8 text-center text-xs text-neutral-400 space-y-1">
             <p>Không có cuộc trò chuyện nào</p>
@@ -183,8 +172,8 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                 className={cn(
                   'flex items-start gap-3 p-3 transition-colors cursor-pointer text-left relative',
                   isActive
-                    ? 'bg-brand-50/70 border-l-3 border-brand-600'
-                    : 'hover:bg-neutral-50'
+                    ? 'bg-brand-50/70 dark:bg-brand-500/10 border-l-3 border-brand-600'
+                    : 'hover:bg-neutral-50 dark:hover:bg-neutral-800'
                 )}
               >
                 <div className="relative shrink-0">
@@ -195,7 +184,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                     className="ring-1 ring-neutral-200"
                   />
                   {conv.kind === 'direct' && (
-                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-tier-success-dot border-2 border-white" />
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-tier-success-dot border-2 border-white dark:border-neutral-900" />
                   )}
                 </div>
 
@@ -206,7 +195,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                       <h5
                         className={cn(
                           'text-xs truncate',
-                          isUnread ? 'font-bold text-neutral-900' : 'font-semibold text-neutral-800'
+                          isUnread ? 'font-bold text-neutral-900 dark:text-neutral-100' : 'font-semibold text-neutral-800 dark:text-neutral-200'
                         )}
                       >
                         {conv.title || 'Hội thoại'}
@@ -223,7 +212,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                     <p
                       className={cn(
                         'text-[11px] truncate',
-                        isUnread ? 'font-semibold text-neutral-900' : 'text-neutral-500'
+                        isUnread ? 'font-semibold text-neutral-900 dark:text-neutral-100' : 'text-neutral-500'
                       )}
                     >
                       {conv.lastMessage || 'Chưa có tin nhắn'}

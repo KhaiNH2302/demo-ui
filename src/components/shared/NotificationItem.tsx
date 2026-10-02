@@ -52,13 +52,13 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       onClick={() => onClick?.(notification)}
       className={cn(
         'flex items-start gap-3 p-3 rounded-lg transition-colors cursor-pointer text-left',
-        notification.read ? 'bg-white hover:bg-neutral-50' : 'bg-brand-50/30 hover:bg-brand-50/50',
+        notification.read ? 'bg-surface hover:bg-neutral-100' : 'bg-brand-50/40 hover:bg-brand-50/60 dark:bg-brand-950/40 dark:hover:bg-brand-950/60',
         className
       )}
     >
       <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 font-semibold text-xs shrink-0 mt-0.5">
         {initial}
-        <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white border border-neutral-200 shadow-xs">
+        <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-surface border border-neutral-200 shadow-xs">
           {sourceIcons[notification.source] || <Bell size={11} className="text-neutral-600" />}
         </span>
       </div>

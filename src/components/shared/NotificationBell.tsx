@@ -77,16 +77,16 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ variant = 'l
         <PopoverPrimitive.Content
           align="end"
           sideOffset={8}
-          className="z-50 w-80 sm:w-96 rounded-lg border border-neutral-200 bg-white p-0 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+          className="z-50 w-80 sm:w-96 rounded-lg border border-neutral-200 bg-surface p-0 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
         >
-          <div className="flex items-center justify-between border-b border-neutral-100 p-3 px-4">
+          <div className="flex items-center justify-between border-b border-neutral-200 p-3 px-4">
             <h4 className="text-xs font-semibold text-neutral-900">Thông báo</h4>
             {unreadCount > 0 && (
               <span className="text-[11px] text-neutral-500">{unreadCount} chưa đọc</span>
             )}
           </div>
 
-          <div className="max-h-80 overflow-y-auto divide-y divide-neutral-100">
+          <div className="max-h-80 overflow-y-auto divide-y divide-neutral-200">
             {recentNotifications.length === 0 ? (
               <div className="py-8 text-center text-xs text-neutral-400">Không có thông báo mới</div>
             ) : (
@@ -100,7 +100,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ variant = 'l
             )}
           </div>
 
-          <div className="border-t border-neutral-100 p-2 text-center bg-neutral-50/50 rounded-b-lg">
+          <div className="border-t border-neutral-200 p-2 text-center bg-neutral-50/50 rounded-b-lg">
             <button
               type="button"
               onClick={() => {

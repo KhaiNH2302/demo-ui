@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, Navigate, useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Pencil,
@@ -12,11 +12,18 @@ import {
   Globe,
   ExternalLink,
   CheckCircle2,
+  Sparkles,
+  Layers,
+  Heart,
+  Share2,
+  Bookmark,
+  Plus,
+  Camera,
+  Check,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { FollowButton, type FollowButtonState } from '@/components/shared/FollowButton';
-import { ScheduleInput } from '@/components/shared/ScheduleInput';
 import { ThreadFeed } from '@/components/shared/ThreadFeed';
 import { EntityRow } from '@/components/shared/EntityRow';
 import { ReportDialog } from '@/components/shared/ReportDialog';
@@ -25,7 +32,6 @@ import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Textarea } from '@/components/ui/Textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { Chip } from '@/components/ui/Chip';
 import {
@@ -33,6 +39,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/Dialog';
 import {
   DropdownMenu,
@@ -40,25 +47,39 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/DropdownMenu';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/Sheet';
 import { apiClient } from '@/lib/apiClient';
-import { maskStudentCode, formatScheduleSlot } from '@/lib/format';
+import { maskStudentCode } from '@/lib/format';
+import { cn } from '@/lib/cn';
 import { seedUsers, seedProfiles } from '@/mocks/data/users';
 import { seedKnowledgePosts } from '@/mocks/data/knowledge';
 import { seedGroups } from '@/mocks/data/groups';
 import { seedClubs } from '@/mocks/data/clubs';
 import { seedProgramChannels } from '@/mocks/data/programs';
-import type { KnowledgePost, ScheduleSlot, StudentProfile } from '@/types/entities';
+import {
+  seedMentors,
+  seedMentorCourses,
+  seedMentorProfileSections,
+  seedMentoringPosts,
+} from '@/mocks/data/mentoring';
+import { SendMentoringRequestDialog } from '@/features/mentoring/SendMentoringRequestDialog';
+import { MentorCourseCard } from '@/components/shared/MentorCourseCard';
+import { MentorProfileSectionSheet } from '@/components/shared/MentorProfileSectionSheet';
+import type {
+  KnowledgePost,
+  StudentProfile,
+  Mentor,
+  MentorCourse,
+  MentorPost,
+  MentorProfileSection,
+  Audience,
+} from '@/types/entities';
 import type { ProfileVisibility } from '@/types/status';
 import { toast } from '@/components/ui/Toast';
 
-type EditSectionKey = 'intro' | 'skills' | 'interests' | 'availability' | 'goals' | null;
+import { ProfileIntroCard } from './ProfileIntroCard';
+import { ProfileAboutTab, type AboutSubTabKey } from './ProfileAboutTab';
+import { ProfileCompleteness } from './ProfileCompleteness';
+
 type PreviewMode = 'self' | 'member' | 'follower_pending';
 
 const VISIBILITY_LABELS: Record<ProfileVisibility, string> = {
@@ -67,51 +88,85 @@ const VISIBILITY_LABELS: Record<ProfileVisibility, string> = {
   private: 'Chỉ mình tôi',
 };
 
+const PRESET_COVERS = [
+  'https://images.unsplash.com/photo-1707343843437-caacff5cfa74?w=1200&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=1200&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=1200&auto=format&fit=crop&q=80',
+];
+
+const PRESET_AVATARS = [
+  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+];
+
 export const ProfilePage: React.FC = () => {
   const { id: routeUserId } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((s) => s.user);
+  const updateUser = useAuthStore((s) => s.updateUser);
 
   const isMeRoute = !routeUserId || routeUserId === 'me';
   const targetUserId = isMeRoute ? currentUser?.id || 'usr_student_01' : routeUserId;
   const isOwnAccount = Boolean(currentUser && targetUserId === currentUser.id);
 
-  // Redirect /users/:myId -> /profile/me per 01-common-screens.md § C7.1
-  if (!isMeRoute && isOwnAccount) {
-    return <Navigate to="/profile/me" replace />;
-  }
+  // Redirect /users/:myId -> /profile/me
+  useEffect(() => {
+    if (!isMeRoute && isOwnAccount) {
+      navigate('/profile/me', { replace: true });
+    }
+  }, [isMeRoute, isOwnAccount, navigate]);
 
-  const activeTab = searchParams.get('tab') || 'about';
-  const setActiveTab = (tab: string) => {
-    setSearchParams({ tab }, { replace: true });
-  };
+  // Tab state
+  const [activeTab, setActiveTab] = useState<string>(searchParams.get('tab') || 'posts');
+  const [aboutSubTab, setAboutSubTab] = useState<AboutSubTabKey>('overview');
 
+  // Preview Mode ("Xem như")
   const [previewMode, setPreviewMode] = useState<PreviewMode>('self');
-  const [editSection, setEditSection] = useState<EditSectionKey>(null);
+
+  // Modals state
   const [followersModal, setFollowersModal] = useState<{
     open: boolean;
     tab: 'followers' | 'following';
   }>({ open: false, tab: 'followers' });
   const [reportUserOpen, setReportUserOpen] = useState(false);
-  const [postSubFilter, setPostSubFilter] = useState<'published' | 'pending' | 'saved'>(
-    'published',
-  );
+  const [coverModalOpen, setCoverModalOpen] = useState(false);
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [customCoverUrl, setCustomCoverUrl] = useState('');
+  const [customAvatarUrl, setCustomAvatarUrl] = useState('');
 
-  // Load profile data
+  // Follow state for other user
+  const [followState, setFollowState] = useState<FollowButtonState>('none');
+
+  // Mentor modals and interactive states
+  const [sendRequestOpen, setSendRequestOpen] = useState(false);
+  const [mentorSectionsSheetOpen, setMentorSectionsSheetOpen] = useState(false);
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([]);
+  const [likedPostIds, setLikedPostIds] = useState<string[]>(['mpost_01']);
+  const [savedPostIds, setSavedPostIds] = useState<string[]>(['mpost_02']);
+  const [postSubFilter, setPostSubFilter] = useState<'published' | 'pending' | 'saved'>('published');
+
+  // Load Profile Query
   const profileQuery = useQuery({
     queryKey: ['profile', targetUserId],
     queryFn: async () => {
-      const foundUser =
-        seedUsers.find((u) => u.id === targetUserId) || currentUser || seedUsers[0];
-      const foundProfile: StudentProfile =
-        seedProfiles[targetUserId] || seedProfiles['usr_student_01'];
+      const endpoint = isOwnAccount ? '/profile/me' : `/users/${targetUserId}`;
+      const foundUser = seedUsers.find((u) => u.id === targetUserId) || seedUsers[0];
+      const foundProfile = seedProfiles[targetUserId] || seedProfiles['usr_student_01'];
 
       try {
-        const apiData = await apiClient.get<Record<string, unknown>>(
-          isOwnAccount ? '/profile/me' : `/users/${targetUserId}`,
-        );
+        const res = await apiClient.get<any>(endpoint);
+        const apiData = res && res.data ? res.data : res;
+        if (apiData.user && apiData.profile) {
+          return {
+            user: { ...foundUser, ...apiData.user },
+            profile: { ...foundProfile, ...apiData.profile } as StudentProfile,
+          };
+        }
         return {
           user: foundUser,
           profile: {
@@ -143,48 +198,103 @@ export const ProfilePage: React.FC = () => {
     },
   });
 
-  // Follow state for other user
-  const [followState, setFollowState] = useState<FollowButtonState>('none');
-
-  // Local editable state for ProfileEditSheet
-  const [draftBio, setDraftBio] = useState('');
-  const [draftMajor, setDraftMajor] = useState('');
-  const [draftCohort, setDraftCohort] = useState('');
-  const [draftSchool, setDraftSchool] = useState('');
-  const [draftGithub, setDraftGithub] = useState('');
-  const [draftLinkedin, setDraftLinkedin] = useState('');
-  const [draftPortfolio, setDraftPortfolio] = useState('');
-  const [draftSkills, setDraftSkills] = useState<string[]>([]);
-  const [newSkillInput, setNewSkillInput] = useState('');
-  const [draftInterests, setDraftInterests] = useState<string[]>([]);
-  const [newInterestInput, setNewInterestInput] = useState('');
-  const [draftAvailability, setDraftAvailability] = useState<ScheduleSlot[]>([]);
-  const [draftGoals, setDraftGoals] = useState<string[]>([]);
-  const [newGoalInput, setNewGoalInput] = useState('');
-  const [draftPrivacyMatching, setDraftPrivacyMatching] = useState({
-    swapMatching: true,
-    groupMatching: true,
-    mentoringMatching: true,
+  // Mentor Queries
+  const mentorQuery = useQuery({
+    queryKey: ['mentor-detail', targetUserId],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get<any>(`/mentoring/mentors/${targetUserId}`);
+        return (res && res.mentor) || seedMentors.find((m) => m.userId === targetUserId) || seedMentors[0];
+      } catch {
+        return seedMentors.find((m) => m.userId === targetUserId) || seedMentors[0];
+      }
+    },
   });
 
-  const saveMutation = useMutation({
-    mutationFn: async (payload: Record<string, unknown>) => {
+  const mentorCoursesQuery = useQuery<MentorCourse[]>({
+    queryKey: ['mentor-courses', targetUserId],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get<MentorCourse[]>(`/mentors/${targetUserId}/courses`);
+        return res;
+      } catch {
+        return seedMentorCourses.filter((c) => c.mentorId === targetUserId);
+      }
+    },
+  });
+
+  const mentorPostsQuery = useQuery<MentorPost[]>({
+    queryKey: ['mentor-posts', targetUserId],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get<MentorPost[]>(`/mentors/${targetUserId}/posts`);
+        return res;
+      } catch {
+        return seedMentoringPosts.filter((p) => p.mentorId === targetUserId);
+      }
+    },
+  });
+
+  const mentorSectionsQuery = useQuery<MentorProfileSection[]>({
+    queryKey: ['mentor-profile-sections', targetUserId],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get<MentorProfileSection[]>(`/mentors/${targetUserId}/profile-sections`);
+        return res;
+      } catch {
+        return seedMentorProfileSections;
+      }
+    },
+  });
+
+  // Enroll course mutation
+  const enrollMutation = useMutation({
+    mutationFn: async (courseId: string) => {
+      return apiClient.post(`/mentor-courses/${courseId}/enroll`);
+    },
+    onSuccess: (_, courseId) => {
+      setEnrolledCourseIds((prev) => [...prev, courseId]);
+      queryClient.invalidateQueries({ queryKey: ['mentor-courses', targetUserId] });
+      toast.success('Đã đăng ký tham gia khóa học thành công!');
+    },
+    onError: () => {
+      toast.error('Đăng ký không thành công, vui lòng thử lại.');
+    },
+  });
+
+  // Profile update mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async (payload: Partial<StudentProfile>) => {
       return apiClient.patch('/profile/me', payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile', targetUserId] });
-      toast.success('Đã lưu thay đổi hồ sơ');
-      setEditSection(null);
+      toast.success('Đã cập nhật hồ sơ thành công');
     },
     onError: () => {
-      toast.success('Đã lưu thay đổi hồ sơ');
-      setEditSection(null);
+      toast.error('Lỗi khi cập nhật hồ sơ');
     },
   });
 
+  const handleUpdateProfile = async (updates: Partial<StudentProfile>) => {
+    await updateProfileMutation.mutateAsync(updates);
+  };
+
+  const handleSaveCover = async (url: string) => {
+    await handleUpdateProfile({ coverUrl: url });
+    updateUser({ coverUrl: url });
+    setCoverModalOpen(false);
+  };
+
+  const handleSaveAvatar = async (url: string) => {
+    await handleUpdateProfile({ avatarUrl: url } as any);
+    updateUser({ avatarUrl: url });
+    setAvatarModalOpen(false);
+  };
+
   if (profileQuery.isLoading) {
     return (
-      <div className="max-w-3xl mx-auto py-4">
+      <div className="max-w-6xl mx-auto py-6">
         <LoadingSkeleton variant="detail-page" />
       </div>
     );
@@ -198,65 +308,39 @@ export const ProfilePage: React.FC = () => {
     studentProfile?.privacy?.profileVisibility || 'members';
 
   const isEffectiveSelf = isOwnAccount && previewMode === 'self';
+
+  // Permission evaluation based on view mode / follower state
+  const canViewAudience = (aud: Audience = 'public'): boolean => {
+    if (isOwnAccount && previewMode === 'self') return true;
+    if (isOwnAccount) {
+      if (previewMode === 'follower_pending') {
+        return aud === 'public';
+      }
+      if (previewMode === 'member') {
+        return aud === 'public' || aud === 'followers';
+      }
+    }
+    if (followState === 'following') {
+      return aud === 'public' || aud === 'followers';
+    }
+    return aud === 'public';
+  };
+
   const isLimitedView =
-    (isOwnAccount && previewMode === 'follower_pending') ||
+    (isOwnAccount && previewMode === 'follower_pending' && visibility === 'private') ||
     (!isOwnAccount &&
       (visibility === 'private' ||
         (visibility === 'followers' && followState !== 'following')));
 
-  const isMentor = userEntity.roles?.some((r) => r.toLowerCase() === 'mentor');
-
-  const openEditSheet = (section: EditSectionKey) => {
-    setDraftBio(studentProfile.bio || '');
-    setDraftMajor(studentProfile.major || userEntity.major || 'Kỹ thuật phần mềm');
-    setDraftCohort(studentProfile.cohort || userEntity.cohort || 'K17');
-    setDraftSchool(userEntity.school || 'ĐH FPT Hà Nội');
-    setDraftGithub(studentProfile.socialLinks?.github || '');
-    setDraftLinkedin(studentProfile.socialLinks?.linkedin || '');
-    setDraftPortfolio(studentProfile.socialLinks?.portfolio || '');
-    setDraftSkills(studentProfile.skills || []);
-    setDraftInterests(studentProfile.interests || []);
-    setDraftAvailability(studentProfile.availability || []);
-    setDraftGoals(studentProfile.goals || []);
-    setDraftPrivacyMatching({
-      swapMatching: studentProfile.privacy?.swapMatching ?? true,
-      groupMatching: studentProfile.privacy?.groupMatching ?? true,
-      mentoringMatching: studentProfile.privacy?.mentoringMatching ?? true,
-    });
-    setEditSection(section);
-  };
-
-  const handleSaveSection = () => {
-    if (editSection === 'intro') {
-      saveMutation.mutate({
-        bio: draftBio,
-        major: draftMajor,
-        cohort: draftCohort,
-        school: draftSchool,
-        socialLinks: {
-          github: draftGithub,
-          linkedin: draftLinkedin,
-          portfolio: draftPortfolio,
-        },
-      });
-    } else if (editSection === 'skills') {
-      saveMutation.mutate({ skills: draftSkills });
-    } else if (editSection === 'interests') {
-      saveMutation.mutate({ interests: draftInterests });
-    } else if (editSection === 'availability') {
-      saveMutation.mutate({ availability: draftAvailability });
-    } else if (editSection === 'goals') {
-      saveMutation.mutate({
-        goals: draftGoals,
-        privacy: {
-          ...studentProfile.privacy,
-          swapMatching: draftPrivacyMatching.swapMatching,
-          groupMatching: draftPrivacyMatching.groupMatching,
-          mentoringMatching: draftPrivacyMatching.mentoringMatching,
-        },
-      });
-    }
-  };
+  const isMentor = Boolean(
+    userEntity.roles?.some((r: string) => r.toLowerCase() === 'mentor') ||
+      (studentProfile as any)?.isMentor ||
+      targetUserId === 'usr_mentor_02'
+  );
+  const mentorData: Mentor | undefined = mentorQuery.data;
+  const mentorCourses: MentorCourse[] = mentorCoursesQuery.data || [];
+  const mentorPosts: MentorPost[] = mentorPostsQuery.data || [];
+  const mentorSections: MentorProfileSection[] = mentorSectionsQuery.data || [];
 
   const authorPosts = postsQuery.data || [];
   const filteredPosts = isEffectiveSelf
@@ -267,584 +351,595 @@ export const ProfilePage: React.FC = () => {
       })
     : authorPosts.filter((p) => p.status === 'Published');
 
-  const skills: string[] = studentProfile.skills || [];
-  const interests: string[] = studentProfile.interests || [];
-  const goalsList: string[] = studentProfile.goals || [];
-  const availabilitySlots: ScheduleSlot[] = studentProfile.availability || [];
+  const displayCover =
+    userEntity.coverUrl ||
+    studentProfile.coverUrl ||
+    PRESET_COVERS[0];
+
+  const primaryEdu =
+    studentProfile.education?.find((e) => e.isCurrent) || studentProfile.education?.[0];
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Thanh nhắc khi đang ở chế độ Xem như (C7.2) */}
+    <div className="max-w-6xl mx-auto space-y-5 pb-12">
+      {/* 1. Thanh thông báo chế độ Xem như (View As Banner) */}
       {isOwnAccount && previewMode !== 'self' && (
-        <div className="px-4 py-2.5 rounded-lg border border-brand-200 bg-brand-50/60 flex items-center justify-between text-xs">
-          <span className="text-neutral-800">
-            Bạn đang xem hồ sơ như:{' '}
-            <strong className="font-semibold text-brand-700">
-              {previewMode === 'member'
-                ? 'Thành viên trong trường'
-                : 'Người chưa theo dõi (Hồ sơ giới hạn)'}
-            </strong>
-          </span>
+        <div className="px-4 py-2.5 rounded-xl border border-primary/30 bg-primary/10 flex items-center justify-between text-xs animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <Eye className="w-4 h-4 text-primary shrink-0" />
+            <span className="text-neutral-800 dark:text-neutral-200">
+              Bạn đang xem hồ sơ như:{' '}
+              <strong className="font-semibold text-primary">
+                {previewMode === 'member'
+                  ? 'Người theo dõi (Xem các mục Công khai & Người theo dõi)'
+                  : 'Khách / Mọi người (Chỉ xem các mục Công khai)'}
+              </strong>
+            </span>
+          </div>
           <button
             type="button"
             onClick={() => setPreviewMode('self')}
-            className="font-semibold text-brand-600 hover:underline"
+            className="font-semibold text-primary hover:underline ml-2 shrink-0"
           >
-            Thoát xem thử
+            Thoát chế độ xem thử
           </button>
         </div>
       )}
 
-      {/* ProfileHeader — Không có ảnh bìa theo 05-social-patterns.md #4 & C7.2 */}
-      <section className="rounded-lg border border-neutral-200 bg-white p-6">
-        <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-          <div className="flex items-start gap-4 min-w-0 flex-1">
-            <UserAvatar
-              user={{
-                id: userEntity.id,
-                fullName: userEntity.fullName,
-                avatarUrl: userEntity.avatarUrl,
-              }}
-              size="xl"
-              className="shrink-0"
-            />
+      {/* 2. FACEBOOK-STYLE PROFILE HEADER */}
+      <section className="bg-surface rounded-2xl border border-neutral-200 dark:border-neutral-700/80 shadow-sm overflow-hidden">
+        {/* Cover Image */}
+        <div className="h-48 sm:h-64 md:h-72 w-full relative bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
+          <img
+            src={displayCover}
+            alt="Cover"
+            className="w-full h-full object-cover"
+          />
+          {isEffectiveSelf && (
+            <button
+              type="button"
+              onClick={() => setCoverModalOpen(true)}
+              className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 bg-black/60 hover:bg-black/75 text-white text-xs font-medium px-3 py-1.5 rounded-xl flex items-center gap-1.5 backdrop-blur-xs transition-colors"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>Chỉnh sửa ảnh bìa</span>
+            </button>
+          )}
+        </div>
 
-            <div className="min-w-0 flex-1 space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-bold text-neutral-900">
-                  {userEntity.fullName}
-                </h1>
-                {isMentor && (
-                  <Badge variant="brand" className="inline-flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3" />
-                    <span>Mentor</span>
-                  </Badge>
+        {/* Header Main Bar (Avatar + Details + Actions) */}
+        <div className="px-5 sm:px-8 pb-5 pt-0">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 -mt-16 sm:-mt-20">
+            {/* Left: Avatar + Identity */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 text-center sm:text-left">
+              {/* Avatar with Camera Button */}
+              <div className="relative group">
+                <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-surface overflow-hidden shadow-lg bg-neutral-100 dark:bg-neutral-800">
+                  <UserAvatar
+                    user={{
+                      id: userEntity.id,
+                      fullName: userEntity.fullName,
+                      avatarUrl: userEntity.avatarUrl,
+                    }}
+                    size="xl"
+                    className="w-full h-full rounded-full"
+                  />
+                </div>
+                {isEffectiveSelf && (
+                  <button
+                    type="button"
+                    onClick={() => setAvatarModalOpen(true)}
+                    className="absolute bottom-1 right-1 p-2 rounded-full bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-100 shadow-md border-2 border-surface transition-colors"
+                    title="Cập nhật ảnh đại diện"
+                  >
+                    <Camera className="w-4 h-4" />
+                  </button>
                 )}
               </div>
 
-              <p className="text-sm text-neutral-600">
-                {[
-                  studentProfile.major || userEntity.major || 'Kỹ thuật phần mềm',
-                  studentProfile.cohort || userEntity.cohort || 'K17',
-                  userEntity.school || 'ĐH FPT Hà Nội',
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </p>
-
-              {studentProfile.bio ? (
-                <p className="text-sm text-neutral-700 line-clamp-2">
-                  {studentProfile.bio}
-                </p>
-              ) : isEffectiveSelf ? (
-                <button
-                  type="button"
-                  onClick={() => openEditSheet('intro')}
-                  className="text-xs font-medium text-brand-600 hover:underline"
-                >
-                  + Thêm lời giới thiệu ngắn
-                </button>
-              ) : null}
-
-              {/* Dòng thống kê gọn (chỉ số dạng chữ, bấm được) */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-xs text-neutral-600">
-                <button
-                  type="button"
-                  onClick={() => setFollowersModal({ open: true, tab: 'followers' })}
-                  className="hover:underline"
-                >
-                  <strong className="font-semibold text-neutral-900 tabular-nums">
-                    18
-                  </strong>{' '}
-                  người theo dõi
-                </button>
-                <span>·</span>
-                <button
-                  type="button"
-                  onClick={() => setFollowersModal({ open: true, tab: 'following' })}
-                  className="hover:underline"
-                >
-                  <strong className="font-semibold text-neutral-900 tabular-nums">
-                    24
-                  </strong>{' '}
-                  đang theo dõi
-                </button>
-                <span>·</span>
-                <span>
-                  <strong className="font-semibold text-neutral-900 tabular-nums">
-                    {authorPosts.length || 4}
-                  </strong>{' '}
-                  bài viết
-                </span>
-              </div>
-
-              {/* Dòng trạng thái hiển thị hồ sơ (chỉ khi self) */}
-              {isEffectiveSelf && (
-                <div className="pt-1 text-xs text-neutral-500">
-                  Hiển thị hồ sơ:{' '}
-                  <strong className="font-medium text-neutral-700">
-                    {VISIBILITY_LABELS[visibility]}
-                  </strong>{' '}
-                  ·{' '}
-                  <Link to="/settings" className="text-brand-600 hover:underline">
-                    Đổi
-                  </Link>
+              {/* Name & Short Intro */}
+              <div className="space-y-1 mb-1">
+                <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+                    {userEntity.fullName}
+                  </h1>
+                  {isMentor && (
+                    <Badge variant="brand" className="inline-flex items-center gap-1 py-0.5 px-2">
+                      <CheckCircle2 className="h-3 w-3" />
+                      <span>Mentor</span>
+                    </Badge>
+                  )}
                 </div>
-              )}
+
+                {/* Short Bio (intro <= 101 chars) */}
+                {studentProfile.intro ? (
+                  <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 italic max-w-lg">
+                    "{studentProfile.intro}"
+                  </p>
+                ) : isEffectiveSelf ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('about');
+                      setAboutSubTab('overview');
+                    }}
+                    className="text-xs text-primary hover:underline italic"
+                  >
+                    + Thêm tiểu sử ngắn để giới thiệu bản thân...
+                  </button>
+                ) : null}
+
+                {/* Counters: Followers / Following */}
+                <div className="flex items-center justify-center sm:justify-start gap-3 pt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  <button
+                    type="button"
+                    onClick={() => setFollowersModal({ open: true, tab: 'followers' })}
+                    className="hover:underline"
+                  >
+                    <strong className="font-semibold text-neutral-800 dark:text-neutral-200">
+                      {userEntity.roles?.includes('mentor') ? '126' : '42'}
+                    </strong>{' '}
+                    người theo dõi
+                  </button>
+                  <span>·</span>
+                  <button
+                    type="button"
+                    onClick={() => setFollowersModal({ open: true, tab: 'following' })}
+                    className="hover:underline"
+                  >
+                    <strong className="font-semibold text-neutral-800 dark:text-neutral-200">
+                      {userEntity.roles?.includes('mentor') ? '35' : '28'}
+                    </strong>{' '}
+                    đang theo dõi
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Cụm nút hành động bên phải (tối đa 2 nút) */}
-          <div className="flex items-center gap-2 shrink-0 self-start">
-            {isOwnAccount ? (
-              <>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => openEditSheet('intro')}
-                >
-                  Chỉnh sửa hồ sơ
-                </Button>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      leftIcon={<Eye className="h-3.5 w-3.5" />}
-                    >
-                      Xem như ▾
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setPreviewMode('self')}>
-                      Chính tôi (mặc định)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setPreviewMode('member')}>
-                      Mọi thành viên trong trường
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setPreviewMode('follower_pending')}>
-                      Người chưa theo dõi (Hồ sơ giới hạn)
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            ) : (
-              <>
-                <FollowButton
-                  userId={userEntity.id}
-                  initialState={followState}
-                  targetVisibility={visibility}
-                  onChangeState={setFollowState}
-                />
-
-                {!isLimitedView && (
+            {/* Right: Actions Cluster */}
+            <div className="flex items-center justify-center sm:justify-end gap-2 shrink-0 pb-1 flex-wrap">
+              {isOwnAccount ? (
+                <>
                   <Button
-                    variant="secondary"
                     size="sm"
-                    onClick={() => navigate(`/chats?user=${userEntity.id}`)}
-                    leftIcon={<MessageSquare className="h-3.5 w-3.5" />}
+                    onClick={() => {
+                      setActiveTab('about');
+                      setAboutSubTab('overview');
+                    }}
+                    leftIcon={<Pencil className="w-3.5 h-3.5" />}
+                  >
+                    Chỉnh sửa hồ sơ
+                  </Button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" leftIcon={<Eye className="w-3.5 h-3.5" />}>
+                        Xem như ▾
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setPreviewMode('self')}>
+                        Chính tôi (Đầy đủ & Sửa)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setPreviewMode('member')}>
+                        Người theo dõi (Followers)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setPreviewMode('follower_pending')}>
+                        Khách / Mọi người (Chỉ công khai)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                        title="Tùy chọn khác"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          navigator.clipboard?.writeText(window.location.href);
+                          toast.success('Đã sao chép liên kết hồ sơ');
+                        }}
+                      >
+                        <Link2 className="w-3.5 h-3.5 mr-2" />
+                        <span>Sao chép liên kết hồ sơ</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              ) : (
+                <>
+                  {isMentor && (
+                    <Button
+                      size="sm"
+                      onClick={() => setSendRequestOpen(true)}
+                      leftIcon={<Sparkles className="w-3.5 h-3.5" />}
+                    >
+                      Kết nối Mentor
+                    </Button>
+                  )}
+
+                  <FollowButton
+                    userId={userEntity.id}
+                    initialState={followState}
+                    onChangeState={setFollowState}
+                  />
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/chats?targetUser=${userEntity.id}`)}
+                    leftIcon={<MessageSquare className="w-3.5 h-3.5" />}
                   >
                     Nhắn tin
                   </Button>
-                )}
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label="Tùy chọn khác"
-                      className="p-2 rounded-md border border-neutral-200 text-neutral-600 hover:bg-neutral-50"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => {
-                        navigator.clipboard?.writeText(window.location.href);
-                        toast.success('Đã sao chép liên kết hồ sơ');
-                      }}
-                    >
-                      <Link2 className="h-3.5 w-3.5 mr-2" />
-                      <span>Sao chép liên kết hồ sơ</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setReportUserOpen(true)}
-                      className="text-tier-danger-fg"
-                    >
-                      <Flag className="h-3.5 w-3.5 mr-2" />
-                      <span>Báo cáo người dùng</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          navigator.clipboard?.writeText(window.location.href);
+                          toast.success('Đã sao chép liên kết hồ sơ');
+                        }}
+                      >
+                        <Link2 className="w-3.5 h-3.5 mr-2" />
+                        <span>Sao chép liên kết</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setReportUserOpen(true)}
+                        className="text-red-600 focus:text-red-600"
+                      >
+                        <Flag className="w-3.5 h-3.5 mr-2" />
+                        <span>Báo cáo người dùng</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Chế độ giới hạn (limited) khi người xem chưa có quyền xem chi tiết (C7.5) */}
+      {/* 3. PROFILE COMPLETENESS (Chỉ hiển thị cho chủ sở hữu khi ở chế độ self) */}
+      {isEffectiveSelf && (
+        <ProfileCompleteness
+          profile={studentProfile}
+          user={userEntity}
+          onNavigateSection={(sec) => {
+            setActiveTab('about');
+            setAboutSubTab(sec as AboutSubTabKey);
+          }}
+        />
+      )}
+
+      {/* 4. MAIN TABS (Bài viết | Giới thiệu | Khóa học (mentor) | Hoạt động) */}
       {isLimitedView ? (
         <EmptyState
           icon={Lock}
           title={
             visibility === 'private'
-              ? 'Sinh viên này đang để hồ sơ ở chế độ riêng tư'
-              : 'Hồ sơ này chỉ hiển thị đầy đủ cho người theo dõi đã được chấp nhận'
+              ? 'Hồ sơ này đang ở chế độ riêng tư'
+              : 'Hồ sơ chỉ hiển thị đầy đủ cho người theo dõi'
           }
           description={
             visibility === 'private'
-              ? 'Chỉ chủ tài khoản mới xem được thông tin chi tiết của hồ sơ này.'
-              : `Gửi yêu cầu theo dõi để xem kỹ năng, bài viết và hoạt động của ${userEntity.fullName}.`
+              ? 'Chỉ chủ tài khoản mới xem được thông tin chi tiết.'
+              : `Theo dõi ${userEntity.fullName} để mở khóa toàn bộ bài viết và thông tin học vụ.`
           }
         />
       ) : (
-        /* Chế độ đầy đủ (self | full): Underline Tabs */
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="posts">
-              Bài viết ({authorPosts.length})
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="bg-surface border border-neutral-200 dark:border-neutral-700/80 p-1 rounded-2xl w-full sm:w-auto inline-flex overflow-x-auto">
+            <TabsTrigger value="posts" className="rounded-xl px-4 py-2 text-xs font-semibold">
+              Bài viết ({isMentor ? mentorPosts.length : authorPosts.length})
             </TabsTrigger>
-            <TabsTrigger value="about">Giới thiệu</TabsTrigger>
-            <TabsTrigger value="activities">Hoạt động</TabsTrigger>
-            {isMentor && <TabsTrigger value="mentor">Mentor</TabsTrigger>}
+            <TabsTrigger value="about" className="rounded-xl px-4 py-2 text-xs font-semibold">
+              Giới thiệu
+            </TabsTrigger>
+            {isMentor && (
+              <TabsTrigger value="courses" className="rounded-xl px-4 py-2 text-xs font-semibold">
+                Khóa học ({mentorCourses.length})
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="activities" className="rounded-xl px-4 py-2 text-xs font-semibold">
+              Hoạt động
+            </TabsTrigger>
           </TabsList>
 
-          {/* TAB 1: BÀI VIẾT */}
-          <TabsContent value="posts" className="space-y-4 pt-4">
-            {isEffectiveSelf && (
-              <div className="flex items-center gap-2">
-                <Chip
-                  selected={postSubFilter === 'published'}
-                  onClick={() => setPostSubFilter('published')}
-                >
-                  Đã đăng
-                </Chip>
-                <Chip
-                  selected={postSubFilter === 'pending'}
-                  onClick={() => setPostSubFilter('pending')}
-                >
-                  Chờ duyệt
-                </Chip>
-                <Chip
-                  selected={postSubFilter === 'saved'}
-                  onClick={() => setPostSubFilter('saved')}
-                >
-                  Đã lưu
-                </Chip>
+          {/* TAB 1: BÀI VIẾT (2 cột kiểu Facebook) */}
+          <TabsContent value="posts" className="pt-2">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+              {/* CỘT TRÁI (4 cols): Thẻ Giới thiệu Facebook (ProfileIntroCard) */}
+              <div className="lg:col-span-5 space-y-4">
+                <ProfileIntroCard
+                  profile={studentProfile}
+                  user={userEntity}
+                  isOwner={isEffectiveSelf}
+                  canViewAudience={canViewAudience}
+                  onUpdateProfile={handleUpdateProfile}
+                  onNavigateToAboutTab={(sec) => {
+                    setActiveTab('about');
+                    setAboutSubTab(sec as AboutSubTabKey);
+                  }}
+                />
               </div>
-            )}
 
-            <div className="rounded-lg border border-neutral-200 bg-white px-4">
-              <ThreadFeed
-                posts={filteredPosts}
-                isLoading={postsQuery.isLoading}
-                skeletonCount={3}
-                paging="pages"
-                pageSize={10}
-                emptyTitle="Chưa có bài viết nào"
-                emptyDescription={
-                  isEffectiveSelf
-                    ? 'Đặt câu hỏi hoặc chia sẻ kinh nghiệm học tập đầu tiên của bạn.'
-                    : `${userEntity.fullName} chưa đăng bài viết công khai nào.`
-                }
-              />
+              {/* CỘT PHẢI (7 cols): Feed bài viết */}
+              <div className="lg:col-span-7 space-y-4">
+                {isEffectiveSelf && (
+                  <div className="flex items-center justify-between p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700/80 bg-surface shadow-sm">
+                    <span className="text-xs text-neutral-600 dark:text-neutral-400">
+                      {isMentor
+                        ? 'Chia sẻ bài viết kiến thức, mẹo làm đồ án hoặc kinh nghiệm thực tập.'
+                        : 'Chia sẻ thắc mắc học tập, tìm đối tác đổi lớp hoặc thảo luận đồ án.'}
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={() => navigate(isMentor ? '/mentor/posts' : '/knowledge')}
+                      leftIcon={<Plus className="w-3.5 h-3.5" />}
+                    >
+                      Đăng bài
+                    </Button>
+                  </div>
+                )}
+
+                {/* Subfilter tabs if owner */}
+                {isEffectiveSelf && !isMentor && (
+                  <div className="flex items-center gap-1.5 p-1 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-xs w-fit">
+                    <button
+                      type="button"
+                      onClick={() => setPostSubFilter('published')}
+                      className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                        postSubFilter === 'published' ? 'bg-surface shadow-xs text-primary font-semibold' : 'text-neutral-600 dark:text-neutral-400'
+                      }`}
+                    >
+                      Đã xuất bản ({authorPosts.filter((p) => p.status === 'Published').length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPostSubFilter('pending')}
+                      className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                        postSubFilter === 'pending' ? 'bg-surface shadow-xs text-primary font-semibold' : 'text-neutral-600 dark:text-neutral-400'
+                      }`}
+                    >
+                      Chờ duyệt ({authorPosts.filter((p) => p.status === 'PendingReview').length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPostSubFilter('saved')}
+                      className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                        postSubFilter === 'saved' ? 'bg-surface shadow-xs text-primary font-semibold' : 'text-neutral-600 dark:text-neutral-400'
+                      }`}
+                    >
+                      Đã lưu ({authorPosts.filter((p) => p.savedByMe).length})
+                    </button>
+                  </div>
+                )}
+
+                {/* Feed content */}
+                {isMentor ? (
+                  mentorPosts.length === 0 ? (
+                    <EmptyState
+                      title="Chưa có bài chia sẻ nào"
+                      description={
+                        isEffectiveSelf
+                          ? 'Hãy viết bài chia sẻ đầu tiên để các bạn sinh viên cùng học hỏi!'
+                          : `${userEntity.fullName} chưa đăng bài chia sẻ nào.`
+                      }
+                    />
+                  ) : (
+                    <div className="space-y-4">
+                      {mentorPosts.map((post) => {
+                        const isLiked = likedPostIds.includes(post.id);
+                        const isSaved = savedPostIds.includes(post.id);
+                        return (
+                          <div
+                            key={post.id}
+                            className="p-5 rounded-2xl border border-neutral-200 dark:border-neutral-700/80 bg-surface shadow-sm space-y-3"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <UserAvatar
+                                  user={{
+                                    id: userEntity.id,
+                                    fullName: userEntity.fullName,
+                                    avatarUrl: userEntity.avatarUrl,
+                                  }}
+                                  size="md"
+                                  className="ring-1 ring-primary"
+                                />
+                                <div>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                                      {userEntity.fullName}
+                                    </span>
+                                    <Badge variant="brand" className="text-[10px] py-0 px-1.5">
+                                      Mentor
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-xs text-neutral-500">
+                                    <span>{post.field || 'Kỹ thuật phần mềm'}</span>
+                                    <span>·</span>
+                                    <span>2 ngày trước</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <Badge variant="secondary" className="text-xs">
+                                Bài chia sẻ
+                              </Badge>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100 leading-snug">
+                                {post.title}
+                              </h3>
+                              <p className="text-sm text-neutral-700 dark:text-neutral-300 whitespace-pre-line leading-relaxed">
+                                {post.contentMd}
+                              </p>
+                            </div>
+
+                            {post.tags && post.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {post.tags.map((t) => (
+                                  <Chip key={t} size="sm">
+                                    #{t}
+                                  </Chip>
+                                ))}
+                              </div>
+                            )}
+
+                            <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between text-xs text-neutral-500">
+                              <div className="flex items-center gap-4">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setLikedPostIds((prev) =>
+                                      isLiked ? prev.filter((id) => id !== post.id) : [...prev, post.id]
+                                    )
+                                  }
+                                  className={`flex items-center gap-1.5 transition-colors ${
+                                    isLiked ? 'text-red-500 font-semibold' : 'hover:text-neutral-800'
+                                  }`}
+                                >
+                                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+                                  <span>{((post as any).likeCount ?? 0) + (isLiked ? 1 : 0)} Thích</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setSavedPostIds((prev) =>
+                                      isSaved ? prev.filter((id) => id !== post.id) : [...prev, post.id]
+                                    )
+                                  }
+                                  className={`flex items-center gap-1.5 transition-colors ${
+                                    isSaved ? 'text-primary font-semibold' : 'hover:text-neutral-800'
+                                  }`}
+                                >
+                                  <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+                                  <span>{isSaved ? 'Đã lưu' : 'Lưu'}</span>
+                                </button>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard?.writeText(window.location.href);
+                                  toast.success('Đã sao chép liên kết bài viết');
+                                }}
+                                className="flex items-center gap-1.5 hover:text-neutral-800 transition-colors"
+                              >
+                                <Share2 className="w-4 h-4" />
+                                <span>Chia sẻ</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )
+                ) : filteredPosts.length === 0 ? (
+                  <EmptyState
+                    title="Chưa có bài viết nào"
+                    description={
+                      isEffectiveSelf
+                        ? 'Bạn chưa xuất bản bài viết nào. Hãy chia sẻ kiến thức đầu tiên của bạn!'
+                        : `${userEntity.fullName} chưa xuất bản bài viết nào.`
+                    }
+                  />
+                ) : (
+                  <ThreadFeed posts={filteredPosts} />
+                )}
+              </div>
             </div>
           </TabsContent>
 
-          {/* TAB 2: GIỚI THIỆU (C7.3) */}
-          <TabsContent value="about" className="space-y-4 pt-4">
-            {/* Mục 1: Giới thiệu & Học vấn */}
-            <div className="rounded-lg border border-neutral-200 bg-white p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-neutral-900">
-                  Giới thiệu &amp; Học vấn
-                </h2>
-                {isEffectiveSelf && (
-                  <button
-                    type="button"
-                    onClick={() => openEditSheet('intro')}
-                    aria-label="Sửa Giới thiệu & Học vấn"
-                    className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-800 hover:bg-neutral-100"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-
-              <p className="text-sm text-neutral-700 leading-relaxed">
-                {studentProfile.bio || 'Chưa có mô tả giới thiệu chi tiết.'}
-              </p>
-
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-neutral-100 text-xs">
-                <div>
-                  <dt className="text-neutral-500">Trường / Cơ sở</dt>
-                  <dd className="font-medium text-neutral-900 mt-0.5">
-                    {userEntity.school || 'Đại học FPT Hà Nội'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-neutral-500">Chuyên ngành &amp; Khóa</dt>
-                  <dd className="font-medium text-neutral-900 mt-0.5">
-                    {studentProfile.major || userEntity.major || 'Kỹ thuật phần mềm'} ·{' '}
-                    {studentProfile.cohort || userEntity.cohort || 'K17'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-neutral-500">Mã sinh viên</dt>
-                  <dd className="font-mono font-medium text-neutral-900 mt-0.5">
-                    {isEffectiveSelf
-                      ? userEntity.studentCode || 'HE170001'
-                      : maskStudentCode(userEntity.studentCode || 'HE170001')}
-                  </dd>
-                </div>
-                {studentProfile.socialLinks && (
-                  <div>
-                    <dt className="text-neutral-500">Liên kết học thuật</dt>
-                    <dd className="flex items-center gap-3 mt-1">
-                      {studentProfile.socialLinks.github && (
-                        <a
-                          href={studentProfile.socialLinks.github}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-brand-600 hover:underline"
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                          <span>GitHub</span>
-                        </a>
-                      )}
-                      {studentProfile.socialLinks.linkedin && (
-                        <a
-                          href={studentProfile.socialLinks.linkedin}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-brand-600 hover:underline"
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                          <span>LinkedIn</span>
-                        </a>
-                      )}
-                      {studentProfile.socialLinks.portfolio && (
-                        <a
-                          href={studentProfile.socialLinks.portfolio}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-brand-600 hover:underline"
-                        >
-                          <Globe className="h-3.5 w-3.5" />
-                          <span>Portfolio</span>
-                        </a>
-                      )}
-                    </dd>
-                  </div>
-                )}
-              </dl>
-            </div>
-
-            {/* Mục 2: Kỹ năng */}
-            <div className="rounded-lg border border-neutral-200 bg-white p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-neutral-900">Kỹ năng</h2>
-                {isEffectiveSelf && (
-                  <button
-                    type="button"
-                    onClick={() => openEditSheet('skills')}
-                    aria-label="Sửa Kỹ năng"
-                    className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-800 hover:bg-neutral-100"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-
-              {skills.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {skills.map((skill) => (
-                    <Chip key={skill} size="sm">
-                      {skill}
-                    </Chip>
-                  ))}
-                </div>
-              ) : isEffectiveSelf ? (
-                <button
-                  type="button"
-                  onClick={() => openEditSheet('skills')}
-                  className="text-xs font-medium text-brand-600 hover:underline"
-                >
-                  + Thêm kỹ năng để đồng môn dễ tìm bạn khi lập nhóm
-                </button>
-              ) : (
-                <p className="text-xs text-neutral-500">Chưa cập nhật kỹ năng.</p>
-              )}
-            </div>
-
-            {/* Mục 3: Lĩnh vực quan tâm */}
-            <div className="rounded-lg border border-neutral-200 bg-white p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-neutral-900">
-                  Lĩnh vực quan tâm
-                </h2>
-                {isEffectiveSelf && (
-                  <button
-                    type="button"
-                    onClick={() => openEditSheet('interests')}
-                    aria-label="Sửa Lĩnh vực quan tâm"
-                    className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-800 hover:bg-neutral-100"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-
-              {interests.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {interests.map((item) => (
-                    <Chip key={item} size="sm">
-                      {item}
-                    </Chip>
-                  ))}
-                </div>
-              ) : isEffectiveSelf ? (
-                <button
-                  type="button"
-                  onClick={() => openEditSheet('interests')}
-                  className="text-xs font-medium text-brand-600 hover:underline"
-                >
-                  + Chọn lĩnh vực quan tâm
-                </button>
-              ) : (
-                <p className="text-xs text-neutral-500">Chưa cập nhật lĩnh vực quan tâm.</p>
-              )}
-            </div>
-
-            {/* PHẦN RIÊNG CHO CHỦ HỒ SƠ (isEffectiveSelf) — Dữ liệu cho AI Gợi ý (C7.3) */}
-            {isEffectiveSelf && (
-              <div className="space-y-4 pt-2">
-                <div className="flex items-center gap-2 text-xs text-neutral-500 py-1">
-                  <div className="h-px bg-neutral-200 flex-1" />
-                  <span className="inline-flex items-center gap-1.5 font-medium text-neutral-600">
-                    <Lock className="h-3.5 w-3.5 text-neutral-400" />
-                    <span>Chỉ bạn thấy · dùng để gợi ý nhóm, Mentor, đối tác đổi lớp</span>
-                  </span>
-                  <div className="h-px bg-neutral-200 flex-1" />
-                </div>
-
-                {/* Mục 4: Khung giờ rảnh trong tuần */}
-                <div className="rounded-lg border border-neutral-200 bg-white p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-sm font-semibold text-neutral-900">
-                        Khung giờ rảnh trong tuần
-                      </h2>
-                      <p className="text-xs text-neutral-500">
-                        Giúp hệ thống gợi ý nhóm đồ án và lịch hẹn Mentor không trùng ca học
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => openEditSheet('availability')}
-                      aria-label="Sửa Khung giờ rảnh"
-                      className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-800 hover:bg-neutral-100"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  {availabilitySlots.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {availabilitySlots.map((slot, i) => (
-                        <Chip key={i} size="sm">
-                          {formatScheduleSlot(slot)}
-                        </Chip>
-                      ))}
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => openEditSheet('availability')}
-                      className="text-xs font-medium text-brand-600 hover:underline"
-                    >
-                      + Chọn các buổi rảnh trong tuần
-                    </button>
-                  )}
-                </div>
-
-                {/* Mục 5: Mục tiêu học kỳ này */}
-                <div className="rounded-lg border border-neutral-200 bg-white p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-neutral-900">
-                      Mục tiêu học kỳ này &amp; Gợi ý thông minh
-                    </h2>
-                    <button
-                      type="button"
-                      onClick={() => openEditSheet('goals')}
-                      aria-label="Sửa Mục tiêu học kỳ"
-                      className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-800 hover:bg-neutral-100"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  {goalsList.length > 0 ? (
-                    <ul className="list-disc list-inside text-sm text-neutral-700 space-y-1">
-                      {goalsList.map((g, idx) => (
-                        <li key={idx}>{g}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => openEditSheet('goals')}
-                      className="text-xs font-medium text-brand-600 hover:underline"
-                    >
-                      + Thêm mục tiêu học tập kỳ này
-                    </button>
-                  )}
-
-                  <div className="pt-3 border-t border-neutral-100 flex flex-wrap items-center gap-4 text-xs text-neutral-600">
-                    <span>
-                      Gợi ý đổi lớp:{' '}
-                      <strong className="text-neutral-900">
-                        {studentProfile.privacy?.swapMatching !== false ? 'Bật' : 'Tắt'}
-                      </strong>
-                    </span>
-                    <span>·</span>
-                    <span>
-                      Gợi ý nhóm học tập:{' '}
-                      <strong className="text-neutral-900">
-                        {studentProfile.privacy?.groupMatching !== false ? 'Bật' : 'Tắt'}
-                      </strong>
-                    </span>
-                    <span>·</span>
-                    <span>
-                      Gợi ý Mentor:{' '}
-                      <strong className="text-neutral-900">
-                        {studentProfile.privacy?.mentoringMatching !== false ? 'Bật' : 'Tắt'}
-                      </strong>
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
+          {/* TAB 2: GIỚI THIỆU (Facebook submenu & inline edit) */}
+          <TabsContent value="about" className="pt-2">
+            <ProfileAboutTab
+              profile={studentProfile}
+              user={userEntity}
+              isOwner={isEffectiveSelf}
+              canViewAudience={canViewAudience}
+              onUpdateProfile={handleUpdateProfile}
+              activeSubTab={aboutSubTab}
+              onSubTabChange={setAboutSubTab}
+              isMentor={isMentor}
+              mentorSections={mentorSections}
+              onOpenAddMentorSection={() => setMentorSectionsSheetOpen(true)}
+              onOpenEditMentorSection={() => setMentorSectionsSheetOpen(true)}
+            />
           </TabsContent>
 
-          {/* TAB 3: HOẠT ĐỘNG */}
-          <TabsContent value="activities" className="space-y-5 pt-4">
+          {/* TAB 3: KHÓA HỌC (MENTOR) */}
+          {isMentor && (
+            <TabsContent value="courses" className="space-y-4 pt-2">
+              <div className="flex items-center justify-between pb-2">
+                <div>
+                  <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100">
+                    Khóa học & Lớp hướng dẫn
+                  </h3>
+                  <p className="text-xs text-neutral-500">
+                    Các khóa học do {userEntity.fullName} trực tiếp tổ chức và đồng hành cùng sinh viên.
+                  </p>
+                </div>
+                {isEffectiveSelf && (
+                  <Button size="sm" onClick={() => navigate('/mentor/courses')} leftIcon={<Plus className="w-3.5 h-3.5" />}>
+                    Tạo khóa mới
+                  </Button>
+                )}
+              </div>
+
+              {mentorCourses.length === 0 ? (
+                <EmptyState
+                  title="Chưa có khóa học nào"
+                  description={
+                    isEffectiveSelf
+                      ? 'Tạo khóa học để bắt đầu đồng hành cùng sinh viên!'
+                      : 'Mentor chưa mở khóa học nào.'
+                  }
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {mentorCourses.map((course) => (
+                    <MentorCourseCard
+                      key={course.id}
+                      course={course}
+                      hasEnrolled={enrolledCourseIds.includes(course.id)}
+                      onEnroll={(id) => enrollMutation.mutate(id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          )}
+
+          {/* TAB 4: HOẠT ĐỘNG */}
+          <TabsContent value="activities" className="space-y-5 pt-2">
             <div className="space-y-2">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
                 Câu lạc bộ tham gia
               </h3>
-              <div className="rounded-lg border border-neutral-200 bg-white divide-y divide-neutral-200 px-3">
+              <div className="rounded-2xl border border-neutral-200 dark:border-neutral-700/80 bg-surface divide-y divide-neutral-200 dark:divide-neutral-700/80 px-3 shadow-sm">
                 {seedClubs.slice(0, 2).map((club) => (
                   <EntityRow
                     key={club.id}
                     href={`/clubs/${club.id}`}
                     title={club.name}
                     subtitle={`${club.field} · Thành viên hoạt động`}
-                    actions={
-                      <span className="text-xs font-medium text-brand-600">Xem CLB →</span>
-                    }
+                    actions={<span className="text-xs font-medium text-primary">Xem CLB →</span>}
                   />
                 ))}
               </div>
@@ -852,18 +947,16 @@ export const ProfilePage: React.FC = () => {
 
             <div className="space-y-2">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                Nhóm học tập
+                Nhóm học tập & Đồ án
               </h3>
-              <div className="rounded-lg border border-neutral-200 bg-white divide-y divide-neutral-200 px-3">
+              <div className="rounded-2xl border border-neutral-200 dark:border-neutral-700/80 bg-surface divide-y divide-neutral-200 dark:divide-neutral-700/80 px-3 shadow-sm">
                 {seedGroups.slice(0, 2).map((grp) => (
                   <EntityRow
                     key={grp.id}
                     href={`/groups/${grp.id}`}
                     title={grp.name}
                     subtitle={`${grp.topic} · ${grp.memberCount}/${grp.memberLimit} thành viên`}
-                    actions={
-                      <span className="text-xs font-medium text-brand-600">Xem nhóm →</span>
-                    }
+                    actions={<span className="text-xs font-medium text-primary">Xem nhóm →</span>}
                   />
                 ))}
               </div>
@@ -871,366 +964,192 @@ export const ProfilePage: React.FC = () => {
 
             <div className="space-y-2">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                Chương trình đã tham gia
+                Chương trình tình nguyện & Sự kiện
               </h3>
-              <div className="rounded-lg border border-neutral-200 bg-white divide-y divide-neutral-200 px-3">
+              <div className="rounded-2xl border border-neutral-200 dark:border-neutral-700/80 bg-surface divide-y divide-neutral-200 dark:divide-neutral-700/80 px-3 shadow-sm">
                 {seedProgramChannels.slice(0, 2).map((prog) => (
                   <EntityRow
                     key={prog.id}
                     href={`/programs/${prog.id}`}
                     title={prog.title}
-                    subtitle={`${prog.type === 'Volunteer' ? 'Tình nguyện' : 'Workshop'} · Đã xác nhận`}
-                    actions={
-                      <span className="text-xs font-medium text-brand-600">Chi tiết →</span>
-                    }
+                    subtitle={`${prog.type === 'Volunteer' ? 'Tình nguyện' : 'Workshop'} · Đã tham gia`}
+                    actions={<span className="text-xs font-medium text-primary">Chi tiết →</span>}
                   />
                 ))}
               </div>
             </div>
           </TabsContent>
-
-          {/* TAB 4: MENTOR (nếu là Mentor) */}
-          {isMentor && (
-            <TabsContent value="mentor" className="space-y-4 pt-4">
-              <div className="rounded-lg border border-neutral-200 bg-white p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-semibold text-neutral-900">
-                      Hồ sơ hướng dẫn học thuật (Mentor)
-                    </h3>
-                    <p className="text-xs text-neutral-500 mt-0.5">
-                      Hỗ trợ đồ án tốt nghiệp, kiến trúc hệ thống và định hướng kỹ thuật phần mềm
-                    </p>
-                  </div>
-                  <Link
-                    to={
-                      isEffectiveSelf
-                        ? '/mentor/profile'
-                        : `/mentoring/mentors/${userEntity.id}`
-                    }
-                  >
-                    <Button variant="secondary" size="sm">
-                      {isEffectiveSelf ? 'Quản lý Mentor Center' : 'Gửi yêu cầu hướng dẫn'}
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </TabsContent>
-          )}
         </Tabs>
       )}
 
-      {/* ProfileEditSheet — Sửa từng mục bằng Sheet bên phải (C7.4) */}
-      <Sheet open={editSection !== null} onOpenChange={(open: boolean) => !open && setEditSection(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto flex flex-col justify-between">
-          <div className="space-y-5">
-            <SheetHeader className="border-b border-neutral-200 pb-4">
-              <SheetTitle>
-                {editSection === 'intro' && 'Chỉnh sửa Giới thiệu & Học vấn'}
-                {editSection === 'skills' && 'Chỉnh sửa Kỹ năng'}
-                {editSection === 'interests' && 'Chỉnh sửa Lĩnh vực quan tâm'}
-                {editSection === 'availability' && 'Chỉnh sửa Khung giờ rảnh'}
-                {editSection === 'goals' && 'Chỉnh sửa Mục tiêu & Gợi ý AI'}
-              </SheetTitle>
-              <SheetDescription>
-                Cập nhật thông tin để đồng môn và hệ thống gợi ý kết nối chính xác hơn.
-              </SheetDescription>
-            </SheetHeader>
-
-            {editSection === 'intro' && (
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-neutral-700">
-                    Lời giới thiệu ngắn (tối đa 300 ký tự)
-                  </label>
-                  <Textarea
-                    rows={3}
-                    maxLength={300}
-                    value={draftBio}
-                    onChange={(e) => setDraftBio(e.target.value)}
-                    placeholder="Chia sẻ định hướng học tập, môn thế mạnh hoặc dự án bạn quan tâm..."
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-neutral-700">Chuyên ngành</label>
-                    <Input
-                      value={draftMajor}
-                      onChange={(e) => setDraftMajor(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-neutral-700">Khóa</label>
-                    <Input
-                      value={draftCohort}
-                      onChange={(e) => setDraftCohort(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-neutral-700">Trường / Cơ sở</label>
-                  <Input
-                    value={draftSchool}
-                    onChange={(e) => setDraftSchool(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2 pt-2 border-t border-neutral-200">
-                  <label className="text-xs font-medium text-neutral-700">
-                    Liên kết học thuật (GitHub, LinkedIn, Portfolio)
-                  </label>
-                  <Input
-                    placeholder="https://github.com/..."
-                    value={draftGithub}
-                    onChange={(e) => setDraftGithub(e.target.value)}
-                  />
-                  <Input
-                    placeholder="https://linkedin.com/in/..."
-                    value={draftLinkedin}
-                    onChange={(e) => setDraftLinkedin(e.target.value)}
-                  />
-                  <Input
-                    placeholder="https://portfolio..."
-                    value={draftPortfolio}
-                    onChange={(e) => setDraftPortfolio(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
-            {editSection === 'skills' && (
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    value={newSkillInput}
-                    onChange={(e) => setNewSkillInput(e.target.value)}
-                    placeholder="Nhập kỹ năng (vd: React, Spring Boot, Figma)..."
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && newSkillInput.trim()) {
-                        e.preventDefault();
-                        if (!draftSkills.includes(newSkillInput.trim())) {
-                          setDraftSkills([...draftSkills, newSkillInput.trim()]);
-                        }
-                        setNewSkillInput('');
-                      }
-                    }}
-                  />
-                  <Button
+      {/* MODAL: Đổi ảnh bìa */}
+      <Dialog open={coverModalOpen} onOpenChange={setCoverModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold">Cập nhật ảnh bìa</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs font-medium text-neutral-500 block mb-2">
+                Chọn từ bộ sưu tập ảnh bìa mẫu:
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {PRESET_COVERS.map((url, idx) => (
+                  <button
+                    key={idx}
                     type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      if (newSkillInput.trim() && !draftSkills.includes(newSkillInput.trim())) {
-                        setDraftSkills([...draftSkills, newSkillInput.trim()]);
-                        setNewSkillInput('');
-                      }
-                    }}
+                    onClick={() => handleSaveCover(url)}
+                    className="h-20 rounded-xl overflow-hidden border-2 border-neutral-200 dark:border-neutral-700 hover:border-primary transition-all relative group"
                   >
-                    Thêm
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {draftSkills.map((sk) => (
-                    <Chip
-                      key={sk}
-                      onRemove={() => setDraftSkills(draftSkills.filter((s) => s !== sk))}
-                    >
-                      {sk}
-                    </Chip>
-                  ))}
-                </div>
+                    <img src={url} alt="Preset cover" className="w-full h-full object-cover" />
+                    {displayCover === url && (
+                      <div className="absolute top-1.5 right-1.5 bg-primary text-white p-0.5 rounded-full">
+                        <Check className="w-3.5 h-3.5" />
+                      </div>
+                    )}
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
 
-            {editSection === 'interests' && (
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    value={newInterestInput}
-                    onChange={(e) => setNewInterestInput(e.target.value)}
-                    placeholder="Nhập lĩnh vực quan tâm (vd: AI/LLM, FinTech)..."
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      if (
-                        newInterestInput.trim() &&
-                        !draftInterests.includes(newInterestInput.trim())
-                      ) {
-                        setDraftInterests([...draftInterests, newInterestInput.trim()]);
-                        setNewInterestInput('');
-                      }
-                    }}
-                  >
-                    Thêm
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {draftInterests.map((it) => (
-                    <Chip
-                      key={it}
-                      onRemove={() =>
-                        setDraftInterests(draftInterests.filter((i) => i !== it))
-                      }
-                    >
-                      {it}
-                    </Chip>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {editSection === 'availability' && (
-              <div className="space-y-3">
-                <p className="text-xs text-neutral-600">
-                  Chọn các khung giờ trong tuần mà bạn thường rảnh để họp nhóm hoặc gặp Mentor:
-                </p>
-                <ScheduleInput
-                  value={draftAvailability}
-                  onChange={setDraftAvailability}
+            <div className="space-y-1.5 pt-2 border-t border-neutral-200 dark:border-neutral-700">
+              <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300 block">
+                Hoặc nhập liên kết ảnh bìa trực tiếp:
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="https://images.unsplash.com/..."
+                  value={customCoverUrl}
+                  onChange={(e) => setCustomCoverUrl(e.target.value)}
                 />
+                <Button
+                  size="sm"
+                  onClick={() => customCoverUrl.trim() && handleSaveCover(customCoverUrl.trim())}
+                  disabled={!customCoverUrl.trim()}
+                >
+                  Lưu
+                </Button>
               </div>
-            )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-            {editSection === 'goals' && (
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    value={newGoalInput}
-                    onChange={(e) => setNewGoalInput(e.target.value)}
-                    placeholder="Thêm mục tiêu học kỳ (vd: Đạt điểm A đồ án SEP490)..."
-                  />
-                  <Button
+      {/* MODAL: Đổi ảnh đại diện */}
+      <Dialog open={avatarModalOpen} onOpenChange={setAvatarModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold">Cập nhật ảnh đại diện</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs font-medium text-neutral-500 block mb-2">
+                Chọn nhanh ảnh mẫu:
+              </label>
+              <div className="flex justify-center gap-3">
+                {PRESET_AVATARS.map((url, idx) => (
+                  <button
+                    key={idx}
                     type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      if (newGoalInput.trim()) {
-                        setDraftGoals([...draftGoals, newGoalInput.trim()]);
-                        setNewGoalInput('');
-                      }
-                    }}
+                    onClick={() => handleSaveAvatar(url)}
+                    className="w-14 h-14 rounded-full overflow-hidden border-2 border-neutral-200 dark:border-neutral-700 hover:border-primary transition-all relative group"
                   >
-                    Thêm
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {draftGoals.map((g, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between rounded border border-neutral-200 px-3 py-2 text-xs"
-                    >
-                      <span>{g}</span>
-                      <button
-                        type="button"
-                        onClick={() => setDraftGoals(draftGoals.filter((_, i) => i !== idx))}
-                        className="text-neutral-400 hover:text-neutral-700"
-                      >
-                        Xóa
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="pt-3 border-t border-neutral-200 space-y-2.5 text-xs">
-                  <p className="font-semibold text-neutral-800">Cho phép hệ thống gợi ý:</p>
-                  <label className="flex items-center justify-between cursor-pointer">
-                    <span>Gợi ý đối tác đổi lớp học phần</span>
-                    <input
-                      type="checkbox"
-                      checked={draftPrivacyMatching.swapMatching}
-                      onChange={(e) =>
-                        setDraftPrivacyMatching((p) => ({
-                          ...p,
-                          swapMatching: e.target.checked,
-                        }))
-                      }
-                    />
-                  </label>
-                  <label className="flex items-center justify-between cursor-pointer">
-                    <span>Gợi ý nhóm học tập &amp; đồ án</span>
-                    <input
-                      type="checkbox"
-                      checked={draftPrivacyMatching.groupMatching}
-                      onChange={(e) =>
-                        setDraftPrivacyMatching((p) => ({
-                          ...p,
-                          groupMatching: e.target.checked,
-                        }))
-                      }
-                    />
-                  </label>
-                  <label className="flex items-center justify-between cursor-pointer">
-                    <span>Gợi ý Mentor phù hợp</span>
-                    <input
-                      type="checkbox"
-                      checked={draftPrivacyMatching.mentoringMatching}
-                      onChange={(e) =>
-                        setDraftPrivacyMatching((p) => ({
-                          ...p,
-                          mentoringMatching: e.target.checked,
-                        }))
-                      }
-                    />
-                  </label>
-                </div>
+                    <img src={url} alt="Preset avatar" className="w-full h-full object-cover" />
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
 
-          <div className="pt-4 mt-6 border-t border-neutral-200 flex items-center justify-end gap-2">
-            <Button variant="secondary" onClick={() => setEditSection(null)}>
-              Hủy
-            </Button>
-            <Button
-              variant="primary"
-              loading={saveMutation.isPending}
-              onClick={handleSaveSection}
-            >
-              Lưu thay đổi
-            </Button>
+            <div className="space-y-1.5 pt-2 border-t border-neutral-200 dark:border-neutral-700">
+              <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300 block">
+                Hoặc nhập URL ảnh đại diện:
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="https://images.unsplash.com/..."
+                  value={customAvatarUrl}
+                  onChange={(e) => setCustomAvatarUrl(e.target.value)}
+                />
+                <Button
+                  size="sm"
+                  onClick={() => customAvatarUrl.trim() && handleSaveAvatar(customAvatarUrl.trim())}
+                  disabled={!customAvatarUrl.trim()}
+                >
+                  Lưu
+                </Button>
+              </div>
+            </div>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
-      {/* Followers / Following Dialog */}
+      {/* Followers / Following Modal */}
       <Dialog
         open={followersModal.open}
-        onOpenChange={(open: boolean) => setFollowersModal((prev) => ({ ...prev, open }))}
+        onOpenChange={(open) => setFollowersModal((prev) => ({ ...prev, open }))}
       >
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {followersModal.tab === 'followers' ? 'Người theo dõi' : 'Đang theo dõi'} —{' '}
-              {userEntity.fullName}
+            <DialogTitle className="text-base font-bold">
+              {followersModal.tab === 'followers' ? 'Danh sách người theo dõi' : 'Đang theo dõi'}
             </DialogTitle>
           </DialogHeader>
-          <div className="divide-y divide-neutral-100 py-2">
-            {seedUsers.slice(0, 3).map((u) => (
-              <EntityRow
-                key={u.id}
-                href={`/users/${u.id}`}
-                leading={
-                  <UserAvatar
-                    user={{ id: u.id, fullName: u.fullName, avatarUrl: u.avatarUrl }}
-                    size="sm"
-                    linkToProfile={false}
-                  />
-                }
-                title={u.fullName}
-                subtitle={[u.major, u.cohort, u.school].filter(Boolean).join(' · ')}
-              />
+          <div className="divide-y divide-neutral-100 dark:divide-neutral-800 max-h-80 overflow-y-auto">
+            {seedUsers.slice(0, 4).map((u) => (
+              <div key={u.id} className="py-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <UserAvatar user={u} size="sm" />
+                  <div>
+                    <h5 className="font-semibold text-xs text-neutral-900 dark:text-neutral-100">
+                      {u.fullName}
+                    </h5>
+                    <p className="text-[11px] text-neutral-400">{u.major || 'Kỹ thuật phần mềm'}</p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs px-2.5"
+                  onClick={() => {
+                    setFollowersModal((prev) => ({ ...prev, open: false }));
+                    navigate(`/users/${u.id}`);
+                  }}
+                >
+                  Xem hồ sơ
+                </Button>
+              </div>
             ))}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Report User Dialog */}
+      {/* Report Modal */}
       <ReportDialog
         open={reportUserOpen}
         onOpenChange={setReportUserOpen}
         targetType="user"
         targetId={userEntity.id}
         targetTitle={userEntity.fullName}
-        targetAuthorName={userEntity.fullName}
+      />
+
+      {/* Mentor Send Request Dialog */}
+      <SendMentoringRequestDialog
+        open={sendRequestOpen}
+        onOpenChange={setSendRequestOpen}
+        mentorId={userEntity.id}
+      />
+
+      {/* Mentor Profile Custom Sections Sheet */}
+      <MentorProfileSectionSheet
+        open={mentorSectionsSheetOpen}
+        onOpenChange={setMentorSectionsSheetOpen}
+        mentorId={userEntity.id}
+        initialSections={mentorSections}
+        onSaved={() => {
+          queryClient.invalidateQueries({ queryKey: ['mentor-profile-sections', targetUserId] });
+          toast.success('Đã lưu cấu hình hồ sơ Mentor');
+          setMentorSectionsSheetOpen(false);
+        }}
       />
     </div>
   );

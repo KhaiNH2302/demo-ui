@@ -16,8 +16,11 @@ import {
   Clock,
   X,
   ArrowRight,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { useThemeStore } from '@/store/themeStore';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { NotificationBell } from '@/components/shared/NotificationBell';
 import { QuickCreateSheet } from '@/components/shared/QuickCreateSheet';
@@ -85,6 +88,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const { resolvedTheme, toggleTheme } = useThemeStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>(loadRecentSearches);
@@ -146,7 +150,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   // =========================================================================
   if (variant === 'guest') {
     return (
-      <header className="sticky top-0 z-30 w-full bg-white border-b border-neutral-200">
+      <header className="sticky top-0 z-30 w-full bg-surface border-b border-neutral-200">
         <div className="max-w-[1080px] mx-auto h-14 px-4 lg:px-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-6">
             <Link to="/welcome" className="flex items-center gap-2">
@@ -178,7 +182,20 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             </nav>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label="Đổi giao diện sáng/tối"
+              className="p-2 rounded-lg text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer"
+              title={resolvedTheme === 'dark' ? 'Chuyển sang chế độ Sáng' : 'Chuyển sang chế độ Tối'}
+            >
+              {resolvedTheme === 'dark' ? (
+                <Sun size={18} className="text-amber-400" />
+              ) : (
+                <Moon size={18} />
+              )}
+            </button>
             <Link
               to="/login"
               className="text-sm font-medium text-neutral-700 hover:text-neutral-900 px-2 py-1"
@@ -196,7 +213,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         {/* Mobile sub-bar for 3 public links (< 640px) */}
         <nav
           aria-label="Khám phá công khai di động"
-          className="sm:hidden h-9 px-4 border-t border-neutral-100 flex items-center gap-5 overflow-x-auto bg-white"
+          className="sm:hidden h-9 px-4 border-t border-neutral-200 flex items-center gap-5 overflow-x-auto bg-surface"
         >
           {GUEST_NAV_LINKS.map((item) => (
             <NavLink
@@ -230,7 +247,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     (counters?.unreadMessages || 0) + (counters?.pendingMessageRequests || 0);
 
   return (
-    <header className="sticky top-0 z-30 h-14 w-full bg-white border-b border-neutral-200 text-neutral-900 flex items-center justify-between px-4 sm:px-6">
+    <header className="sticky top-0 z-30 h-14 w-full bg-surface border-b border-neutral-200 text-neutral-900 flex items-center justify-between px-4 sm:px-6">
       {/* Left: Sidebar toggle + SCS Logo + Search */}
       <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
         <button
@@ -270,12 +287,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               value={searchQuery}
               onFocus={() => setSearchFocused(true)}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-9 pl-9 pr-3 rounded-lg bg-neutral-100 text-neutral-900 placeholder:text-neutral-500 text-sm border border-transparent focus:bg-white focus:border-brand-500 focus:outline-none transition-colors"
+              className="w-full h-9 pl-9 pr-3 rounded-lg bg-neutral-100 text-neutral-900 placeholder:text-neutral-500 text-sm border border-transparent focus:bg-surface focus:border-brand-500 focus:outline-none transition-colors"
             />
           </form>
 
           {searchFocused && (
-            <div className="absolute left-0 right-0 top-full mt-1.5 rounded-lg border border-neutral-200 bg-white py-2 shadow-lg z-40">
+            <div className="absolute left-0 right-0 top-full mt-1.5 rounded-lg border border-neutral-200 bg-surface py-2 shadow-lg z-40">
               {searchQuery.trim().length < 2 ? (
                 <div>
                   <div className="px-3 py-1 flex items-center justify-between">
@@ -389,6 +406,20 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
         <QuickCreateSheet open={quickCreateOpen} onOpenChange={setQuickCreateOpen} />
 
+        <button
+          type="button"
+          onClick={toggleTheme}
+          aria-label="Đổi giao diện sáng/tối"
+          className="p-2 rounded-md text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer"
+          title={resolvedTheme === 'dark' ? 'Chuyển sang chế độ Sáng' : 'Chuyển sang chế độ Tối'}
+        >
+          {resolvedTheme === 'dark' ? (
+            <Sun size={19} className="text-amber-400" />
+          ) : (
+            <Moon size={19} />
+          )}
+        </button>
+
         <NotificationBell variant="light" />
 
         <Link
@@ -453,7 +484,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                     }}
                     className={`text-xs py-1 rounded font-medium transition-all ${
                       fontScale === scale
-                        ? 'bg-white text-brand-700 shadow-sm font-bold'
+                        ? 'bg-surface text-brand-600 dark:text-brand-300 shadow-sm font-bold'
                         : 'text-neutral-600 hover:text-neutral-900'
                     }`}
                   >

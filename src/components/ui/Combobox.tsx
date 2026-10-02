@@ -60,7 +60,7 @@ export const Combobox: React.FC<ComboboxProps> = ({
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         className={cn(
-          'flex h-10 w-full items-center justify-between rounded-sm border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:border-brand-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:opacity-75 transition-colors text-left',
+          'flex h-10 w-full items-center justify-between rounded-sm border border-neutral-300 bg-surface px-3 py-2 text-sm text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:border-brand-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:opacity-75 transition-colors text-left',
           !selectedOption && 'text-neutral-400',
           error && 'border-[#dc3c33] focus-visible:ring-[#dc3c33]/30 focus-visible:border-[#dc3c33]'
         )}
@@ -70,8 +70,8 @@ export const Combobox: React.FC<ComboboxProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border border-neutral-200 bg-white p-1 shadow-lg">
-          <div className="flex items-center border-b border-neutral-100 px-2 pb-1.5 pt-1">
+        <div className="absolute z-50 mt-1 w-full rounded-lg border border-neutral-200 bg-surface p-1 shadow-lg">
+          <div className="flex items-center border-b border-neutral-200 px-2 pb-1.5 pt-1">
             <Search size={14} className="text-neutral-400 mr-2 shrink-0" />
             <input
               type="text"
@@ -99,7 +99,7 @@ export const Combobox: React.FC<ComboboxProps> = ({
                     }}
                     className={cn(
                       'flex w-full items-center justify-between rounded-sm px-2.5 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 transition-colors text-left',
-                      isSelected && 'bg-brand-50 text-brand-700 font-medium'
+                      isSelected && 'bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300 font-medium'
                     )}
                   >
                     <div>

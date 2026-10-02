@@ -16,11 +16,11 @@ export const UserHoverCard: React.FC<UserHoverCardProps> = ({ user, children }) 
       </HoverCardPrimitive.Trigger>
       <HoverCardPrimitive.Portal>
         <HoverCardPrimitive.Content
-          className="z-50 w-72 rounded-lg border border-neutral-200 bg-white p-4 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+          className="z-50 w-72 rounded-lg border border-neutral-200 bg-surface p-4 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
           sideOffset={5}
         >
           <UserMiniCard user={user} size="lg" linkToProfile={true} />
-          <div className="mt-3 pt-3 border-t border-neutral-100 text-xs text-neutral-600 space-y-1">
+          <div className="mt-3 pt-3 border-t border-neutral-200 text-xs text-neutral-600 space-y-1">
             <div><span className="font-semibold text-neutral-700">Email: </span>{user.email}</div>
             {user.studentCode && <div><span className="font-semibold text-neutral-700">MSSV: </span>{user.studentCode}</div>}
             <div><span className="font-semibold text-neutral-700">Trường: </span>{user.school}</div>

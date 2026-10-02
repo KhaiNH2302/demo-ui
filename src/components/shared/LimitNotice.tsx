@@ -45,7 +45,7 @@ export const LimitNotice: React.FC<LimitNoticeProps> = ({
   };
 
   return (
-    <div className="border border-neutral-200 rounded-lg p-6 text-left space-y-3 bg-white">
+    <div className="border border-neutral-200 rounded-lg p-6 text-left space-y-3 bg-surface">
       <div className="space-y-1">
         <p className="text-base font-semibold text-neutral-900">
           Còn {displayRemaining} {noun} khác trong trường.

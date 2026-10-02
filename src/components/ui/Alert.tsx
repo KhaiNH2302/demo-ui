@@ -8,12 +8,12 @@ export const alertVariants = cva(
   {
     variants: {
       tier: {
-        neutral: 'bg-neutral-50 text-neutral-800 border-neutral-200 [&>svg]:text-neutral-500',
-        pending: 'bg-[#e8effe] text-[#2952d9] border-[#c7d7fb] [&>svg]:text-[#3366ff]',
-        attention: 'bg-[#fef6e7] text-[#92620a] border-[#f9e3b3] [&>svg]:text-[#d9910b]',
-        success: 'bg-[#e7f7ee] text-[#16794a] border-[#bfead2] [&>svg]:text-[#1fa15c]',
-        danger: 'bg-[#fdecec] text-[#b3261e] border-[#f7c9c7] [&>svg]:text-[#dc3c33]',
-        brand: 'bg-brand-50 text-brand-900 border-brand-200 [&>svg]:text-brand-600',
+        neutral: 'bg-tier-neutral-bg text-tier-neutral-text border-tier-neutral-border [&>svg]:text-tier-neutral-dot',
+        pending: 'bg-tier-pending-bg text-tier-pending-text border-tier-pending-border [&>svg]:text-tier-pending-dot',
+        attention: 'bg-tier-attention-bg text-tier-attention-text border-tier-attention-border [&>svg]:text-tier-attention-dot',
+        success: 'bg-tier-success-bg text-tier-success-text border-tier-success-border [&>svg]:text-tier-success-dot',
+        danger: 'bg-tier-danger-bg text-tier-danger-text border-tier-danger-border [&>svg]:text-tier-danger-dot',
+        brand: 'bg-brand-50 text-brand-900 border-brand-200 [&>svg]:text-brand-600 dark:bg-brand-950/40 dark:text-brand-200 dark:border-brand-800 dark:[&>svg]:text-brand-400',
       },
     },
     defaultVariants: {

@@ -103,7 +103,7 @@ export const SwapConnectionReviewSheet: React.FC<SwapConnectionReviewSheetProps>
             <DisclaimerBanner />
 
             {/* Swap comparison box */}
-            <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4">
+            <div className="rounded-xl border border-neutral-200 bg-surface p-4 space-y-4">
               <h4 className="text-xs font-bold text-neutral-800 uppercase tracking-wider">
                 Đối chiếu mã lớp 2 bên
               </h4>

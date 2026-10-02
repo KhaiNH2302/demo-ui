@@ -1,0 +1,91 @@
+/* Facebook-inspired Dark theme overrides */
+html.dark,
+.dark {
+  /* Inverted Neutral Palette - Facebook Dark Style */
+  --neutral-0:   #121212;
+  --neutral-50:  #18191a; /* FB wash/canvas */
+  --neutral-100: #3a3b3c; /* FB input background, chip, hover surface */
+  --neutral-200: #393a3b; /* FB dividers, borders */
+  --neutral-300: #4e4f50; /* FB stronger border, active pill */
+  --neutral-400: #77797d; /* FB disabled, placeholder */
+  --neutral-500: #b0b3b8; /* FB secondary text, meta info, timestamp */
+  --neutral-600: #c8ccd0; /* FB subtle text */
+  --neutral-700: #d8dadf; /* FB body text */
+  --neutral-800: #e4e6eb; /* FB primary text */
+  --neutral-900: #e4e6eb; /* FB high contrast titles & headings */
+
+  /* Backward compatibility for direct var(--color-neutral-*) usages */
+  --color-neutral-0:   #121212;
+  --color-neutral-50:  #18191a;
+  --color-neutral-100: #3a3b3c;
+  --color-neutral-200: #393a3b;
+  --color-neutral-300: #4e4f50;
+  --color-neutral-400: #77797d;
+  --color-neutral-500: #b0b3b8;
+  --color-neutral-600: #c8ccd0;
+  --color-neutral-700: #d8dadf;
+  --color-neutral-800: #e4e6eb;
+  --color-neutral-900: #e4e6eb;
+
+  /* Facebook Blue Brand Palette */
+  --color-brand-50:  #14233a;
+  --color-brand-100: #193256;
+  --color-brand-300: #4589ff;
+  --color-brand-500: #2d88ff;
+  --color-brand-600: #2d88ff;
+  --color-brand-700: #1a6cd8;
+
+  /* 5 Semantic Tiers (Facebook Dark tuned) */
+  --tier-neutral-bg:     #242526;
+  --tier-neutral-text:   #b0b3b8;
+  --tier-neutral-border: #393a3b;
+  --tier-neutral-dot:    #8a8d91;
+
+  --tier-pending-bg:     #18283e;
+  --tier-pending-text:   #70a9ff;
+  --tier-pending-border: #244b7d;
+  --tier-pending-dot:    #2d88ff;
+
+  --tier-attention-bg:     #382a13;
+  --tier-attention-text:   #fcd34d;
+  --tier-attention-border: #63481b;
+  --tier-attention-dot:    #f59e0b;
+
+  --tier-success-bg:     #15301b;
+  --tier-success-text:   #6ee7b7;
+  --tier-success-border: #22582d;
+  --tier-success-dot:    #31a24c;
+
+  --tier-danger-bg:      #3b1d1d;
+  --tier-danger-text:    #fca5a5;
+  --tier-danger-border:  #742727;
+  --tier-danger-dot:     #fa3e3e;
+
+  /* UI Aliases (Facebook Dark) */
+  --text-main: #e4e6eb;
+  --text-muted: #b0b3b8;
+  --text-subtle: #8a8d91;
+  --border-subtle: #393a3b;
+  --surface-card: #242526;   /* FB post cards, navbar, sidebar */
+  --surface-muted: #18191a;  /* FB wash canvas */
+  --surface-sunken: #121212;
+
+  /* Status Aliases (Dark) */
+  --status-pending-bg: var(--tier-pending-bg);
+  --status-pending-fg: var(--tier-pending-text);
+  --status-pending-border: var(--tier-pending-border);
+  --status-attention-bg: var(--tier-attention-bg);
+  --status-attention-fg: var(--tier-attention-text);
+  --status-attention-border: var(--tier-attention-border);
+  --status-success-bg: var(--tier-success-bg);
+  --status-success-fg: var(--tier-success-text);
+  --status-success-border: var(--tier-success-border);
+  --status-danger-bg: var(--tier-danger-bg);
+  --status-danger-fg: var(--tier-danger-text);
+  --status-danger-border: var(--tier-danger-border);
+
+  /* Shadows for dark mode */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.6), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 12px 32px -8px rgb(0 0 0 / 0.7);
+}

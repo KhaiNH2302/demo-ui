@@ -93,12 +93,12 @@ export const ProfileSnapshotView: React.FC<ProfileSnapshotViewProps> = ({
       )}
 
       {answers.length > 0 && (
-        <div className="space-y-2.5 pt-2 border-t border-neutral-100">
+        <div className="space-y-2.5 pt-2 border-t border-neutral-200">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
             Câu trả lời đăng ký
           </h4>
           {answers.map((qa, idx) => (
-            <div key={idx} className="rounded-md border border-neutral-200 bg-white p-3 space-y-1">
+            <div key={idx} className="rounded-md border border-neutral-200 bg-surface p-3 space-y-1">
               <p className="text-xs font-medium text-neutral-500">{qa.question}</p>
               <p className="text-sm text-neutral-900 whitespace-pre-line">{qa.answer}</p>
             </div>

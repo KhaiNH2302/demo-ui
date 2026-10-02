@@ -7,11 +7,11 @@ export const badgeVariants = cva(
   {
     variants: {
       tier: {
-        neutral: 'bg-neutral-100 text-neutral-600 border-neutral-200',
-        pending: 'bg-[#e8effe] text-[#2952d9] border-[#c7d7fb]',
-        attention: 'bg-[#fef6e7] text-[#92620a] border-[#f9e3b3]',
-        success: 'bg-[#e7f7ee] text-[#16794a] border-[#bfead2]',
-        danger: 'bg-[#fdecec] text-[#b3261e] border-[#f7c9c7]',
+        neutral: 'bg-tier-neutral-bg text-tier-neutral-text border-tier-neutral-border',
+        pending: 'bg-tier-pending-bg text-tier-pending-text border-tier-pending-border',
+        attention: 'bg-tier-attention-bg text-tier-attention-text border-tier-attention-border',
+        success: 'bg-tier-success-bg text-tier-success-text border-tier-success-border',
+        danger: 'bg-tier-danger-bg text-tier-danger-text border-tier-danger-border',
         brand: 'bg-brand-50 text-brand-700 border-brand-200',
         primary: 'bg-primary/10 text-primary border-primary/20',
         secondary: 'bg-neutral-100 text-neutral-800 border-neutral-200',
@@ -30,11 +30,11 @@ export const badgeVariants = cva(
 );
 
 const dotColors: Record<string, string> = {
-  neutral: 'bg-neutral-400',
-  pending: 'bg-[#3366ff]',
-  attention: 'bg-[#d9910b]',
-  success: 'bg-[#1fa15c]',
-  danger: 'bg-[#dc3c33]',
+  neutral: 'bg-tier-neutral-dot',
+  pending: 'bg-tier-pending-dot',
+  attention: 'bg-tier-attention-dot',
+  success: 'bg-tier-success-dot',
+  danger: 'bg-tier-danger-dot',
   brand: 'bg-brand-500',
   primary: 'bg-primary',
   secondary: 'bg-neutral-500',
@@ -53,7 +53,7 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
     const activeTier = (tier || variant || 'neutral') as any;
     return (
       <span ref={ref} className={cn(badgeVariants({ tier: activeTier, size }), className)} {...props}>
-        {dot && <span className={cn('h-1.5 w-1.5 rounded-full', dotColors[activeTier] || 'bg-neutral-400')} />}
+        {dot && <span className={cn('h-1.5 w-1.5 rounded-full', dotColors[activeTier] || 'bg-tier-neutral-dot')} />}
         {children}
       </span>
     );

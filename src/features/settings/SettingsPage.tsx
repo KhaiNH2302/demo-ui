@@ -9,6 +9,9 @@ import {
   Users,
   UserCheck,
   Lock,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { FormField } from '@/components/shared/FormField';
@@ -18,6 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { Switch } from '@/components/ui/Switch';
 import { useToast } from '@/components/ui/Toast';
 import { useAuthStore } from '@/store/authStore';
+import { useThemeStore } from '@/store/themeStore';
 import { apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/cn';
 import type { ProfileVisibility } from '@/types/status';
@@ -27,6 +31,7 @@ type SettingsTab = 'account' | 'privacy' | 'notifications' | 'appearance';
 export const SettingsPage: React.FC = () => {
   const { user } = useAuthStore();
   const { toast } = useToast();
+  const { theme, setTheme } = useThemeStore();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<SettingsTab>('privacy');
 
@@ -149,7 +154,7 @@ export const SettingsPage: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
         {/* Left Navigation Menu */}
-        <aside className="space-y-1 bg-white p-2 rounded-xl border border-neutral-200">
+        <aside className="space-y-1 bg-surface p-2 rounded-xl border border-neutral-200">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -199,7 +204,7 @@ export const SettingsPage: React.FC = () => {
                             'w-full p-4 rounded-xl border text-left transition-colors flex items-start gap-3.5 cursor-pointer',
                             selected
                               ? 'border-brand-500 bg-brand-50/40'
-                              : 'border-neutral-200 bg-white hover:border-neutral-300'
+                              : 'border-neutral-200 bg-surface hover:border-neutral-300'
                           )}
                         >
                           <div
@@ -453,7 +458,46 @@ export const SettingsPage: React.FC = () => {
                 <CardTitle>Giao diện & Ngôn ngữ</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-2 max-w-sm">
+                <div className="space-y-4 max-w-lg">
+                  <FormField
+                    label="Chủ đề hiển thị"
+                    helperText="Tùy chọn chế độ Sáng, Tối hoặc Tự động đồng bộ theo hệ thống thiết bị."
+                  >
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { key: 'light', label: 'Sáng', desc: 'Nền sáng chuẩn', icon: Sun },
+                        { key: 'dark', label: 'Tối', desc: 'Dịu mắt ban đêm', icon: Moon },
+                        { key: 'system', label: 'Hệ thống', desc: 'Theo thiết bị', icon: Monitor },
+                      ].map((item) => {
+                        const Icon = item.icon;
+                        const isCurrent = theme === item.key;
+                        return (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => {
+                              setTheme(item.key as any);
+                              toast({ title: `Đã chuyển sang chủ đề: ${item.label}` });
+                            }}
+                            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col items-start gap-2 ${
+                              isCurrent
+                                ? 'bg-brand-50 border-brand-500 text-brand-700 font-bold shadow-xs'
+                                : 'bg-surface border-neutral-200 hover:border-neutral-300 text-neutral-700'
+                            }`}
+                          >
+                            <Icon size={18} className={isCurrent ? 'text-brand-600' : 'text-neutral-500'} />
+                            <div>
+                              <span className="text-xs font-bold block">{item.label}</span>
+                              <span className="text-xs text-neutral-500 block mt-0.5">{item.desc}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </FormField>
+                </div>
+
+                <div className="space-y-2 max-w-sm pt-4 border-t border-neutral-100">
                   <FormField label="Ngôn ngữ giao diện">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between p-3 rounded-lg border border-brand-500 bg-brand-50/40">
@@ -496,7 +540,7 @@ export const SettingsPage: React.FC = () => {
                             className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                               isCurrent
                                 ? 'bg-brand-50 border-brand-500 text-brand-700 font-bold shadow-xs'
-                                : 'bg-white border-neutral-200 hover:border-neutral-300 text-neutral-700'
+                                : 'bg-surface border-neutral-200 hover:border-neutral-300 text-neutral-700'
                             }`}
                           >
                             <span className="text-xs font-bold block">{item.label}</span>

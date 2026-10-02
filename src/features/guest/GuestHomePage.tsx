@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { AppShell } from '@/app/layouts/AppShell';
 import { Button } from '@/components/ui/Button';
 import { ThreadFeed } from '@/components/shared/ThreadFeed';
 import { UpcomingList, type UpcomingItem } from '@/components/shared/UpcomingList';
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton';
+import { LegalDialog } from '@/components/shared/LegalDialog';
 import { useAuthStore } from '@/store/authStore';
 import { api } from '@/lib/api';
 import { toast } from '@/components/ui/Toast';
@@ -15,7 +16,17 @@ export const GuestHomePage: React.FC = () => {
   const user = useAuthStore((s) => s.user);
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loadingGoogle, setLoadingGoogle] = useState(false);
+
+  const legalParam = searchParams.get('legal');
+  const legalType = legalParam === 'terms' || legalParam === 'privacy' ? legalParam : null;
+
+  const handleCloseLegal = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('legal');
+    setSearchParams(next, { replace: true });
+  };
 
   const { data: previewPosts, isLoading: loadingPosts } = useQuery<KnowledgePost[]>({
     queryKey: ['public', 'posts', 'preview'],
@@ -141,6 +152,14 @@ export const GuestHomePage: React.FC = () => {
           Bạn chọn ai được xem hồ sơ · AI chỉ gợi ý, bạn là người quyết định · Nội dung vi phạm được kiểm duyệt
         </footer>
       </div>
+
+      {legalType && (
+        <LegalDialog
+          open={!!legalType}
+          onOpenChange={(open) => !open && handleCloseLegal()}
+          type={legalType}
+        />
+      )}
     </AppShell>
   );
 };

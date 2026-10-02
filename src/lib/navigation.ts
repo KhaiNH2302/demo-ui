@@ -120,13 +120,6 @@ export const NAV_SECTIONS: NavSection[] = [
         badge: (c) => (c.pendingRequestsTotal || 0) > 0,
       },
       {
-        key: 'opportunities',
-        label: 'Cơ hội quanh trường',
-        href: '/opportunities',
-        to: '/opportunities',
-        icon: Compass,
-      },
-      {
         key: 'people',
         label: 'Mọi người',
         href: '/people',
@@ -183,7 +176,6 @@ export function getActiveNavKey(pathname: string): string {
   if (pathname.startsWith('/programs')) return 'programs';
   if (pathname.startsWith('/events')) return 'events';
   if (pathname.startsWith('/requests')) return 'requests';
-  if (pathname.startsWith('/opportunities')) return 'opportunities';
   if (pathname.startsWith('/people')) return 'people';
   if (pathname.startsWith('/settings')) return 'settings';
   if (pathname.startsWith('/help')) return 'help';

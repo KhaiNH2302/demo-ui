@@ -46,7 +46,7 @@ export const UpcomingList: React.FC<UpcomingListProps> = ({
       {visible.length === 0 ? (
         <p className="text-xs text-neutral-500 py-2">{emptyText}</p>
       ) : (
-        <div className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white overflow-hidden">
+        <div className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-surface overflow-hidden">
           {visible.map((item) => {
             const href =
               item.href ||

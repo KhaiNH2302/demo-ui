@@ -16,6 +16,7 @@ import { UserMiniCard } from '@/components/shared/UserMiniCard';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ReasonDialog } from '@/components/shared/ReasonDialog';
+import { FilterSelect } from '@/components/shared/FilterSelect';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -144,21 +145,16 @@ export const ModerationPage: React.FC = () => {
 
         {/* TAB 1: GROUPED VIOLATION REPORTS (A3) */}
         <TabsContent value="reports" className="space-y-4 mt-4">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-            {targetFilters.map((f) => (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setTargetFilter(f.key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition-colors cursor-pointer ${
-                  targetFilter === f.key
-                    ? 'bg-brand-50 text-brand-700 font-semibold border border-brand-200'
-                    : 'bg-white text-neutral-600 border border-neutral-200 hover:bg-neutral-50'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+          <div className="flex items-center gap-2">
+            <FilterSelect
+              label="Đối tượng"
+              value={targetFilter}
+              onChange={setTargetFilter}
+              options={targetFilters.map((f) => ({
+                value: f.key,
+                label: f.label,
+              }))}
+            />
           </div>
 
           <QueryBoundary queries={[reportsQuery]}>

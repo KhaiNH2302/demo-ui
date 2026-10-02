@@ -6,6 +6,66 @@ import { seedProgramChannels } from '../data/programs';
 import { mockDelay } from '../utils';
 import type { StudentProfile } from '@/types/entities';
 
+async function handleUpdateProfile(request: Request) {
+  await mockDelay();
+  const authHeader = request.headers.get('Authorization') || '';
+  const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+  const body = (await request.json()) as Partial<StudentProfile> & {
+    fullName?: string;
+    avatarUrl?: string;
+    coverUrl?: string;
+    school?: string;
+    major?: string;
+    cohort?: string;
+    campus?: string;
+    studentCode?: string;
+  };
+
+  const user = seedUsers.find((u) => u.id === userId);
+  if (user) {
+    if (body.fullName) user.fullName = body.fullName;
+    if (body.avatarUrl) user.avatarUrl = body.avatarUrl;
+    if (body.coverUrl) user.coverUrl = body.coverUrl;
+    if (body.school) user.school = body.school;
+    if (body.major) user.major = body.major;
+    if (body.cohort) user.cohort = body.cohort;
+    if (body.campus) user.campus = body.campus;
+    if (body.studentCode) user.studentCode = body.studentCode;
+
+    // Also sync from education entry if provided
+    if (body.education && body.education.length > 0) {
+      const currentEdu = body.education.find((e) => e.isCurrent) || body.education[0];
+      if (currentEdu.schoolName) user.school = currentEdu.schoolName;
+      if (currentEdu.major) user.major = currentEdu.major;
+      if (currentEdu.cohort) user.cohort = currentEdu.cohort;
+      if (currentEdu.campus) user.campus = currentEdu.campus;
+      if (currentEdu.studentCode) user.studentCode = currentEdu.studentCode;
+    }
+  }
+
+  if (!seedProfiles[userId]) {
+    seedProfiles[userId] = {
+      userId,
+      skills: [],
+      interests: [],
+      goals: [],
+      availability: [],
+      privacy: {
+        swapMatching: true,
+        groupMatching: true,
+        mentoringMatching: true,
+        profileVisibility: 'members',
+        whoCanMessage: 'everyone',
+      },
+    };
+  }
+
+  Object.assign(seedProfiles[userId], body);
+
+  const { password: _, ...safeUser } = user || ({} as any);
+  return HttpResponse.json({ data: { user: safeUser, profile: seedProfiles[userId] } });
+}
+
 export const profileHandlers = [
   http.get('/api/v1/profile/me', async ({ request }) => {
     await mockDelay();
@@ -39,41 +99,11 @@ export const profileHandlers = [
   }),
 
   http.put('/api/v1/profile/me', async ({ request }) => {
-    await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
-    const body = (await request.json()) as Partial<StudentProfile> & {
-      fullName?: string;
-      avatarUrl?: string;
-    };
+    return handleUpdateProfile(request);
+  }),
 
-    const user = seedUsers.find((u) => u.id === userId);
-    if (user) {
-      if (body.fullName) user.fullName = body.fullName;
-      if (body.avatarUrl) user.avatarUrl = body.avatarUrl;
-    }
-
-    if (!seedProfiles[userId]) {
-      seedProfiles[userId] = {
-        userId,
-        skills: [],
-        interests: [],
-        goals: [],
-        availability: [],
-        privacy: {
-          swapMatching: true,
-          groupMatching: true,
-          mentoringMatching: true,
-          profileVisibility: 'members',
-          whoCanMessage: 'everyone',
-        },
-      };
-    }
-
-    Object.assign(seedProfiles[userId], body);
-
-    const { password: _, ...safeUser } = user || ({} as any);
-    return HttpResponse.json({ data: { user: safeUser, profile: seedProfiles[userId] } });
+  http.patch('/api/v1/profile/me', async ({ request }) => {
+    return handleUpdateProfile(request);
   }),
 
   http.get('/api/v1/users/:id', async ({ params, request }) => {

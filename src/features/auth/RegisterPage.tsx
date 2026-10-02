@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { FormField } from '@/components/shared/FormField';
+import { LegalDialog } from '@/components/shared/LegalDialog';
 import { AuthAside } from './AuthAside';
 import { GoogleLogoSvg } from './LoginPage';
 import { apiClient, type ApiError } from '@/lib/apiClient';
@@ -38,6 +39,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
   const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
 
@@ -97,7 +99,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 max-w-4xl mx-auto rounded-lg border border-neutral-200 bg-white overflow-hidden">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 max-w-4xl mx-auto rounded-lg border border-neutral-200 bg-surface overflow-hidden">
       {/* Cột trái: Form đăng ký ngắn gọn (C2) */}
       <div className="lg:col-span-7 p-6 sm:p-8 space-y-5">
         <div>
@@ -113,14 +115,14 @@ export default function RegisterPage() {
           loading={loadingGoogle}
           onClick={handleGoogleOAuth}
           leftIcon={<GoogleLogoSvg />}
-          className="w-full h-10 font-medium text-neutral-800 border-neutral-200 hover:bg-neutral-50"
+          className="w-full h-10 font-medium text-neutral-800 border-neutral-200 hover:bg-neutral-100"
         >
           Tiếp tục với Google
         </Button>
 
         <div className="relative flex items-center justify-center">
           <div className="border-t border-neutral-200 w-full" />
-          <span className="bg-white px-3 text-xs text-neutral-400">hoặc</span>
+          <span className="bg-surface px-3 text-xs text-neutral-400">hoặc</span>
           <div className="border-t border-neutral-200 w-full" />
         </div>
 
@@ -181,13 +183,21 @@ export default function RegisterPage() {
               />
               <span>
                 Tôi đồng ý với{' '}
-                <Link to="/terms" target="_blank" className="text-brand-600 underline">
+                <button
+                  type="button"
+                  onClick={() => setLegalModal('terms')}
+                  className="text-brand-600 underline cursor-pointer hover:text-brand-700"
+                >
                   Điều khoản
-                </Link>{' '}
+                </button>{' '}
                 &amp;{' '}
-                <Link to="/privacy" target="_blank" className="text-brand-600 underline">
+                <button
+                  type="button"
+                  onClick={() => setLegalModal('privacy')}
+                  className="text-brand-600 underline cursor-pointer hover:text-brand-700"
+                >
                   Quyền riêng tư
-                </Link>
+                </button>
               </span>
             </label>
             {errors.agreeTerms && (
@@ -212,6 +222,14 @@ export default function RegisterPage() {
 
       {/* Cột phải: AuthAside (C2) */}
       <AuthAside variant="register" />
+
+      {legalModal && (
+        <LegalDialog
+          open={!!legalModal}
+          onOpenChange={(open) => !open && setLegalModal(null)}
+          type={legalModal}
+        />
+      )}
     </div>
   );
 }

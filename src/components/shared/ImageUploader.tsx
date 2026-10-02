@@ -104,7 +104,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
           {value.map((img, idx) => (
             <div
               key={img.id || idx}
-              className="rounded-md border border-neutral-200 bg-white p-2.5 space-y-2"
+              className="rounded-md border border-neutral-200 bg-surface p-2.5 space-y-2"
             >
               <div className="relative aspect-[4/3] overflow-hidden rounded bg-neutral-100">
                 <img

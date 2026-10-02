@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
-import { Chip } from '@/components/ui/Chip';
 import { Button } from '@/components/ui/Button';
+import { FilterSelect } from '@/components/shared/FilterSelect';
 
 export interface ToolbarChipItem {
   key: string;
@@ -24,6 +24,7 @@ export interface ListToolbarProps {
     items: ToolbarChipItem[];
     active: string;
     onChange: (key: string) => void;
+    label?: string;
   };
   sort?: {
     options: ToolbarSortOption[];
@@ -54,7 +55,7 @@ export const ListToolbar: React.FC<ListToolbarProps> = ({
               value={search.value}
               onChange={(e) => search.onChange(e.target.value)}
               placeholder={search.placeholder || 'Tìm kiếm...'}
-              className="w-full h-9 pl-9 pr-3 text-sm rounded-md border border-neutral-200 bg-white text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-brand-500"
+              className="w-full h-9 pl-9 pr-3 text-sm rounded-md border border-neutral-200 bg-surface text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-brand-500"
             />
           </div>
         )}
@@ -64,7 +65,7 @@ export const ListToolbar: React.FC<ListToolbarProps> = ({
             <select
               value={sort.value}
               onChange={(e) => sort.onChange(e.target.value)}
-              className="h-9 rounded-md border border-neutral-200 bg-white px-3 text-xs font-medium text-neutral-700 focus:outline-none focus:border-brand-500"
+              className="h-9 rounded-md border border-neutral-200 bg-surface px-3 text-xs font-medium text-neutral-700 focus:outline-none focus:border-brand-500"
             >
               {sort.options.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -88,17 +89,17 @@ export const ListToolbar: React.FC<ListToolbarProps> = ({
       </div>
 
       {chips && chips.items.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-          {chips.items.map((item) => (
-            <Chip
-              key={item.key}
-              active={chips.active === item.key}
-              onClick={() => chips.onChange(item.key)}
-            >
-              {item.label}
-              {item.count !== undefined ? ` (${item.count})` : ''}
-            </Chip>
-          ))}
+        <div className="flex items-center gap-2">
+          <FilterSelect
+            label={chips.label || 'Phân loại'}
+            value={chips.active}
+            onChange={chips.onChange}
+            options={chips.items.map((item) => ({
+              value: item.key,
+              label: item.label,
+              count: item.count,
+            }))}
+          />
         </div>
       )}
     </div>

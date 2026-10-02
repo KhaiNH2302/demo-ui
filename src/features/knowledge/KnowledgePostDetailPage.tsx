@@ -175,7 +175,7 @@ export default function KnowledgePostDetailPage() {
 
   return (
     <div className="max-w-[720px] mx-auto pb-8">
-      <div className="bg-white border border-neutral-200 rounded-xl shadow-2xs">
+      <div className="bg-surface border border-neutral-200 rounded-xl shadow-2xs">
         <ContextHeader
           backHref="/knowledge"
           title="Chi tiết thảo luận"
@@ -419,7 +419,7 @@ export default function KnowledgePostDetailPage() {
         )}
 
         {/* Sticky Bottom Reply Bar — aligned inside the 720px thread column */}
-        <div className="sticky bottom-0 z-20 bg-white/95 backdrop-blur-md border-t border-neutral-200 px-5 sm:px-6 py-3 rounded-b-xl">
+        <div className="sticky bottom-0 z-20 bg-surface/95 backdrop-blur-md border-t border-neutral-200 px-5 sm:px-6 py-3 rounded-b-xl">
           <div className="space-y-1.5">
             {replyingTo && (
               <div className="flex items-center justify-between text-xs text-brand-700 bg-brand-50 px-3 py-1 rounded-md">
@@ -474,7 +474,7 @@ export default function KnowledgePostDetailPage() {
                       : 'Viết câu trả lời hoặc thảo luận...'
                   }
                   disabled={addCommentMutation.isPending}
-                  className="flex-1 text-xs sm:text-sm bg-neutral-100 hover:bg-neutral-50 focus:bg-white rounded-full px-4 py-2 border border-transparent focus:border-brand-300 outline-hidden transition-all"
+                  className="flex-1 text-xs sm:text-sm bg-neutral-100 hover:bg-neutral-200 focus:bg-surface rounded-full px-4 py-2 border border-transparent focus:border-brand-300 outline-hidden transition-all"
                 />
                 <Button
                   type="submit"

@@ -258,7 +258,7 @@ export const KnowledgeHubPage: React.FC = () => {
               onClick={() => setParam('subTab', st.key)}
               className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
                 myPostsSubTab === st.key
-                  ? 'bg-white text-neutral-900 shadow-xs'
+                  ? 'bg-surface text-neutral-900 shadow-xs'
                   : 'text-neutral-600 hover:text-neutral-900'
               }`}
             >
@@ -329,7 +329,7 @@ export const KnowledgeHubPage: React.FC = () => {
 
       {/* Extra Filters Popover Drawer / Dropdown */}
       {canBrowse && filterPopoverOpen && (
-        <div className="p-4 bg-white rounded-lg border border-neutral-200 shadow-xs flex flex-wrap items-center justify-between gap-4 text-xs text-neutral-700">
+        <div className="p-4 bg-surface rounded-lg border border-neutral-200 shadow-xs flex flex-wrap items-center justify-between gap-4 text-xs text-neutral-700">
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -468,7 +468,7 @@ export const KnowledgeHubPage: React.FC = () => {
                             <Link
                               key={q.id}
                               to={`/knowledge/${q.id}`}
-                              className="p-3 rounded-md bg-white border border-neutral-200 hover:border-neutral-300 transition-colors flex items-center justify-between gap-3"
+                              className="p-3 rounded-md bg-surface border border-neutral-200 hover:border-neutral-300 transition-colors flex items-center justify-between gap-3"
                             >
                               <div className="min-w-0 flex-1 space-y-0.5">
                                 <div className="flex items-center gap-2">

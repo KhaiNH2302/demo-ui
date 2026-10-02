@@ -102,7 +102,7 @@ export const MentoringHomePage: React.FC = () => {
           {() => {
             if (recentRequests.length === 0) {
               return (
-                <div className="p-6 rounded-xl bg-white border border-neutral-200 text-center text-sm text-neutral-500 shadow-xs">
+                <div className="p-6 rounded-xl bg-surface border border-neutral-200 text-center text-sm text-neutral-500 shadow-xs">
                   Bạn chưa gửi yêu cầu tư vấn Mentoring nào gần đây.
                 </div>
               );

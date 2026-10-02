@@ -1,0 +1,201 @@
+/* Common Reusable UI Classes */
+
+/* Standard Page Container */
+.page-container {
+  width: 100%;
+  max-width: 80rem; /* 1280px */
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 768px) {
+  .page-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1920px) {
+  .page-container {
+    max-width: 100rem; /* 1600px co giãn ở màn lớn */
+  }
+}
+
+@media (min-width: 2560px) {
+  .page-container {
+    max-width: 120rem; /* 1920px co giãn ở 4K */
+  }
+}
+
+/* Surface Card */
+.surface-card {
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Filter Chip */
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--surface-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filter-chip:hover {
+  border-color: var(--color-brand-500);
+  color: var(--text-main);
+}
+
+.filter-chip.active {
+  background-color: var(--color-brand-50);
+  border-color: var(--color-brand-500);
+  color: var(--color-brand-600);
+  font-weight: 600;
+}
+
+html.dark .filter-chip.active,
+.dark .filter-chip.active {
+  background-color: color-mix(in srgb, var(--color-brand-500) 25%, transparent);
+  color: var(--color-brand-300);
+}
+
+/* Form Field Label */
+.field-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 0.375rem;
+}
+
+/* Focus Ring */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+
+/* Prose Document Styling (Legal & Markdown Docs) */
+.prose-doc {
+  color: var(--text-main);
+  font-size: 0.875rem;
+  line-height: 1.625rem;
+}
+
+.prose-doc h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 2rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: var(--text-main);
+}
+
+.prose-doc h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.75rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-main);
+}
+
+.prose-doc h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-main);
+}
+
+.prose-doc p {
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: var(--text-muted);
+}
+
+.prose-doc ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-doc ol {
+  list-style-type: decimal;
+  padding-left: 1.25rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-doc li {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  color: var(--text-muted);
+}
+
+.prose-doc a {
+  color: var(--color-brand-600);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+html.dark .prose-doc a,
+.dark .prose-doc a {
+  color: var(--color-brand-300);
+}
+
+.prose-doc a:hover {
+  color: var(--color-brand-700);
+}
+
+html.dark .prose-doc a:hover,
+.dark .prose-doc a:hover {
+  color: var(--color-brand-100);
+}
+
+.prose-doc blockquote {
+  border-left: 4px solid var(--border-subtle);
+  padding-left: 1rem;
+  font-style: italic;
+  color: var(--text-muted);
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.prose-doc table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.8125rem;
+}
+
+.prose-doc th {
+  border: 1px solid var(--border-subtle);
+  background-color: var(--surface-muted);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+}
+
+.prose-doc td {
+  border: 1px solid var(--border-subtle);
+  padding: 0.5rem 0.75rem;
+}

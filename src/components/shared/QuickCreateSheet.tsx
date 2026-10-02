@@ -126,9 +126,9 @@ export const QuickCreateSheet: React.FC<QuickCreateSheetProps> = ({
                 key={item.key}
                 type="button"
                 onClick={item.onClick}
-                className="flex items-start gap-3.5 p-3 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 hover:border-neutral-300 text-left transition-colors cursor-pointer group"
+                className="flex items-start gap-3.5 p-3 rounded-lg border border-neutral-200 bg-surface hover:bg-neutral-100 hover:border-neutral-300 text-left transition-colors cursor-pointer group"
               >
-                <div className="p-2 rounded-lg shrink-0 bg-brand-50 text-brand-600 group-hover:bg-brand-100 transition-colors">
+                <div className="p-2 rounded-lg shrink-0 bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-300 group-hover:bg-brand-100 dark:group-hover:bg-brand-900/60 transition-colors">
                   <Icon className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">

@@ -232,7 +232,7 @@ export const ProgramFormPage: React.FC = () => {
             className={`p-3 rounded-lg border text-left transition-colors cursor-pointer ${
               step === s.num
                 ? 'border-brand-500 bg-brand-50/50 text-brand-700'
-                : 'border-neutral-200 bg-white text-neutral-700'
+                : 'border-neutral-200 bg-surface text-neutral-700'
             }`}
           >
             <div className="text-caption font-semibold">Bước {s.num}</div>
@@ -604,7 +604,7 @@ export const ProgramFormPage: React.FC = () => {
             </div>
           </div>
 
-          <label className="flex items-start gap-2.5 p-4 rounded-lg border border-neutral-200 bg-white cursor-pointer text-sm text-neutral-800">
+          <label className="flex items-start gap-2.5 p-4 rounded-lg border border-neutral-200 bg-surface cursor-pointer text-sm text-neutral-800">
             <input
               type="checkbox"
               checked={committed}

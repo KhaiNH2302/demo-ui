@@ -23,7 +23,7 @@ export const CoverHeader: React.FC<CoverHeaderProps> = ({
   className,
 }) => {
   return (
-    <div className={cn('rounded-xl overflow-hidden border border-neutral-200 bg-white shadow-sm', className)}>
+    <div className={cn('rounded-xl overflow-hidden border border-neutral-200 bg-surface shadow-sm', className)}>
       {/* Cover Image Banner (144px height per 02-shared-components.md § 2.3) */}
       <div className="relative h-36 md:h-40 w-full bg-gradient-to-br from-accent-500 to-brand-500 overflow-hidden">
         {coverUrl && (
@@ -40,7 +40,7 @@ export const CoverHeader: React.FC<CoverHeaderProps> = ({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-2">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 min-w-0">
             {/* Logo / Avatar Overlap (88px) */}
-            <div className="relative -mt-12 sm:-mt-11 h-[88px] w-[88px] rounded-xl bg-white p-0.5 ring-4 ring-white shadow-sm shrink-0">
+            <div className="relative -mt-12 sm:-mt-11 h-[88px] w-[88px] rounded-xl bg-surface p-0.5 ring-4 ring-surface shadow-sm shrink-0">
               {avatarUrl ? (
                 <img
                   src={avatarUrl}

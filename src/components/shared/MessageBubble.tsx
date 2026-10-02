@@ -120,7 +120,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         {/* Hover action toolbar (Quick Reactions + Menu) */}
         <div
           className={cn(
-            'absolute top-0 -translate-y-1/2 z-10 hidden group-hover:flex items-center gap-1 bg-white border border-neutral-200 rounded-full px-2 py-1 shadow-md transition-all',
+            'absolute top-0 -translate-y-1/2 z-10 hidden group-hover:flex items-center gap-1 bg-surface border border-neutral-200 dark:border-neutral-700 rounded-full px-2 py-1 shadow-md transition-all',
             isMe ? 'right-full mr-2' : 'left-full ml-2'
           )}
         >
@@ -153,7 +153,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               'rounded-2xl px-4 py-2.5 text-xs sm:text-sm leading-relaxed shadow-2xs break-words relative space-y-2',
               isMe
                 ? 'bg-brand-500 text-white rounded-br-xs'
-                : 'bg-neutral-100 text-neutral-900 rounded-bl-xs'
+                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-bl-xs'
             )}
           >
             {/* Text */}
@@ -192,14 +192,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                       'flex items-center justify-between gap-3 p-2.5 rounded-xl border transition-colors',
                       isMe
                         ? 'bg-white/10 border-white/20 text-white'
-                        : 'bg-white border-neutral-200 text-neutral-900'
+                        : 'bg-surface border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100'
                     )}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <div
                         className={cn(
                           'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
-                          isMe ? 'bg-white/20 text-white' : 'bg-brand-50 text-brand-600'
+                          isMe ? 'bg-white/20 text-white' : 'bg-brand-50 dark:bg-brand-500/10 text-brand-600'
                         )}
                       >
                         <FileText size={16} />
@@ -226,7 +226,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                       onClick={(e) => e.stopPropagation()}
                       className={cn(
                         'p-1.5 rounded-lg transition-colors',
-                        isMe ? 'hover:bg-white/20 text-white' : 'hover:bg-neutral-100 text-neutral-600'
+                        isMe ? 'hover:bg-white/20 text-white' : 'hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-400'
                       )}
                       title="Tải xuống tệp"
                     >
@@ -254,7 +254,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   key={emoji}
                   type="button"
                   onClick={() => handleReact(emoji)}
-                  className="bg-white border border-neutral-200 rounded-full px-1.5 py-0.5 text-[11px] shadow-xs flex items-center gap-1 hover:bg-neutral-50 transition-transform active:scale-95"
+                  className="bg-surface border border-neutral-200 dark:border-neutral-700 rounded-full px-1.5 py-0.5 text-[11px] shadow-xs flex items-center gap-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-transform active:scale-95"
                 >
                   <span>{emoji}</span>
                   {count > 1 && (

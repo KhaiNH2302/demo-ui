@@ -98,7 +98,7 @@ export const NewMessageDialog: React.FC<NewMessageDialogProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg p-0 overflow-hidden">
-        <DialogHeader className="p-5 pb-3 border-b border-neutral-100">
+        <DialogHeader className="p-5 pb-3 border-b border-neutral-100 dark:border-neutral-700">
           <DialogTitle className="text-base font-bold text-neutral-900">
             Tin nhắn mới
           </DialogTitle>
@@ -110,7 +110,7 @@ export const NewMessageDialog: React.FC<NewMessageDialogProps> = ({
         <div className="p-5 space-y-4">
           {/* Target Selector */}
           <div>
-            <label className="text-xs font-semibold text-neutral-700 block mb-1.5">
+            <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 block mb-1.5">
               Đến:
             </label>
             {selectedUser ? (
@@ -122,7 +122,7 @@ export const NewMessageDialog: React.FC<NewMessageDialogProps> = ({
                     size="sm"
                   />
                   <div className="min-w-0">
-                    <span className="text-xs font-bold text-neutral-900 block truncate">
+                    <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100 block truncate">
                       {selectedUser.fullName}
                     </span>
                     <span className="text-[11px] text-neutral-500 truncate block">
@@ -150,12 +150,12 @@ export const NewMessageDialog: React.FC<NewMessageDialogProps> = ({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Nhập họ tên, mã số sinh viên hoặc email..."
-                    className="w-full pl-9 pr-4 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-brand-500 focus:outline-hidden transition-all"
+                    className="w-full pl-9 pr-4 py-2 text-xs bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl focus:bg-white dark:focus:bg-neutral-800 focus:border-brand-500 focus:outline-hidden transition-all text-neutral-900 dark:text-neutral-100"
                   />
                 </div>
 
                 {/* Contacts suggestion list */}
-                <div className="max-h-48 overflow-y-auto space-y-1 divide-y divide-neutral-100 border border-neutral-200 rounded-xl bg-white p-1">
+                <div className="max-h-48 overflow-y-auto space-y-1 divide-y divide-neutral-100 dark:divide-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-900 p-1">
                   {filteredUsers.length === 0 ? (
                     <div className="text-center py-6 text-xs text-neutral-400">
                       Không tìm thấy sinh viên phù hợp
@@ -166,12 +166,12 @@ export const NewMessageDialog: React.FC<NewMessageDialogProps> = ({
                         key={u.id}
                         type="button"
                         onClick={() => setSelectedUser(u)}
-                        className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-neutral-50 transition-colors text-left cursor-pointer"
+                        className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors text-left cursor-pointer"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <Avatar src={u.avatarUrl} name={u.fullName} size="sm" />
                           <div className="min-w-0">
-                            <span className="text-xs font-bold text-neutral-900 block truncate">
+                            <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100 block truncate">
                               {u.fullName}
                             </span>
                             <span className="text-[10px] text-neutral-400 block truncate">
@@ -192,9 +192,9 @@ export const NewMessageDialog: React.FC<NewMessageDialogProps> = ({
 
           {/* First Message & Invitation notice */}
           {selectedUser && (
-            <div className="space-y-3 pt-2 border-t border-neutral-100">
-              <div className="bg-neutral-50 border border-neutral-200/80 rounded-xl p-3 text-xs text-neutral-600 space-y-1">
-                <div className="flex items-center gap-1.5 font-semibold text-neutral-800">
+            <div className="space-y-3 pt-2 border-t border-neutral-100 dark:border-neutral-700">
+              <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200/80 dark:border-neutral-700 rounded-xl p-3 text-xs text-neutral-600 dark:text-neutral-400 space-y-1">
+                <div className="flex items-center gap-1.5 font-semibold text-neutral-800 dark:text-neutral-200">
                   <Sparkles size={14} className="text-accent-600" />
                   <span>Lời mời trò chuyện</span>
                 </div>
@@ -204,7 +204,7 @@ export const NewMessageDialog: React.FC<NewMessageDialogProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-neutral-700 block mb-1">
+                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 block mb-1">
                   Nội dung tin nhắn:
                 </label>
                 <textarea
@@ -212,14 +212,14 @@ export const NewMessageDialog: React.FC<NewMessageDialogProps> = ({
                   onChange={(e) => setFirstMessage(e.target.value)}
                   placeholder="Chào bạn, mình muốn trao đổi về..."
                   rows={3}
-                  className="w-full p-3 text-xs text-neutral-900 bg-neutral-50 border border-neutral-200 rounded-xl focus:bg-white focus:border-brand-500 focus:outline-hidden transition-all resize-none leading-relaxed"
+                  className="w-full p-3 text-xs text-neutral-900 dark:text-neutral-100 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl focus:bg-white dark:focus:bg-neutral-800 focus:border-brand-500 focus:outline-hidden transition-all resize-none leading-relaxed"
                 />
               </div>
             </div>
           )}
         </div>
 
-        <DialogFooter className="p-4 bg-neutral-50 border-t border-neutral-100">
+        <DialogFooter className="p-4 bg-neutral-50 dark:bg-neutral-800/50 border-t border-neutral-100 dark:border-neutral-700">
           <Button
             variant="outline"
             size="sm"

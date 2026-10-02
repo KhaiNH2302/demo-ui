@@ -36,7 +36,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     return (
       <div className="bg-neutral-50/50 flex flex-col antialiased min-h-screen">
         <AppHeader variant="guest" />
-        <main className="flex-1 w-full max-w-[1080px] mx-auto px-4 lg:px-6 py-8">
+        <main className="flex-1 w-full max-w-[1080px] 2xl:max-w-[1440px] 3xl:max-w-[1600px] 4xl:max-w-[1920px] mx-auto px-4 lg:px-6 py-8">
           {children ?? <Outlet />}
         </main>
         <PublicFooter />
@@ -78,7 +78,7 @@ export const AppShell: React.FC<AppShellProps> = ({
               'w-full flex-1',
               isFullBleed
                 ? 'p-0 m-0 overflow-hidden'
-                : 'max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6 pb-24 md:pb-12',
+                : 'max-w-7xl 2xl:max-w-[1600px] 3xl:max-w-[1920px] 4xl:max-w-[2240px] mx-auto px-4 sm:px-6 md:px-8 py-6 pb-24 md:pb-12',
             )}
           >
             {children ?? <Outlet />}

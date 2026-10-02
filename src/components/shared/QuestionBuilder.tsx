@@ -100,7 +100,7 @@ export const QuestionBuilder: React.FC<QuestionBuilderProps> = ({
           {questions.map((q, idx) => (
             <div
               key={q.id}
-              className="p-4 rounded-lg border border-neutral-200 bg-white space-y-3"
+              className="p-4 rounded-lg border border-neutral-200 bg-surface space-y-3"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-caption font-semibold text-neutral-500">

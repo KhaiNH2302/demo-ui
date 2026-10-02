@@ -1,5 +1,15 @@
 import React from 'react';
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
+
+const MentorDetailRedirect: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/users/${id}`} replace />;
+};
+
+const SwapMatchRedirect: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/swap/${id}`} replace />;
+};
 
 // Layouts
 import { AuthLayout } from './layouts/AuthLayout';
@@ -15,14 +25,11 @@ import RegisterPage from '@/features/auth/RegisterPage';
 import VerifyEmailPage from '@/features/auth/VerifyEmailPage';
 import ForgotPasswordPage from '@/features/auth/ForgotPasswordPage';
 import OnboardingPage from '@/features/auth/OnboardingPage';
-import TermsPage from '@/features/legal/TermsPage';
-import PrivacyPage from '@/features/legal/PrivacyPage';
 import HelpPage from '@/features/help/HelpPage';
 
 // Common & Global Navigation Pages
 import DashboardPage from '@/features/common/DashboardPage';
 import SearchPage from '@/features/search/SearchPage';
-import OpportunitiesPage from '@/features/opportunities/OpportunitiesPage';
 import EventsPage from '@/features/events/EventsPage';
 import RequestsPage from '@/features/requests/RequestsPage';
 import SettingsPage from '@/features/settings/SettingsPage';
@@ -38,9 +45,7 @@ import ChatsPage from '@/features/chat/ChatsPage';
 
 // FE-01: Class Swap
 import SwapListPage from '@/features/swap/SwapListPage';
-import SwapNewPage from '@/features/swap/SwapNewPage';
 import SwapDetailPage from '@/features/swap/SwapDetailPage';
-import SwapMatchPage from '@/features/swap/SwapMatchPage';
 import SwapConnectionsPage from '@/features/swap/SwapConnectionsPage';
 
 // FE-02: Knowledge Sharing
@@ -111,8 +116,8 @@ import KitchenSinkPage from '@/features/dev/KitchenSinkPage';
 export const router = createBrowserRouter([
   // Public Landing & Legal Routes
   { path: '/welcome', element: <GuestHomePage /> },
-  { path: '/terms', element: <TermsPage /> },
-  { path: '/privacy', element: <PrivacyPage /> },
+  { path: '/terms', element: <Navigate to="/welcome?legal=terms" replace /> },
+  { path: '/privacy', element: <Navigate to="/welcome?legal=privacy" replace /> },
 
   // Auth Routes
   {
@@ -156,7 +161,7 @@ export const router = createBrowserRouter([
       { path: 'discover', element: <Navigate to="/knowledge" replace /> },
       { path: 'me', element: <Navigate to="/requests" replace /> },
       { path: 'requests', element: <RequestsPage /> },
-      { path: 'opportunities', element: <OpportunitiesPage /> },
+      { path: 'opportunities', element: <Navigate to="/clubs" replace /> },
       { path: 'events', element: <EventsPage /> },
       { path: 'events/:id', element: <Navigate to="/events" replace /> },
       { path: 'people', element: <PeoplePage /> },
@@ -169,9 +174,9 @@ export const router = createBrowserRouter([
 
       // FE-01: Swap
       { path: 'swap', element: <SwapListPage /> },
-      { path: 'swap/new', element: <SwapNewPage /> },
+      { path: 'swap/new', element: <Navigate to="/swap?create=1" replace /> },
       { path: 'swap/:id', element: <SwapDetailPage /> },
-      { path: 'swap/:id/match', element: <SwapMatchPage /> },
+      { path: 'swap/:id/match', element: <SwapMatchRedirect /> },
       { path: 'swap/connections', element: <SwapConnectionsPage /> },
 
       // FE-02: Knowledge (Protected actions & redirects)
@@ -210,7 +215,7 @@ export const router = createBrowserRouter([
       { path: 'mentoring', element: <MentoringHomePage /> },
       { path: 'mentoring/ai', element: <MentorAiSearchPage /> },
       { path: 'mentoring/browse', element: <MentorBrowsePage /> },
-      { path: 'mentoring/mentors/:id', element: <MentorDetailPage /> },
+      { path: 'mentoring/mentors/:id', element: <MentorDetailRedirect /> },
       { path: 'mentoring/posts/:id', element: <MentoringPostDetailPage /> },
       { path: 'mentoring/requests', element: <MyMentoringRequestsPage /> },
 

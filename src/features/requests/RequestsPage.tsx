@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { UserAvatar } from '@/components/shared/UserAvatar';
+import { FilterSelect } from '@/components/shared/FilterSelect';
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import type { NavCounters } from '@/types/entities';
@@ -169,22 +170,17 @@ export const RequestsPage: React.FC = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Module Filter Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0">
-            {categories.map((m) => (
-              <button
-                key={m.key}
-                type="button"
-                onClick={() => setSelectedCategory(m.key)}
-                className={`px-3 py-1 rounded-lg text-xs font-medium shrink-0 transition-colors cursor-pointer ${
-                  selectedCategory === m.key
-                    ? 'bg-brand-50 text-brand-700 font-semibold border border-brand-200'
-                    : 'text-neutral-600 hover:bg-neutral-100 border border-transparent'
-                }`}
-              >
-                {m.label}
-              </button>
-            ))}
+          {/* Module Filter Dropdown */}
+          <div className="flex items-center gap-2">
+            <FilterSelect
+              label="Loại yêu cầu"
+              value={selectedCategory}
+              onChange={setSelectedCategory}
+              options={categories.map((c) => ({
+                value: c.key,
+                label: c.label,
+              }))}
+            />
           </div>
         </div>
 

@@ -68,7 +68,7 @@ export const MentorApplyReviewPage: React.FC = () => {
         {/* Left Column (2/3): All 7 Sections Summary */}
         <div className="lg:col-span-2 space-y-5">
           {/* Section 1 & 2 */}
-          <div className="p-5 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-4">
+          <div className="p-5 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
               <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
                 <User size={16} className="text-brand-600" />
@@ -94,7 +94,7 @@ export const MentorApplyReviewPage: React.FC = () => {
           </div>
 
           {/* Section 3 & 4 */}
-          <div className="p-5 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-4">
+          <div className="p-5 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
               <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
                 <Briefcase size={16} className="text-brand-600" />
@@ -124,7 +124,7 @@ export const MentorApplyReviewPage: React.FC = () => {
           </div>
 
           {/* Section 5 & 6 */}
-          <div className="p-5 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-4">
+          <div className="p-5 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
               <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
                 <Compass size={16} className="text-brand-600" />
@@ -151,7 +151,7 @@ export const MentorApplyReviewPage: React.FC = () => {
 
         {/* Right Column (1/3): Public Card Preview & Submit Action */}
         <div className="space-y-5">
-          <div className="p-5 rounded-2xl bg-white border border-neutral-200 shadow-md space-y-4 sticky top-20">
+          <div className="p-5 rounded-2xl bg-surface border border-neutral-200 shadow-md space-y-4 sticky top-20">
             <div className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
               Xem trước thẻ Mentor công khai
             </div>

@@ -88,7 +88,7 @@ export function DataTable<T extends Record<string, any>>({
     <div className={cn('space-y-4 w-full', className)}>
       {toolbar && <div>{toolbar}</div>}
 
-      <div className="rounded-lg border border-neutral-200 overflow-hidden bg-white">
+      <div className="rounded-lg border border-neutral-200 overflow-hidden bg-surface">
         <Table>
           <TableHeader className="bg-neutral-50">
             <TableRow>

@@ -66,7 +66,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         <span
           className={cn(
             'h-2 w-2 rounded-full bg-tier-danger-dot shrink-0',
-            isCollapsed && 'absolute top-2 right-2 ring-2 ring-white',
+            isCollapsed && 'absolute top-2 right-2 ring-2 ring-surface',
           )}
         />
       );
@@ -79,7 +79,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       <span
         className={cn(
           'flex h-5 min-w-5 items-center justify-center rounded-full bg-tier-danger-dot text-white px-1.5 text-[11px] font-semibold shrink-0 tabular-nums',
-          isCollapsed && 'absolute top-1 right-1 ring-2 ring-white h-4 min-w-4 px-1',
+          isCollapsed && 'absolute top-1 right-1 ring-2 ring-surface h-4 min-w-4 px-1',
         )}
       >
         {count > 99 ? '99+' : count}
@@ -228,7 +228,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-md bg-white border border-neutral-200 text-neutral-700">
+            <div className="p-1.5 rounded-md bg-surface border border-neutral-200 text-neutral-700">
               <GraduationCap size={15} />
             </div>
             <span className="text-caption font-semibold text-neutral-900">
@@ -250,7 +250,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   return (
     <aside
       className={cn(
-        'flex flex-col bg-white border-r border-neutral-200 transition-all duration-200',
+        'flex flex-col bg-surface border-r border-neutral-200 transition-all duration-200',
         isSheet
           ? 'w-full h-full border-r-0'
           : isCollapsed
@@ -268,7 +268,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               </div>
             )}
             {section.title && isCollapsed && idx > 0 && (
-              <div className="my-2 mx-2 border-t border-neutral-100" />
+              <div className="my-2 mx-2 border-t border-neutral-200" />
             )}
             <div className="space-y-0.5">{section.items.map(renderItem)}</div>
           </div>

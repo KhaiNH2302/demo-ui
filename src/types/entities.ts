@@ -107,22 +107,106 @@ export interface User {
   createdAt: string;
 }
 
-export interface StudentProfile {
-  userId: string;
-  bio?: string;
-  coverUrl?: string;
+export type Audience = 'public' | 'followers' | 'only_me';
+
+export type ProfileFieldKey =
+  | 'intro'
+  | 'about'
+  | 'gender'
+  | 'birthday'
+  | 'otherNames'
+  | 'favoriteQuote'
+  | 'languages'
+  | 'hobbies'
+  | 'currentCity'
+  | 'hometown'
+  | 'education'
+  | 'work'
+  | 'contact'
+  | 'links'
+  | 'lifeEvents'
+  | 'skills'
+  | 'interests'
+  | 'goals'
+  | 'availability';
+
+export interface EducationEntry {
+  id: string;
+  type: 'university' | 'highschool' | 'other';
+  schoolName: string;
+  campus?: string;
   major?: string;
   cohort?: string;
+  studentCode?: string;
+  fromYear?: number;
+  toYear?: number;
+  isCurrent: boolean;
+  audience: Audience;
+}
+
+export interface WorkEntry {
+  id: string;
+  company: string;
+  position: string;
+  city?: string;
+  from?: string;
+  to?: string;
+  isCurrent: boolean;
+  description?: string;
+  audience: Audience;
+}
+
+export interface LifeEvent {
+  id: string;
+  kind: 'scholarship' | 'internship' | 'award' | 'graduation' | 'other';
+  title: string;
+  date: string;
+  description?: string;
+  audience: Audience;
+}
+
+export interface ProfileLink {
+  id: string;
+  type: 'github' | 'linkedin' | 'facebook' | 'portfolio' | 'website' | 'other';
+  url: string;
+  label?: string;
+}
+
+export interface StudentProfile {
+  userId: string;
+  intro?: string;                 // tiểu sử ngắn ≤ 101 ký tự (hiện dưới tên)
+  about?: string;                 // giới thiệu dài ≤ 1000 ký tự (thay cho bio)
+  bio?: string;                   // backwards compatibility
+  coverUrl?: string;
+  gender?: 'male' | 'female' | 'other' | 'undisclosed';
+  birthday?: string;              // YYYY-MM-DD
+  birthdayAudience?: Audience;    // quyền cho ngày/tháng sinh
+  birthYearAudience?: Audience;   // quyền cho năm sinh
+  otherNames?: string[];
+  favoriteQuote?: string;
+  languages?: string[];
+  hobbies?: string[];
+  currentCity?: string;
+  hometown?: string;
+  education?: EducationEntry[];
+  work?: WorkEntry[];
+  contact?: { phone?: string; secondaryEmail?: string };
+  links?: ProfileLink[];
+  lifeEvents?: LifeEvent[];
+  // Backwards compatibility
+  major?: string;
+  cohort?: string;
+  studentCode?: string;
+  socialLinks?: {
+    github?: string;
+    linkedin?: string;
+    portfolio?: string;
+  };
+  // Dữ liệu cho AI matching
   skills: string[];
   interests: string[];
   goals: string[];
   availability: ScheduleSlot[];
-  socialLinks?: {
-    github?: string;
-    linkedin?: string;
-    facebook?: string;
-    portfolio?: string;
-  };
   privacy: {
     swapMatching: boolean;
     groupMatching: boolean;
@@ -134,6 +218,9 @@ export interface StudentProfile {
     whoCanMessage?: 'everyone' | 'connections' | 'nobody';
     profileVisibility?: ProfileVisibility;
   };
+  fieldAudience?: Partial<Record<ProfileFieldKey, Audience>>;
+  introCardFields?: ProfileFieldKey[]; // trường hiện ở thẻ Giới thiệu (tab Bài viết)
+  onboarding?: { completedSteps: number[]; completedAt?: string };
   stats?: {
     postsCount: number;
     helpfulAnswersCount: number;
@@ -180,8 +267,11 @@ export interface SwapRequest {
   currentClassCode: string;
   targetClassCode: string;
   schedule?: ScheduleSlot[];
+  note?: string;
   status: SwapRequestStatus;
   version: number;
+  locked?: boolean;
+  pendingConnectionCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -193,6 +283,7 @@ export interface SwapConnection {
   initiatorId: string;
   recipientId: string;
   status: SwapConnectionStatus;
+  message?: string;
   cancelReason?: string;
   createdAt: string;
   respondedAt?: string;
@@ -736,18 +827,53 @@ export interface Mentor {
   availability: ScheduleSlot[];
   supportModes: SupportMode[];
   acceptingRequests: boolean;
+  menteesCount?: number;
 }
 
-export interface MentoringPost {
+export interface MentorProfileSection {
+  id: string;
+  kind: 'builtin' | 'custom';
+  type: 'text' | 'list' | 'links';
+  title: string;
+  content: string | string[] | { label: string; url: string }[];
+  visible: boolean;
+  order: number;
+}
+
+export interface MentorCourse {
   id: string;
   mentorId: string;
   title: string;
-  content: string;
-  field: string;
+  description: string;
+  subjectOrField: string;
   mode: SupportMode;
+  schedule: string;
   slots: number;
+  enrolled: number;
   open: boolean;
+  createdAt: string;
 }
+
+export interface MentorPost {
+  id: string;
+  mentorId: string;
+  authorId?: string;
+  title: string;
+  contentMd: string;
+  content?: string;
+  field?: string;
+  mode?: SupportMode | string;
+  slots?: number;
+  open?: boolean;
+  likeCount: number;
+  commentCount: number;
+  liked?: boolean;
+  saved?: boolean;
+  createdAt: string;
+  tags?: string[];
+}
+
+export type MentoringPost = MentorPost;
 
 export interface MentoringRequest {
   id: string;

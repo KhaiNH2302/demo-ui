@@ -80,7 +80,7 @@ export const SearchPage: React.FC = () => {
           value={inputVal}
           onChange={(e) => setInputVal(e.target.value)}
           placeholder="Nhập từ khóa tìm kiếm (môn học, tên bạn bè, CLB, chủ đề...)"
-          className="w-full h-12 pl-12 pr-28 rounded-2xl border border-neutral-300 bg-white text-base shadow-sm focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10 transition-all"
+          className="w-full h-12 pl-12 pr-28 rounded-2xl border border-neutral-300 bg-surface text-base shadow-sm focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10 transition-all"
         />
         <button
           type="submit"
@@ -152,7 +152,7 @@ export const SearchPage: React.FC = () => {
                     <Link
                       key={post.id}
                       to={`/knowledge/${post.id}`}
-                      className="p-4 rounded-xl border border-neutral-200 bg-white hover:border-brand-300 hover:shadow-sm transition-all flex flex-col justify-between"
+                      className="p-4 rounded-xl border border-neutral-200 bg-surface hover:border-brand-300 hover:shadow-sm transition-all flex flex-col justify-between"
                     >
                       <div>
                         {post.subject && (
@@ -193,7 +193,7 @@ export const SearchPage: React.FC = () => {
                   {results.students.slice(0, 3).map((stu) => (
                     <div
                       key={stu.id}
-                      className="p-3.5 rounded-xl border border-neutral-200 bg-white flex items-center justify-between gap-3 shadow-xs"
+                      className="p-3.5 rounded-xl border border-neutral-200 bg-surface flex items-center justify-between gap-3 shadow-xs"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <UserAvatar user={stu} size="md" linkToProfile />
@@ -242,7 +242,7 @@ export const SearchPage: React.FC = () => {
                     <Link
                       key={club.id}
                       to={`/clubs/${club.id}`}
-                      className="p-4 rounded-xl border border-neutral-200 bg-white hover:border-brand-300 hover:shadow-sm transition-all flex items-center gap-3.5"
+                      className="p-4 rounded-xl border border-neutral-200 bg-surface hover:border-brand-300 hover:shadow-sm transition-all flex items-center gap-3.5"
                     >
                       {club.logoUrl ? (
                         <img
@@ -274,7 +274,7 @@ export const SearchPage: React.FC = () => {
                 <Link
                   key={post.id}
                   to={`/knowledge/${post.id}`}
-                  className="p-5 rounded-2xl border border-neutral-200 bg-white hover:border-brand-300 hover:shadow-sm transition-all flex flex-col justify-between"
+                  className="p-5 rounded-2xl border border-neutral-200 bg-surface hover:border-brand-300 hover:shadow-sm transition-all flex flex-col justify-between"
                 >
                   <div>
                     {post.subject && (
@@ -301,7 +301,7 @@ export const SearchPage: React.FC = () => {
               {results.students.map((stu) => (
                 <div
                   key={stu.id}
-                  className="p-4 rounded-xl border border-neutral-200 bg-white flex items-center justify-between gap-3 shadow-xs"
+                  className="p-4 rounded-xl border border-neutral-200 bg-surface flex items-center justify-between gap-3 shadow-xs"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <UserAvatar user={stu} size="md" linkToProfile />
@@ -335,7 +335,7 @@ export const SearchPage: React.FC = () => {
                 <Link
                   key={club.id}
                   to={`/clubs/${club.id}`}
-                  className="p-4 rounded-xl border border-neutral-200 bg-white hover:border-brand-300 hover:shadow-sm transition-all flex items-center gap-4"
+                  className="p-4 rounded-xl border border-neutral-200 bg-surface hover:border-brand-300 hover:shadow-sm transition-all flex items-center gap-4"
                 >
                   {club.logoUrl ? (
                     <img
@@ -366,7 +366,7 @@ export const SearchPage: React.FC = () => {
                 <Link
                   key={group.id}
                   to={`/groups/${group.id}`}
-                  className="p-4 rounded-xl border border-neutral-200 bg-white hover:border-brand-300 hover:shadow-sm transition-all space-y-2"
+                  className="p-4 rounded-xl border border-neutral-200 bg-surface hover:border-brand-300 hover:shadow-sm transition-all space-y-2"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold px-2 py-0.5 rounded bg-neutral-100 text-neutral-700">
@@ -390,7 +390,7 @@ export const SearchPage: React.FC = () => {
                 <Link
                   key={mentor.id}
                   to={`/mentoring/mentors/${mentor.id}`}
-                  className="p-4 rounded-xl border border-neutral-200 bg-white hover:border-brand-300 hover:shadow-sm transition-all flex flex-col items-center text-center space-y-2"
+                  className="p-4 rounded-xl border border-neutral-200 bg-surface hover:border-brand-300 hover:shadow-sm transition-all flex flex-col items-center text-center space-y-2"
                 >
                   <UserAvatar user={mentor} size="lg" />
                   <h3 className="font-bold text-sm text-neutral-900">{mentor.fullName}</h3>
@@ -410,7 +410,7 @@ export const SearchPage: React.FC = () => {
                 <Link
                   key={evt.id}
                   to={`/events/${evt.id}`}
-                  className="p-4 rounded-xl border border-neutral-200 bg-white hover:border-brand-300 hover:shadow-sm transition-all space-y-2"
+                  className="p-4 rounded-xl border border-neutral-200 bg-surface hover:border-brand-300 hover:shadow-sm transition-all space-y-2"
                 >
                   <span className="text-xs font-semibold px-2 py-0.5 rounded bg-brand-50 text-brand-700">
                     Sự kiện

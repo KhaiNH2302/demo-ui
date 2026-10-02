@@ -289,7 +289,7 @@ export const ProgramsExplorePage: React.FC = () => {
                 {pendingCoOrgInvites.map((prog) => (
                   <div
                     key={prog.id}
-                    className="p-3.5 rounded-lg bg-white border border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    className="p-3.5 rounded-lg bg-surface border border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                   >
                     <div>
                       <div className="text-caption font-semibold text-brand-600">

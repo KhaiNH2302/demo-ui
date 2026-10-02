@@ -38,7 +38,7 @@ export const BottomTabBar: React.FC = () => {
     <>
       <nav
         aria-label="Điều hướng chính di động"
-        className="fixed bottom-0 left-0 right-0 z-30 flex h-16 items-center justify-around border-t border-neutral-200 bg-white/95 px-2 backdrop-blur-md md:hidden shadow-lg"
+        className="fixed bottom-0 left-0 right-0 z-30 flex h-16 items-center justify-around border-t border-neutral-200 bg-surface/95 px-2 backdrop-blur-md md:hidden shadow-lg"
       >
         {/* 1. Trang chủ */}
         <NavLink
@@ -93,7 +93,7 @@ export const BottomTabBar: React.FC = () => {
           <div className="relative">
             <MessageCircle size={20} className={activeTab === 'chats' ? 'text-brand-600' : 'text-neutral-500'} />
             {unreadMessagesCount > 0 && (
-              <span className="absolute -top-1 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-tier-danger-dot px-1 text-[10px] font-bold text-white shadow-sm ring-1 ring-white">
+              <span className="absolute -top-1 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-tier-danger-dot px-1 text-[10px] font-bold text-white shadow-sm ring-1 ring-surface">
                 {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
               </span>
             )}
@@ -113,7 +113,7 @@ export const BottomTabBar: React.FC = () => {
           <div className="relative">
             <Menu size={20} className={activeTab === 'menu' ? 'text-brand-600' : 'text-neutral-500'} />
             {menuBadgeCount > 0 && (
-              <span className="absolute -top-1 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-tier-danger-dot px-1 text-[10px] font-bold text-white shadow-sm ring-1 ring-white">
+              <span className="absolute -top-1 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-tier-danger-dot px-1 text-[10px] font-bold text-white shadow-sm ring-1 ring-surface">
                 {menuBadgeCount > 9 ? '9+' : menuBadgeCount}
               </span>
             )}

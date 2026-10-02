@@ -16,10 +16,13 @@ import {
   Menu,
   X,
   LogOut,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { IconButton } from '@/components/ui/IconButton';
 import { useAuthStore } from '@/store/authStore';
+import { useThemeStore } from '@/store/themeStore';
 import { cn } from '@/lib/cn';
 
 export const AdminShell: React.FC = () => {
@@ -30,6 +33,7 @@ export const AdminShell: React.FC = () => {
   const navigate = useNavigate();
 
   const isSystemAdmin = hasRole('system_admin') || hasRole('SystemAdmin');
+  const { resolvedTheme, toggleTheme } = useThemeStore();
 
   const navItems = [
     { to: '/admin', label: 'Tổng quan', icon: LayoutDashboard, end: true },
@@ -46,8 +50,8 @@ export const AdminShell: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-neutral-100 flex flex-col antialiased">
-      {/* Topbar Admin — Nền tối neutral-900 theo quy ước */}
-      <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-neutral-800 bg-neutral-900 text-white px-4 md:px-8 shadow-sm">
+      {/* Topbar Admin — Nền tối cố định (#0f172a) theo quy ước */}
+      <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[#1e293b] bg-[#0f172a] text-white px-4 md:px-8 shadow-sm">
         <div className="flex items-center gap-3">
           <IconButton
             variant="ghost"
@@ -68,6 +72,20 @@ export const AdminShell: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label="Đổi giao diện sáng/tối"
+            className="p-1.5 rounded-lg text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+            title={resolvedTheme === 'dark' ? 'Chuyển sang chế độ Sáng' : 'Chuyển sang chế độ Tối'}
+          >
+            {resolvedTheme === 'dark' ? (
+              <Sun size={18} className="text-amber-400" />
+            ) : (
+              <Moon size={18} />
+            )}
+          </button>
+
           <Link
             to="/"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white text-xs font-semibold border border-neutral-700 transition-colors"
@@ -99,7 +117,7 @@ export const AdminShell: React.FC = () => {
       {/* Main layout */}
       <div className="flex flex-1">
         {/* Sidebar Desktop */}
-        <aside className="hidden lg:flex w-64 flex-col justify-between border-r border-neutral-200 bg-white p-4 shrink-0 sticky top-16 h-[calc(100vh-4rem)] self-start overflow-y-auto">
+        <aside className="hidden lg:flex w-64 flex-col justify-between border-r border-neutral-200 bg-surface p-4 shrink-0 sticky top-16 h-[calc(100vh-4rem)] self-start overflow-y-auto">
           <nav className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -112,7 +130,7 @@ export const AdminShell: React.FC = () => {
                     cn(
                       'flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-xs font-medium transition-colors',
                       isActive
-                        ? 'bg-brand-50 text-brand-700 font-semibold'
+                        ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300 font-semibold'
                         : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
                     )
                   }
@@ -125,7 +143,7 @@ export const AdminShell: React.FC = () => {
           </nav>
 
           {/* Persistent Return to Social Surface Link */}
-          <div className="pt-4 border-t border-neutral-100">
+          <div className="pt-4 border-t border-neutral-200">
             <Link
               to="/"
               className="flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 transition-colors"
@@ -140,9 +158,9 @@ export const AdminShell: React.FC = () => {
         {mobileOpen && (
           <div className="fixed inset-0 z-40 lg:hidden flex">
             <div className="fixed inset-0 bg-neutral-900/50" onClick={() => setMobileOpen(false)} />
-            <div className="relative w-64 max-w-xs bg-white p-4 flex flex-col justify-between shadow-xl z-50">
+            <div className="relative w-64 max-w-xs bg-surface p-4 flex flex-col justify-between shadow-xl z-50">
               <div>
-                <div className="flex items-center justify-between pb-3 border-b border-neutral-100 mb-3">
+                <div className="flex items-center justify-between pb-3 border-b border-neutral-200 mb-3">
                   <span className="font-bold text-sm text-neutral-900">Quản trị hệ thống</span>
                   <IconButton variant="ghost" size="sm" aria-label="Đóng" onClick={() => setMobileOpen(false)}>
                     <X size={18} />
@@ -161,7 +179,7 @@ export const AdminShell: React.FC = () => {
                           cn(
                             'flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-xs font-medium transition-colors',
                             isActive
-                              ? 'bg-brand-50 text-brand-700 font-semibold'
+                              ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300 font-semibold'
                               : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
                           )
                         }
@@ -174,7 +192,7 @@ export const AdminShell: React.FC = () => {
                 </nav>
               </div>
 
-              <div className="pt-4 border-t border-neutral-100">
+              <div className="pt-4 border-t border-neutral-200">
                 <Link
                   to="/"
                   onClick={() => setMobileOpen(false)}

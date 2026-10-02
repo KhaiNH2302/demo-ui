@@ -7,4 +7,6 @@ export const seedCourseOfferings: CourseOffering[] = [
   { id: 'off_04', courseCode: 'DBI202', courseName: 'Database Systems', school: 'Đại học FPT Hà Nội', term: 'Fall 2026' },
   { id: 'off_05', courseCode: 'SWE201', courseName: 'Software Engineering', school: 'Đại học FPT Hà Nội', term: 'Fall 2026' },
   { id: 'off_06', courseCode: 'MAS291', courseName: 'Statistics for IT', school: 'Đại học FPT Hà Nội', term: 'Fall 2026' },
+  { id: 'off_07', courseCode: 'PRF192', courseName: 'Programming Fundamentals in C', school: 'Đại học FPT Hà Nội', term: 'Fall 2026' },
+  { id: 'off_08', courseCode: 'MAE101', courseName: 'Mathematics for Engineering', school: 'Đại học FPT Hà Nội', term: 'Fall 2026' },
 ];

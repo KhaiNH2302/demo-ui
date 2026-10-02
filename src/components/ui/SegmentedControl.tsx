@@ -52,7 +52,7 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
   return (
     <div
       className={cn(
-        'inline-flex items-center rounded-xl bg-neutral-100/90 border border-neutral-200/60 shadow-inner select-none overflow-x-auto max-w-full',
+        'inline-flex items-center rounded-xl bg-neutral-100/90 dark:bg-neutral-800 border border-neutral-200/60 dark:border-neutral-700 shadow-inner select-none overflow-x-auto max-w-full',
         sizeStyles[size],
         fullWidth && 'w-full flex',
         className
@@ -76,8 +76,8 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
               itemSizeStyles[size],
               fullWidth && 'flex-1',
               isSelected
-                ? 'bg-white text-neutral-900 shadow-sm'
-                : 'text-neutral-600 hover:text-neutral-900 hover:bg-white/50',
+                ? 'bg-surface text-neutral-900 dark:text-neutral-100 shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-surface/50',
               opt.disabled && 'opacity-40 cursor-not-allowed pointer-events-none'
             )}
           >
@@ -87,7 +87,7 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
               <span
                 className={cn(
                   'ml-2 px-1.5 py-0.2 rounded-full text-[10px] font-bold',
-                  isSelected ? 'bg-brand-100 text-brand-700' : 'bg-neutral-200 text-neutral-600'
+                  isSelected ? 'bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300' : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'
                 )}
               >
                 {opt.badge}

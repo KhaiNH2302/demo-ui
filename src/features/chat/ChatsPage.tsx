@@ -31,7 +31,7 @@ export default function ChatsPage() {
   };
 
   return (
-    <div className="h-full w-full flex flex-col bg-white">
+    <div className="h-full w-full flex flex-col bg-surface">
       <QueryBoundary
         query={conversationsQuery}
         isEmpty={(data) => data.length === 0}
@@ -73,10 +73,10 @@ export default function ChatsPage() {
               )}
 
               {/* Full-bleed Messenger Web Layout */}
-              <div className="flex flex-1 min-h-0 bg-white border-none overflow-hidden">
+              <div className="flex flex-1 min-h-0 bg-surface border-none overflow-hidden">
                 {/* Left Column: Conversation Directory (width 320px) */}
                 <div
-                  className={`w-full md:w-80 shrink-0 border-r border-neutral-200 flex flex-col h-full bg-white ${
+                  className={`w-full md:w-80 shrink-0 border-r border-neutral-200 dark:border-neutral-700 flex flex-col h-full bg-surface ${
                     currentParamId ? 'hidden md:flex' : 'flex'
                   }`}
                 >
@@ -102,12 +102,12 @@ export default function ChatsPage() {
                       className="border-0 rounded-none h-full"
                     />
                   ) : (
-                    <div className="h-full flex flex-col items-center justify-center p-8 bg-neutral-50/50 space-y-3">
-                      <div className="w-16 h-16 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center shadow-xs">
+                    <div className="h-full flex flex-col items-center justify-center p-8 bg-neutral-50/50 dark:bg-neutral-900/50 space-y-3">
+                      <div className="w-16 h-16 rounded-full bg-brand-50 dark:bg-brand-500/10 text-brand-600 flex items-center justify-center shadow-xs">
                         <MessageSquare size={32} />
                       </div>
                       <div className="text-center">
-                        <h4 className="text-base font-bold text-neutral-900">
+                        <h4 className="text-base font-bold text-neutral-900 dark:text-neutral-100">
                           Chọn một cuộc trò chuyện
                         </h4>
                         <p className="text-xs text-neutral-500 mt-1 max-w-sm">

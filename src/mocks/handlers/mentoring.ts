@@ -1,8 +1,22 @@
 import { http, HttpResponse } from 'msw';
-import { seedMentors, seedMentoringPosts, seedMentoringRequests } from '../data/mentoring';
+import {
+  seedMentors,
+  seedMentoringPosts,
+  seedMentoringRequests,
+  seedMentorCourses,
+  seedMentorProfileSections,
+} from '../data/mentoring';
 import { seedConversations, seedMessages } from '../data/conversations';
 import { mockDelay, isScenarioActive } from '../utils';
-import type { Mentor, MentoringPost, MentoringRequest, AiMentorMatch } from '@/types/entities';
+import type {
+  Mentor,
+  MentorPost,
+  MentoringPost,
+  MentorCourse,
+  MentorProfileSection,
+  MentoringRequest,
+  AiMentorMatch,
+} from '@/types/entities';
 
 export const mentoringHandlers = [
   // Student side
@@ -140,10 +154,14 @@ export const mentoringHandlers = [
       mentorId: userId,
       title: body.title,
       content: body.content,
+      contentMd: body.contentMd || body.content || '',
       field: body.field,
       mode: body.mode,
       slots: body.slots,
       open: true,
+      likeCount: 0,
+      commentCount: 0,
+      createdAt: new Date().toISOString(),
     };
     seedMentoringPosts.unshift(newPost);
     return HttpResponse.json({ data: newPost });
@@ -204,5 +222,95 @@ export const mentoringHandlers = [
       req.rejectReason = body.reason;
     }
     return HttpResponse.json({ data: req });
+  }),
+
+  // Mentor Courses
+  http.get('/api/v1/mentors/:id/courses', async ({ params }) => {
+    await mockDelay();
+    const courses = seedMentorCourses.filter((c) => c.mentorId === params.id);
+    return HttpResponse.json({ data: courses });
+  }),
+
+  http.post('/api/v1/mentor-courses/:id/enroll', async ({ params }) => {
+    await mockDelay();
+    const course = seedMentorCourses.find((c) => c.id === params.id);
+    if (!course) {
+      return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Khóa học không tồn tại' } }, { status: 404 });
+    }
+    course.enrolled = Math.min(course.slots, course.enrolled + 1);
+    return HttpResponse.json({ data: course });
+  }),
+
+  http.post('/api/v1/mentor-courses', async ({ request }) => {
+    await mockDelay();
+    const body = (await request.json()) as Partial<MentorCourse>;
+    const newCourse: MentorCourse = {
+      id: `mcourse_${Date.now()}`,
+      mentorId: body.mentorId || 'usr_mentor_02',
+      title: body.title || 'Khóa học mới',
+      description: body.description || '',
+      subjectOrField: body.subjectOrField || 'Công nghệ thông tin',
+      mode: body.mode || 'online',
+      schedule: body.schedule || 'Lịch linh hoạt',
+      slots: body.slots || 10,
+      enrolled: 0,
+      open: true,
+      createdAt: new Date().toISOString(),
+    };
+    seedMentorCourses.unshift(newCourse);
+    return HttpResponse.json({ data: newCourse });
+  }),
+
+  http.put('/api/v1/mentor-courses/:id', async ({ params, request }) => {
+    await mockDelay();
+    const course = seedMentorCourses.find((c) => c.id === params.id);
+    if (!course) {
+      return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Khóa học không tồn tại' } }, { status: 404 });
+    }
+    const body = (await request.json()) as Partial<MentorCourse>;
+    Object.assign(course, body);
+    return HttpResponse.json({ data: course });
+  }),
+
+  // Mentor Profile Sections
+  http.get('/api/v1/mentors/:id/profile-sections', async () => {
+    await mockDelay();
+    return HttpResponse.json({ data: seedMentorProfileSections });
+  }),
+
+  http.put('/api/v1/mentors/:id/profile-sections', async ({ request }) => {
+    await mockDelay();
+    const body = (await request.json()) as { sections: MentorProfileSection[] };
+    if (body.sections) {
+      seedMentorProfileSections.length = 0;
+      seedMentorProfileSections.push(...body.sections);
+    }
+    return HttpResponse.json({ data: seedMentorProfileSections });
+  }),
+
+  // Mentor Posts
+  http.get('/api/v1/mentors/:id/posts', async ({ params }) => {
+    await mockDelay();
+    const posts = seedMentoringPosts.filter((p) => p.mentorId === params.id);
+    return HttpResponse.json({ data: posts });
+  }),
+
+  http.post('/api/v1/mentors/:id/posts', async ({ params, request }) => {
+    await mockDelay();
+    const body = (await request.json()) as Partial<MentorPost>;
+    const newPost: MentorPost = {
+      id: `mpost_${Date.now()}`,
+      mentorId: (params.id as string) || 'usr_mentor_02',
+      authorId: (params.id as string) || 'usr_mentor_02',
+      title: body.title || 'Bài chia sẻ',
+      contentMd: body.contentMd || '',
+      field: body.field || 'Học thuật',
+      likeCount: 0,
+      commentCount: 0,
+      createdAt: new Date().toISOString(),
+      tags: body.tags || [],
+    };
+    seedMentoringPosts.unshift(newPost);
+    return HttpResponse.json({ data: newPost });
   }),
 ];

@@ -130,28 +130,28 @@ export const ConversationInfoSidebar: React.FC<ConversationInfoSidebarProps> = (
   return (
     <div
       className={cn(
-        'w-80 shrink-0 border-l border-neutral-200 bg-white flex flex-col h-full overflow-hidden',
+        'w-80 shrink-0 border-l border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#242526] flex flex-col h-full overflow-hidden',
         className
       )}
     >
       {/* 1. Header Profile Box (Fixed at top of sidebar) */}
-      <div className="p-5 flex flex-col items-center text-center space-y-2.5 shrink-0 border-b border-neutral-100 bg-white">
+      <div className="p-5 flex flex-col items-center text-center space-y-2.5 shrink-0 border-b border-neutral-100 dark:border-neutral-700 bg-white dark:bg-[#242526]">
         <div className="relative">
           <Avatar
             src={conversation.avatarUrl || directPartner?.avatarUrl}
             name={conversation.title || 'Chat'}
             size="xl"
-            className="w-18 h-18 ring-4 ring-neutral-100 shadow-xs"
+            className="w-18 h-18 ring-4 ring-neutral-100 dark:ring-neutral-700 shadow-xs"
           />
-          <span className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-tier-success-dot border-2 border-white" />
+          <span className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-tier-success-dot border-2 border-white dark:border-neutral-900" />
         </div>
 
         <div>
-          <h3 className="text-sm font-bold text-neutral-900 leading-snug truncate max-w-[240px]">
+          <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 leading-snug truncate max-w-[240px]">
             {conversation.title || directPartner?.fullName || 'Hội thoại'}
           </h3>
           <div className="pt-1 flex justify-center">
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-neutral-600 bg-neutral-100 px-2.5 py-0.5 rounded-full font-medium">
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2.5 py-0.5 rounded-full font-medium">
               <ShieldCheck size={12} className="text-brand-600" />
               <span>Được bảo vệ bởi SCS</span>
             </span>
@@ -175,7 +175,7 @@ export const ConversationInfoSidebar: React.FC<ConversationInfoSidebarProps> = (
                   navigate('/me');
                 }
               }}
-              className="w-9 h-9 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-700 flex items-center justify-center transition-colors cursor-pointer"
+              className="w-9 h-9 rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 flex items-center justify-center transition-colors cursor-pointer"
               title="Trang cá nhân / Workspace"
             >
               <User size={16} />
@@ -194,7 +194,7 @@ export const ConversationInfoSidebar: React.FC<ConversationInfoSidebarProps> = (
                 'w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer',
                 isMuted
                   ? 'bg-tier-danger-bg text-tier-danger-text'
-                  : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-700'
+                  : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300'
               )}
               title={isMuted ? 'Bật lại thông báo' : 'Tắt thông báo'}
             >
@@ -210,7 +210,7 @@ export const ConversationInfoSidebar: React.FC<ConversationInfoSidebarProps> = (
             <button
               type="button"
               onClick={onSearchClick}
-              className="w-9 h-9 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-700 flex items-center justify-center transition-colors cursor-pointer"
+              className="w-9 h-9 rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 flex items-center justify-center transition-colors cursor-pointer"
               title="Tìm kiếm tin nhắn"
             >
               <Search size={16} />
@@ -221,13 +221,13 @@ export const ConversationInfoSidebar: React.FC<ConversationInfoSidebarProps> = (
       </div>
 
       {/* Scrollable Content Body */}
-      <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-neutral-100">
+      <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
         {/* 2. Accordion: Thông tin về đoạn chat */}
         <div className="py-2">
           <button
             type="button"
             onClick={() => toggleSection('info')}
-            className="w-full flex items-center justify-between p-3.5 text-xs font-bold text-neutral-800 hover:bg-neutral-50 transition-colors"
+            className="w-full flex items-center justify-between p-3.5 text-xs font-bold text-neutral-800 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
           >
             <span>Thông tin về đoạn chat</span>
             {openSections.info ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -245,12 +245,12 @@ export const ConversationInfoSidebar: React.FC<ConversationInfoSidebarProps> = (
                   <div
                     key={p.id}
                     onClick={() => navigate(`/users/${p.id}`)}
-                    className="flex items-center justify-between p-1.5 rounded-lg hover:bg-neutral-50 transition-colors cursor-pointer"
+                    className="flex items-center justify-between p-1.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Avatar src={p.avatarUrl} name={p.fullName} size="sm" />
                       <div className="min-w-0">
-                        <span className="text-xs font-semibold text-neutral-900 block truncate">
+                        <span className="text-xs font-semibold text-neutral-900 dark:text-neutral-100 block truncate">
                           {p.fullName}
                         </span>
                         <span className="text-[10px] text-neutral-400 block truncate">
@@ -264,8 +264,8 @@ export const ConversationInfoSidebar: React.FC<ConversationInfoSidebarProps> = (
             </div>
 
             {/* Context note */}
-            <div className="p-2.5 rounded-xl bg-neutral-50 border border-neutral-200/80 text-[11px] text-neutral-600 space-y-1">
-              <span className="font-semibold text-neutral-800 block">Mục đích kết nối:</span>
+            <div className="p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800 border border-neutral-200/80 dark:border-neutral-700 text-[11px] text-neutral-600 dark:text-neutral-400 space-y-1">
+              <span className="font-semibold text-neutral-800 dark:text-neutral-200 block">Mục đích kết nối:</span>
               <p>
                 {conversation.kind === 'swap'
                   ? 'Trao đổi thủ tục hoán đổi lớp học phần trong kỳ.'
@@ -287,7 +287,7 @@ export const ConversationInfoSidebar: React.FC<ConversationInfoSidebarProps> = (
         <button
           type="button"
           onClick={() => toggleSection('customize')}
-          className="w-full flex items-center justify-between p-3.5 text-xs font-bold text-neutral-800 hover:bg-neutral-50 transition-colors"
+          className="w-full flex items-center justify-between p-3.5 text-xs font-bold text-neutral-800 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
         >
           <span>Tùy chỉnh đoạn chat</span>
           {openSections.customize ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -309,7 +309,7 @@ export const ConversationInfoSidebar: React.FC<ConversationInfoSidebarProps> = (
                       if (onEmojiChange) onEmojiChange(emoji);
                       toast({ variant: 'success', title: `Đã đổi biểu tượng nhanh thành ${emoji}` });
                     }}
-                    className="w-8 h-8 rounded-lg bg-neutral-100 hover:bg-neutral-200 flex items-center justify-center text-sm transition-transform active:scale-95"
+                    className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 flex items-center justify-center text-sm transition-transform active:scale-95"
                   >
                     {emoji}
                   </button>
@@ -349,7 +349,7 @@ export const ConversationInfoSidebar: React.FC<ConversationInfoSidebarProps> = (
         <button
           type="button"
           onClick={() => toggleSection('media')}
-          className="w-full flex items-center justify-between p-3.5 text-xs font-bold text-neutral-800 hover:bg-neutral-50 transition-colors"
+          className="w-full flex items-center justify-between p-3.5 text-xs font-bold text-neutral-800 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
         >
           <span>File phương tiện và file</span>
           {openSections.media ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -390,11 +390,11 @@ export const ConversationInfoSidebar: React.FC<ConversationInfoSidebarProps> = (
                   {sharedFiles.map((file, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between p-2 rounded-lg bg-neutral-50 border border-neutral-200 text-xs"
+                      className="flex items-center justify-between p-2 rounded-lg bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-xs"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <FileText size={14} className="text-brand-600 shrink-0" />
-                        <span className="font-medium text-neutral-800 truncate block">
+                        <span className="font-medium text-neutral-800 dark:text-neutral-200 truncate block">
                           {file.name}
                         </span>
                       </div>
@@ -426,7 +426,7 @@ export const ConversationInfoSidebar: React.FC<ConversationInfoSidebarProps> = (
                       href={link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-2 rounded-lg bg-neutral-50 border border-neutral-200 text-[11px] text-brand-600 hover:underline truncate block"
+                      className="flex items-center gap-2 p-2 rounded-lg bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-[11px] text-brand-600 hover:underline truncate block"
                     >
                       <Link2 size={13} className="shrink-0 text-neutral-500" />
                       <span className="truncate">{link}</span>
@@ -444,7 +444,7 @@ export const ConversationInfoSidebar: React.FC<ConversationInfoSidebarProps> = (
         <button
           type="button"
           onClick={() => toggleSection('privacy')}
-          className="w-full flex items-center justify-between p-3.5 text-xs font-bold text-neutral-800 hover:bg-neutral-50 transition-colors"
+          className="w-full flex items-center justify-between p-3.5 text-xs font-bold text-neutral-800 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
         >
           <span>Quyền riêng tư và hỗ trợ</span>
           {openSections.privacy ? <ChevronDown size={16} /> : <ChevronRight size={16} />}

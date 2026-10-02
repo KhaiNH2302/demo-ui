@@ -215,7 +215,7 @@ export const ThreadComposer: React.FC<ThreadComposerProps> = ({
   return (
     <div
       className={cn(
-        'bg-white border border-neutral-200 rounded-xl p-3.5 transition-all shadow-xs',
+        'bg-surface border border-neutral-200 rounded-xl p-3.5 transition-all shadow-xs',
         isExpanded && 'ring-1 ring-brand-500/20 border-brand-300',
         className
       )}
