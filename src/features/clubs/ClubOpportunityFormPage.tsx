@@ -31,7 +31,15 @@ export const ClubOpportunityFormPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { representedClubs } = useAuthStore();
 
-  const [step, setStep] = useState(1);
+  const initialStep = Math.min(Math.max(Number(searchParams.get('step')) || 1, 1), 4);
+  const [step, setStep] = useState(initialStep);
+
+  useEffect(() => {
+    const requestedStep = Number(searchParams.get('step'));
+    if (Number.isInteger(requestedStep) && requestedStep >= 1 && requestedStep <= 4) {
+      setStep(requestedStep);
+    }
+  }, [searchParams]);
   const [clubId, setClubId] = useState(
     searchParams.get('clubId') || representedClubs[0]?.clubId || 'club_01'
   );

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, CheckCircle2, Plus, Trash2, XCircle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -29,11 +29,20 @@ interface EligibilityData {
 
 export const ProgramFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const isEdit = Boolean(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [step, setStep] = useState(1);
+  const initialStep = Math.min(Math.max(Number(searchParams.get('step')) || 1, 1), 4);
+  const [step, setStep] = useState(initialStep);
+
+  useEffect(() => {
+    const requestedStep = Number(searchParams.get('step'));
+    if (Number.isInteger(requestedStep) && requestedStep >= 1 && requestedStep <= 4) {
+      setStep(requestedStep);
+    }
+  }, [searchParams]);
   const [type, setType] = useState<ProgramType>('Volunteer');
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');

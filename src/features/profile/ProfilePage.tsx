@@ -388,17 +388,17 @@ export const ProfilePage: React.FC = () => {
       {/* 2. FACEBOOK-STYLE PROFILE HEADER */}
       <section className="bg-surface rounded-2xl border border-neutral-200 dark:border-neutral-700/80 shadow-sm overflow-hidden">
         {/* Cover Image */}
-        <div className="h-48 sm:h-64 md:h-72 w-full relative bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
+        <div className="relative isolate aspect-[3/1] min-h-[180px] w-full overflow-hidden bg-neutral-200 dark:bg-neutral-800 sm:aspect-[3.6/1] sm:min-h-[240px] md:aspect-[4/1] md:min-h-[280px]">
           <img
             src={displayCover}
             alt="Cover"
-            className="w-full h-full object-cover"
+            className="absolute inset-0 block h-full w-full object-cover object-center"
           />
           {isEffectiveSelf && (
             <button
               type="button"
               onClick={() => setCoverModalOpen(true)}
-              className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 bg-black/60 hover:bg-black/75 text-white text-xs font-medium px-3 py-1.5 rounded-xl flex items-center gap-1.5 backdrop-blur-xs transition-colors"
+              className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 rounded-xl bg-black/60 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-xs transition-colors hover:bg-black/75 sm:bottom-4 sm:right-4"
             >
               <Camera className="w-3.5 h-3.5" />
               <span>Chỉnh sửa ảnh bìa</span>
