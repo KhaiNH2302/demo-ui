@@ -387,7 +387,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         )}
 
         {/* Message Stream */}
-        <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-neutral-50/30 dark:bg-neutral-900/30">
+        <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-neutral-50/50 dark:bg-[#18191a]">
           {filteredMessages.length === 0 ? (
             <div className="text-center py-12 text-xs text-neutral-400">
               {chatSearchKeyword
@@ -422,7 +422,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
         {/* Messenger Rich Bottom Bar */}
         {!readOnly && (
-          <div className="border-t border-neutral-200 dark:border-neutral-700 bg-surface p-3 space-y-2 relative">
+          <div className="border-t border-neutral-200 dark:border-neutral-700 bg-surface dark:bg-[#242526] p-3 space-y-2 relative">
             {/* Pre-attached Image & File previews */}
             {(attachedImages.length > 0 || attachedFiles.length > 0) && (
               <div className="flex flex-wrap gap-2 pb-1">
@@ -460,13 +460,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
             {/* Emoji Picker Popover */}
             {showEmojiPicker && (
-              <div className="absolute bottom-full left-4 mb-2 bg-surface border border-neutral-200 dark:border-neutral-700 rounded-2xl p-3 shadow-xl z-20 w-72 grid grid-cols-8 gap-2">
+              <div className="absolute bottom-full left-4 mb-2 bg-surface dark:bg-[#242526] border border-neutral-200 dark:border-neutral-700 rounded-2xl p-3 shadow-xl z-20 w-72 grid grid-cols-8 gap-2">
                 {EMOJI_LIST.map((emoji) => (
                   <button
                     key={emoji}
                     type="button"
                     onClick={() => handleEmojiClick(emoji)}
-                    className="text-lg hover:scale-130 transition-transform p-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center justify-center cursor-pointer"
+                    className="text-lg hover:scale-130 transition-transform p-1 rounded-md hover:bg-neutral-100 dark:hover:bg-[#3a3b3c] flex items-center justify-center cursor-pointer"
                   >
                     {emoji}
                   </button>
@@ -481,7 +481,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 <button
                   type="button"
                   onClick={() => imageInputRef.current?.click()}
-                  className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-brand-600 transition-colors"
+                  className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-[#3a3b3c] text-neutral-500 dark:text-[#b0b3b8] hover:text-[#0084ff] dark:hover:text-[#0084ff] transition-colors"
                   title="Đính kèm ảnh"
                 >
                   <ImageIcon size={19} />
@@ -489,7 +489,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-brand-600 transition-colors"
+                  className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-[#3a3b3c] text-neutral-500 dark:text-[#b0b3b8] hover:text-[#0084ff] dark:hover:text-[#0084ff] transition-colors"
                   title="Đính kèm tệp tài liệu"
                 >
                   <Paperclip size={19} />
@@ -498,8 +498,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                   type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   className={cn(
-                    'p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors',
-                    showEmojiPicker ? 'text-brand-600 bg-brand-50' : 'hover:text-brand-600'
+                    'p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-[#3a3b3c] transition-colors',
+                    showEmojiPicker ? 'text-[#0084ff] bg-brand-50 dark:bg-[#3a3b3c]' : 'text-neutral-500 dark:text-[#b0b3b8] hover:text-[#0084ff] dark:hover:text-[#0084ff]'
                   )}
                   title="Chọn biểu cảm emoji"
                 >
@@ -508,7 +508,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               </div>
 
               {/* Input Box */}
-              <div className="flex-1 min-w-0 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 focus-within:bg-surface focus-within:ring-2 focus-within:ring-brand-500/30 focus-within:border-brand-400 rounded-2xl border border-transparent transition-all px-3.5 py-2">
+              <div className="flex-1 min-w-0 bg-neutral-100 dark:bg-[#3a3b3c] hover:bg-neutral-200/80 dark:hover:bg-[#4e4f50] focus-within:bg-surface dark:focus-within:bg-[#3a3b3c] focus-within:ring-2 focus-within:ring-[#0084ff]/40 rounded-3xl border border-transparent transition-all px-4 py-2">
                 <textarea
                   ref={textareaRef}
                   value={inputText}
@@ -517,7 +517,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                   placeholder="Nhập tin nhắn... (Enter gửi, Shift+Enter xuống dòng)"
                   rows={1}
                   disabled={isPendingInvitation && isSenderOfInvitation}
-                  className="w-full text-xs sm:text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 bg-transparent border-none outline-hidden resize-none max-h-24 leading-relaxed"
+                  className="w-full text-xs sm:text-sm text-neutral-900 dark:text-[#e4e6eb] placeholder:text-neutral-400 dark:placeholder:text-[#b0b3b8] bg-transparent border-none outline-hidden resize-none max-h-24 leading-relaxed"
                 />
               </div>
 
@@ -527,7 +527,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                   <button
                     type="button"
                     onClick={handleSendQuickLike}
-                    className="p-2.5 rounded-full hover:bg-brand-50 text-brand-600 hover:text-brand-700 transition-transform active:scale-125 cursor-pointer text-lg leading-none"
+                    className="p-2.5 rounded-full hover:bg-neutral-100 dark:hover:bg-[#3a3b3c] text-[#0084ff] hover:text-[#0073e6] transition-transform active:scale-125 cursor-pointer text-lg leading-none"
                     title="Gửi nhanh biểu tượng thích"
                   >
                     {customEmoji === '👍' ? (
@@ -542,7 +542,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                     size="sm"
                     variant="primary"
                     loading={sendMutation.isPending}
-                    className="rounded-full w-9 h-9 p-0 flex items-center justify-center"
+                    className="rounded-full w-9 h-9 p-0 flex items-center justify-center bg-[#0084ff] hover:bg-[#0073e6] text-white shadow-xs"
                   >
                     <Send size={15} />
                   </Button>

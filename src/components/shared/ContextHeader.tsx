@@ -27,7 +27,7 @@ export const ContextHeader: React.FC<ContextHeaderProps> = ({
   return (
     <div
       className={cn(
-        'sticky top-14 z-20 flex items-center justify-between gap-3 border-b border-neutral-200 bg-white/95 px-5 py-3.5 backdrop-blur-md transition-all',
+        'sticky top-14 z-20 flex items-center justify-between gap-3 border-b border-neutral-200 bg-surface/95 px-5 py-3.5 backdrop-blur-md transition-all',
         className
       )}
     >

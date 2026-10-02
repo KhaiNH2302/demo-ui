@@ -30,7 +30,12 @@ import type {
 import type { ProgramRegistrationStatus } from '@/types/status';
 
 const mentorApplications: MentorApplication[] = [...seedMentorApplications];
-const followingUserIds = new Set<string>(['usr_mentor_02', 'usr_manager_03']);
+const followingUserIds = new Set<string>([
+  'usr_mentor_02',
+  'usr_manager_03',
+  'usr_mentor_01',
+  'usr_organizer_09',
+]);
 
 function getCurrentUserId(request: Request): string {
   const authHeader = request.headers.get('Authorization') || '';
@@ -542,16 +547,28 @@ export const newModulesHandlers = [
   http.get('/api/v1/users/me/following', () => {
     const list = seedUsers
       .filter((u) => followingUserIds.has(u.id))
-      .map((u) => ({ ...u, isFollowing: true }));
+      .map((u) => ({
+        ...u,
+        isFollowing: true,
+        sharedTags: [u.major || 'Kỹ thuật phần mềm', u.cohort || 'K18', 'Bạn học FPTU'],
+        mutualConnectionsCount: 5,
+      }));
     return HttpResponse.json({ data: list });
   }),
 
   http.get('/api/v1/users/me/followers', () => {
-    const list = seedUsers.slice(1, 6).map((u) => ({
+    const followerIds = seedFollows
+      .filter((f) => f.followeeId === 'usr_student_01' && f.status === 'Active')
+      .map((f) => f.followerId);
+    let list = seedUsers.filter((u) => followerIds.includes(u.id));
+    if (list.length === 0) list = seedUsers.slice(1, 4);
+    const enriched = list.map((u) => ({
       ...u,
       isFollowing: followingUserIds.has(u.id),
+      sharedTags: [u.major || 'Kỹ thuật phần mềm', u.cohort || 'K18', 'Cùng theo dõi F-Code'],
+      mutualConnectionsCount: 4,
     }));
-    return HttpResponse.json({ data: list });
+    return HttpResponse.json({ data: enriched });
   }),
 
   http.get('/api/v1/follow-requests', ({ request }) => {

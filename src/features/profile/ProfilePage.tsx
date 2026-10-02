@@ -408,12 +408,12 @@ export const ProfilePage: React.FC = () => {
 
         {/* Header Main Bar (Avatar + Details + Actions) */}
         <div className="px-5 sm:px-8 pb-5 pt-0">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 -mt-16 sm:-mt-20">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between items-center sm:items-start lg:items-end gap-4 -mt-16 sm:-mt-20">
             {/* Left: Avatar + Identity */}
-            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 text-center sm:text-left min-w-0 flex-1">
               {/* Avatar with Camera Button */}
-              <div className="relative group">
-                <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-surface overflow-hidden shadow-lg bg-neutral-100 dark:bg-neutral-800">
+              <div className="relative group shrink-0">
+                <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-surface overflow-hidden shadow-lg bg-neutral-100 dark:bg-neutral-800 shrink-0">
                   <UserAvatar
                     user={{
                       id: userEntity.id,
@@ -428,7 +428,7 @@ export const ProfilePage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setAvatarModalOpen(true)}
-                    className="absolute bottom-1 right-1 p-2 rounded-full bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-100 shadow-md border-2 border-surface transition-colors"
+                    className="absolute bottom-1 right-1 p-2 rounded-full bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-100 shadow-md border-2 border-surface transition-colors cursor-pointer"
                     title="Cập nhật ảnh đại diện"
                   >
                     <Camera className="w-4 h-4" />
@@ -437,9 +437,9 @@ export const ProfilePage: React.FC = () => {
               </div>
 
               {/* Name & Short Intro */}
-              <div className="space-y-1 mb-1">
+              <div className="space-y-1 mb-1 min-w-0 flex-1">
                 <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+                  <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100 truncate max-w-full">
                     {userEntity.fullName}
                   </h1>
                   {isMentor && (
@@ -643,19 +643,19 @@ export const ProfilePage: React.FC = () => {
         />
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="bg-surface border border-neutral-200 dark:border-neutral-700/80 p-1 rounded-2xl w-full sm:w-auto inline-flex overflow-x-auto">
-            <TabsTrigger value="posts" className="rounded-xl px-4 py-2 text-xs font-semibold">
+          <TabsList className="bg-surface border border-neutral-200 dark:border-neutral-700/80 p-1 rounded-2xl w-full sm:w-auto inline-flex overflow-x-auto max-w-full scrollbar-none">
+            <TabsTrigger value="posts" className="rounded-xl px-4 py-2 text-xs font-semibold shrink-0">
               Bài viết ({isMentor ? mentorPosts.length : authorPosts.length})
             </TabsTrigger>
-            <TabsTrigger value="about" className="rounded-xl px-4 py-2 text-xs font-semibold">
+            <TabsTrigger value="about" className="rounded-xl px-4 py-2 text-xs font-semibold shrink-0">
               Giới thiệu
             </TabsTrigger>
             {isMentor && (
-              <TabsTrigger value="courses" className="rounded-xl px-4 py-2 text-xs font-semibold">
+              <TabsTrigger value="courses" className="rounded-xl px-4 py-2 text-xs font-semibold shrink-0">
                 Khóa học ({mentorCourses.length})
               </TabsTrigger>
             )}
-            <TabsTrigger value="activities" className="rounded-xl px-4 py-2 text-xs font-semibold">
+            <TabsTrigger value="activities" className="rounded-xl px-4 py-2 text-xs font-semibold shrink-0">
               Hoạt động
             </TabsTrigger>
           </TabsList>

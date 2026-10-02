@@ -37,14 +37,46 @@ export const MentorBrowsePage: React.FC = () => {
 
   const allMentors = mentorsQuery.data || [];
   const filteredMentors = allMentors.filter((m) => {
-    if (fieldFilter !== 'all' && !m.fields.includes(fieldFilter)) return false;
+    if (fieldFilter !== 'all') {
+      const match = m.fields.some(
+        (f) =>
+          f.toLowerCase().includes(fieldFilter.toLowerCase()) ||
+          (fieldFilter === 'Software Engineering' && (f.includes('phần mềm') || f.includes('SE') || f.includes('Web') || f.includes('Công nghệ'))) ||
+          (fieldFilter === 'Information Assurance' && (f.includes('An toàn') || f.includes('IA') || f.includes('Bảo mật'))) ||
+          (fieldFilter === 'Artificial Intelligence' && (f.includes('Trí tuệ') || f.includes('AI') || f.includes('Machine Learning'))) ||
+          (fieldFilter === 'Graphic Design' && (f.includes('Thiết kế') || f.includes('GD') || f.includes('Đồ họa')))
+      );
+      if (!match) return false;
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      const matchSub = m.subjects.some((s) => s.toLowerCase().includes(q));
+      const matchField = m.fields.some((f) => f.toLowerCase().includes(q));
+      const matchExp = m.experience?.toLowerCase().includes(q);
+      if (!matchSub && !matchField && !matchExp) return false;
+    }
     return true;
   });
 
   const allPosts = postsQuery.data || [];
   const filteredPosts = allPosts.filter((p) => {
-    if (fieldFilter !== 'all' && p.field !== fieldFilter) return false;
-    if (search && !p.title.toLowerCase().includes(search.toLowerCase())) return false;
+    if (fieldFilter !== 'all') {
+      const pField = p.field || '';
+      const match =
+        pField.toLowerCase().includes(fieldFilter.toLowerCase()) ||
+        (fieldFilter === 'Software Engineering' && (pField.includes('phần mềm') || pField.includes('SE') || pField.includes('Web') || pField.includes('Hệ thống') || pField.includes('Thuật toán') || pField.includes('Công nghệ'))) ||
+        (fieldFilter === 'Information Assurance' && (pField.includes('An toàn') || pField.includes('IA') || pField.includes('Bảo mật'))) ||
+        (fieldFilter === 'Artificial Intelligence' && (pField.includes('Trí tuệ') || pField.includes('AI') || pField.includes('Machine Learning'))) ||
+        (fieldFilter === 'Graphic Design' && (pField.includes('Thiết kế') || pField.includes('GD') || pField.includes('Đồ họa')));
+      if (!match) return false;
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      const matchTitle = p.title.toLowerCase().includes(q);
+      const matchContent = (p.content || p.contentMd || '').toLowerCase().includes(q);
+      const matchTags = p.tags?.some((t) => t.toLowerCase().includes(q));
+      if (!matchTitle && !matchContent && !matchTags) return false;
+    }
     return true;
   });
 
@@ -181,7 +213,7 @@ export const MentorBrowsePage: React.FC = () => {
                     </CardHeader>
                     <CardContent className="space-y-2">
                       <p className="text-xs text-[var(--text-muted)] line-clamp-3">
-                        {post.content}
+                        {post.content || post.contentMd}
                       </p>
                       <div className="pt-2 border-t border-[var(--border-subtle)]">
                         <UserMiniCard userId={post.mentorId} />

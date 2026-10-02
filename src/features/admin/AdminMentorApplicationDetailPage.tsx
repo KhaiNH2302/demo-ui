@@ -118,7 +118,7 @@ export const AdminMentorApplicationDetailPage: React.FC = () => {
         {/* Left Column (2/3): 7 Sections */}
         <div className="lg:col-span-2 space-y-5">
           {/* Section 1: Cá nhân */}
-          <div className="p-5 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-3">
+          <div className="p-5 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
               <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
                 <User size={16} className="text-brand-600" />
@@ -149,7 +149,7 @@ export const AdminMentorApplicationDetailPage: React.FC = () => {
           </div>
 
           {/* Section 2: Học vấn */}
-          <div className="p-5 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-3">
+          <div className="p-5 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
               <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
                 <BookOpen size={16} className="text-brand-600" />
@@ -179,7 +179,7 @@ export const AdminMentorApplicationDetailPage: React.FC = () => {
           </div>
 
           {/* Section 3: Kinh nghiệm & Kỹ năng */}
-          <div className="p-5 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-3">
+          <div className="p-5 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
               <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
                 <Briefcase size={16} className="text-brand-600" />
@@ -210,7 +210,7 @@ export const AdminMentorApplicationDetailPage: React.FC = () => {
           </div>
 
           {/* Section 4: Minh chứng tài liệu */}
-          <div className="p-5 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-3">
+          <div className="p-5 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
               <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
                 <FileText size={16} className="text-brand-600" />
@@ -247,7 +247,7 @@ export const AdminMentorApplicationDetailPage: React.FC = () => {
 
         {/* Right Column (1/3, Sticky Action Box & Auto Checks) */}
         <div className="space-y-5">
-          <div className="p-5 rounded-2xl bg-white border border-neutral-200 shadow-sm space-y-5 sticky top-20">
+          <div className="p-5 rounded-2xl bg-surface border border-neutral-200 shadow-sm space-y-5 sticky top-20">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Trạng thái</span>
               <StatusBadge status={application.status} />

@@ -89,3 +89,63 @@ html.dark,
   --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.6), 0 2px 4px -2px rgb(0 0 0 / 0.4);
   --shadow-lg: 0 12px 32px -8px rgb(0 0 0 / 0.7);
 }
+
+/* Facebook Dark Mode Utility Enhancements */
+html.dark .bg-white,
+.dark .bg-white {
+  background-color: var(--surface-card);
+}
+
+html.dark .dark\:bg-neutral-900,
+.dark .dark\:bg-neutral-900 {
+  background-color: #18191a;
+}
+
+html.dark .dark\:bg-neutral-800,
+.dark .dark\:bg-neutral-800 {
+  background-color: #242526;
+}
+
+html.dark .dark\:bg-neutral-700,
+.dark .dark\:bg-neutral-700 {
+  background-color: #3a3b3c;
+}
+
+html.dark .dark\:hover\:bg-neutral-800:hover,
+.dark .dark\:hover\:bg-neutral-800:hover {
+  background-color: #3a3b3c;
+}
+
+html.dark .dark\:hover\:bg-neutral-700:hover,
+.dark .dark\:hover\:bg-neutral-700:hover {
+  background-color: #4e4f50;
+}
+
+html.dark .dark\:text-neutral-100,
+.dark .dark\:text-neutral-100,
+html.dark .dark\:text-neutral-200,
+.dark .dark\:text-neutral-200 {
+  color: #e4e6eb;
+}
+
+html.dark .dark\:text-neutral-300,
+.dark .dark\:text-neutral-300,
+html.dark .dark\:text-neutral-400,
+.dark .dark\:text-neutral-400 {
+  color: #b0b3b8;
+}
+
+html.dark .dark\:border-neutral-700,
+.dark .dark\:border-neutral-700,
+html.dark .dark\:border-neutral-600,
+.dark .dark\:border-neutral-600 {
+  border-color: #393a3b;
+}
+
+html.dark .dark\:divide-neutral-700 > :not([hidden]) ~ :not([hidden]),
+.dark .dark\:divide-neutral-700 > :not([hidden]) ~ :not([hidden]),
+html.dark .dark\:divide-neutral-800 > :not([hidden]) ~ :not([hidden]),
+.dark .dark\:divide-neutral-800 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #393a3b;
+}
+

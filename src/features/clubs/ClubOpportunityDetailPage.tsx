@@ -341,7 +341,7 @@ export const ClubOpportunityDetailPage: React.FC = () => {
                 </div>
 
                 {myResponse.feedbackNote && (
-                  <p className="text-caption text-neutral-700 bg-white p-2.5 rounded border border-neutral-200">
+                  <p className="text-caption text-neutral-700 bg-surface p-2.5 rounded border border-neutral-200">
                     <strong>Phản hồi từ CLB:</strong> {myResponse.feedbackNote}
                   </p>
                 )}

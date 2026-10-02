@@ -31,7 +31,7 @@ export const StatusTimeline: React.FC<StatusTimelineProps> = ({ steps, className
                 className={cn(
                   'flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition-all',
                   isDone && 'bg-[#1fa15c] text-white',
-                  isCurrent && 'border-2 border-primary bg-white text-primary ring-2 ring-primary/20',
+                  isCurrent && 'border-2 border-primary bg-surface text-primary ring-2 ring-primary/20',
                   isRejected && 'bg-[#dc3c33] text-white',
                   isUpcoming && 'bg-neutral-200 text-neutral-500'
                 )}

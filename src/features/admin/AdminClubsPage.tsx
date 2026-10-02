@@ -146,7 +146,7 @@ export const AdminClubsPage: React.FC = () => {
                         <span className="font-semibold text-neutral-800 block">
                           Minh chứng chức vụ / Quyết định BCN:
                         </span>
-                        <div className="text-neutral-600 bg-white border border-neutral-200 rounded-lg p-2.5 space-y-1">
+                        <div className="text-neutral-600 bg-surface border border-neutral-200 rounded-lg p-2.5 space-y-1">
                           <p>{req.evidenceNote || req.proofNote || '—'}</p>
                           {req.evidenceFileName && (
                             <p className="text-neutral-500 font-medium">

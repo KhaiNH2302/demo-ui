@@ -120,7 +120,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         {/* Hover action toolbar (Quick Reactions + Menu) */}
         <div
           className={cn(
-            'absolute top-0 -translate-y-1/2 z-10 hidden group-hover:flex items-center gap-1 bg-surface border border-neutral-200 dark:border-neutral-700 rounded-full px-2 py-1 shadow-md transition-all',
+            'absolute top-0 -translate-y-1/2 z-10 hidden group-hover:flex items-center gap-1 bg-surface dark:bg-[#3a3b3c] border border-neutral-200 dark:border-neutral-600 rounded-full px-2 py-1 shadow-md transition-all',
             isMe ? 'right-full mr-2' : 'left-full ml-2'
           )}
         >
@@ -150,10 +150,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         ) : (
           <div
             className={cn(
-              'rounded-2xl px-4 py-2.5 text-xs sm:text-sm leading-relaxed shadow-2xs break-words relative space-y-2',
+              'rounded-2xl px-4 py-2.5 text-xs sm:text-sm leading-relaxed shadow-xs break-words relative space-y-2',
               isMe
-                ? 'bg-brand-500 text-white rounded-br-xs'
-                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-bl-xs'
+                ? 'bg-[#0084ff] text-white rounded-br-xs font-normal'
+                : 'bg-neutral-200/90 dark:bg-[#3a3b3c] text-neutral-900 dark:text-[#e4e6eb] rounded-bl-xs border border-transparent dark:border-neutral-700/50'
             )}
           >
             {/* Text */}

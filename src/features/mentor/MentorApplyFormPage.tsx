@@ -156,7 +156,7 @@ export const MentorApplyFormPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Sticky Table of Contents (1/4) */}
         <div className="lg:col-span-1 space-y-2">
-          <div className="p-4 bg-white rounded-2xl border border-neutral-200 shadow-xs sticky top-20 space-y-2">
+          <div className="p-4 bg-surface rounded-2xl border border-neutral-200 shadow-xs sticky top-20 space-y-2">
             <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider px-2">
               Các phần hồ sơ
             </h3>
@@ -202,7 +202,7 @@ export const MentorApplyFormPage: React.FC = () => {
         <div className="lg:col-span-3 space-y-6">
           {/* PHẦN 1: THÔNG TIN CÁ NHÂN */}
           {activeSection === 1 && (
-            <div className="p-6 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-5">
+            <div className="p-6 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-5">
               <h2 className="text-base font-bold text-neutral-900 flex items-center gap-2">
                 <User size={18} className="text-brand-600" />
                 <span>1. Thông tin cá nhân</span>
@@ -292,7 +292,7 @@ export const MentorApplyFormPage: React.FC = () => {
 
           {/* PHẦN 2: CHUYÊN NGÀNH & HỌC VẤN */}
           {activeSection === 2 && (
-            <div className="p-6 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-5">
+            <div className="p-6 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-5">
               <h2 className="text-base font-bold text-neutral-900 flex items-center gap-2">
                 <BookOpen size={18} className="text-brand-600" />
                 <span>2. Chuyên ngành & Học vấn</span>
@@ -346,7 +346,7 @@ export const MentorApplyFormPage: React.FC = () => {
 
           {/* PHẦN 3: KINH NGHIỆM & KỸ NĂNG */}
           {activeSection === 3 && (
-            <div className="p-6 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-5">
+            <div className="p-6 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-5">
               <h2 className="text-base font-bold text-neutral-900 flex items-center gap-2">
                 <Briefcase size={18} className="text-brand-600" />
                 <span>3. Kinh nghiệm & Kỹ năng</span>
@@ -369,7 +369,7 @@ export const MentorApplyFormPage: React.FC = () => {
 
           {/* PHẦN 4: THÀNH TÍCH & CHỨNG CHỈ */}
           {activeSection === 4 && (
-            <div className="p-6 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-5">
+            <div className="p-6 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-5">
               <h2 className="text-base font-bold text-neutral-900 flex items-center gap-2">
                 <Award size={18} className="text-brand-600" />
                 <span>4. Thành tích & Chứng chỉ</span>
@@ -390,7 +390,7 @@ export const MentorApplyFormPage: React.FC = () => {
 
           {/* PHẦN 5: ĐỊNH HƯỚNG MENTORING */}
           {activeSection === 5 && (
-            <div className="p-6 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-5">
+            <div className="p-6 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-5">
               <h2 className="text-base font-bold text-neutral-900 flex items-center gap-2">
                 <Compass size={18} className="text-brand-600" />
                 <span>5. Định hướng Mentoring</span>
@@ -428,7 +428,7 @@ export const MentorApplyFormPage: React.FC = () => {
 
           {/* PHẦN 6: GIỚI THIỆU BẢN THÂN */}
           {activeSection === 6 && (
-            <div className="p-6 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-5">
+            <div className="p-6 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-5">
               <h2 className="text-base font-bold text-neutral-900 flex items-center gap-2">
                 <MessageSquare size={18} className="text-brand-600" />
                 <span>6. Giới thiệu bản thân</span>
@@ -470,7 +470,7 @@ export const MentorApplyFormPage: React.FC = () => {
 
           {/* PHẦN 7: THỜI GIAN, HÌNH THỨC & MINH CHỨNG */}
           {activeSection === 7 && (
-            <div className="p-6 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-5">
+            <div className="p-6 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-5">
               <h2 className="text-base font-bold text-neutral-900 flex items-center gap-2">
                 <Clock size={18} className="text-brand-600" />
                 <span>7. Thời gian, Hình thức & Minh chứng</span>

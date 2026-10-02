@@ -34,4 +34,10 @@
     font-size: 0.75rem;
     color: var(--color-neutral-400);
   }
+
+  /* Automatic Dark Mode safety for any legacy bg-white */
+  .dark .bg-white:not([data-keep-white]),
+  html.dark .bg-white:not([data-keep-white]) {
+    background-color: var(--surface-card) !important;
+  }
 }

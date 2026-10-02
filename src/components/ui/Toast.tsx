@@ -107,7 +107,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             <div
               key={t.id}
               className={cn(
-                'pointer-events-auto flex items-start gap-3 rounded-xl border p-4 shadow-lg transition-all duration-300 bg-white',
+                'pointer-events-auto flex items-start gap-3 rounded-xl border p-4 shadow-lg transition-all duration-300 bg-surface',
                 isSuccess && 'border-tier-success-border bg-tier-success-bg text-neutral-900',
                 isError && 'border-tier-danger-border bg-tier-danger-bg text-neutral-900',
                 isWarning && 'border-tier-pending-border bg-tier-pending-bg text-neutral-900',
@@ -130,7 +130,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                       t.action?.onClick();
                       removeToast(t.id);
                     }}
-                    className="mt-2 inline-flex items-center px-2.5 py-1 rounded-md bg-white border border-neutral-300 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 cursor-pointer"
+                    className="mt-2 inline-flex items-center px-2.5 py-1 rounded-md bg-surface border border-neutral-200 text-xs font-semibold text-neutral-800 hover:bg-neutral-100 cursor-pointer"
                   >
                     {t.action.label}
                   </button>

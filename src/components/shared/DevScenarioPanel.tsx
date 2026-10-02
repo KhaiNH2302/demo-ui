@@ -51,14 +51,14 @@ export const DevScenarioPanel: React.FC = () => {
           variant="secondary"
           size="sm"
           onClick={() => setIsOpen(true)}
-          className="shadow-lg border border-neutral-300 dark:border-neutral-600 bg-white/95 dark:bg-neutral-800/95 backdrop-blur text-xs gap-1.5"
+          className="shadow-lg border border-neutral-200 dark:border-neutral-700 bg-surface/95 backdrop-blur text-xs gap-1.5 text-neutral-800 dark:text-neutral-200"
           leftIcon={<Sliders size={14} className="text-brand-600" />}
         >
           Dev Scenarios
         </Button>
       ) : (
-        <div className="w-80 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white/98 dark:bg-neutral-900/98 backdrop-blur shadow-2xl p-4 animate-in slide-in-from-bottom-5">
-          <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-700 pb-2 mb-3">
+        <div className="w-80 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-surface/98 backdrop-blur shadow-2xl p-4 animate-in slide-in-from-bottom-5">
+          <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-700 pb-2 mb-3">
             <h4 className="text-xs font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
               <Sliders size={14} className="text-brand-600" /> Dev Scenarios & Seed Accounts
             </h4>

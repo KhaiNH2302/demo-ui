@@ -43,7 +43,7 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
         </div>
 
         {/* Classes flow */}
-        <div className="p-2.5 rounded-md bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-100 dark:border-neutral-800 text-center">
+        <div className="p-2.5 rounded-xl bg-neutral-100/70 dark:bg-[#18191a] border border-neutral-200/80 dark:border-[#393a3b] text-center">
           <div className="font-mono text-sm font-bold text-neutral-900 dark:text-neutral-100">
             <span className="text-brand-600 dark:text-brand-400">{request.currentClassCode}</span>
             <span className="text-neutral-400 mx-2">→</span>

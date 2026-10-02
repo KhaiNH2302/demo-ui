@@ -194,7 +194,7 @@ export const ClubsExplorePage: React.FC = () => {
                   <Link
                     key={opp.id}
                     to={`/clubs/opportunities/${opp.id}`}
-                    className="flex items-start justify-between gap-3 p-3 rounded-lg bg-white border border-neutral-200 hover:border-brand-300 transition-colors"
+                    className="flex items-start justify-between gap-3 p-3 rounded-lg bg-surface border border-neutral-200 hover:border-brand-300 transition-colors"
                   >
                     <div className="min-w-0">
                       <div className="text-caption font-semibold text-brand-600">

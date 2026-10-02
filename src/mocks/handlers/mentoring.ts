@@ -37,7 +37,7 @@ export const mentoringHandlers = [
 
   http.get('/api/v1/mentoring/posts', async () => {
     await mockDelay();
-    return HttpResponse.json({ data: seedMentoringPosts.filter((p) => p.open) });
+    return HttpResponse.json({ data: seedMentoringPosts.filter((p) => p.open !== false) });
   }),
 
   http.get('/api/v1/mentoring/posts/:id', async ({ params }) => {
@@ -47,7 +47,15 @@ export const mentoringHandlers = [
       return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Bài đăng không tồn tại' } }, { status: 404 });
     }
     const mentor = seedMentors.find((m) => m.userId === post.mentorId);
-    return HttpResponse.json({ data: { post, mentor } });
+    return HttpResponse.json({
+      data: {
+        post: {
+          ...post,
+          content: post.content || post.contentMd,
+        },
+        mentor,
+      },
+    });
   }),
 
   http.post('/api/v1/mentoring/ai-search', async () => {

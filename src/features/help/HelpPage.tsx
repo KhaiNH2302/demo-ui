@@ -66,7 +66,7 @@ export const HelpPage: React.FC = () => {
                     <div
                       key={item.id}
                       id={item.id}
-                      className="rounded-xl border border-neutral-200 bg-white transition-all overflow-hidden scroll-mt-24"
+                      className="rounded-xl border border-neutral-200 bg-surface transition-all overflow-hidden scroll-mt-24"
                     >
                       <button
                         type="button"

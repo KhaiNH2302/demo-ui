@@ -183,7 +183,7 @@ export const ClubOpportunityFormPage: React.FC = () => {
               step === s.num
                 ? 'border-brand-500 bg-brand-50/50 text-brand-700'
                 : s.num < step
-                ? 'border-neutral-200 bg-white text-neutral-800'
+                ? 'border-neutral-200 bg-surface text-neutral-800'
                 : 'border-neutral-200 bg-neutral-50 text-neutral-500'
             }`}
           >

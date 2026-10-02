@@ -130,12 +130,12 @@ export const ConversationInfoSidebar: React.FC<ConversationInfoSidebarProps> = (
   return (
     <div
       className={cn(
-        'w-80 shrink-0 border-l border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#242526] flex flex-col h-full overflow-hidden',
+        'w-80 shrink-0 border-l border-neutral-200 dark:border-neutral-700 bg-surface flex flex-col h-full overflow-hidden',
         className
       )}
     >
       {/* 1. Header Profile Box (Fixed at top of sidebar) */}
-      <div className="p-5 flex flex-col items-center text-center space-y-2.5 shrink-0 border-b border-neutral-100 dark:border-neutral-700 bg-white dark:bg-[#242526]">
+      <div className="p-5 flex flex-col items-center text-center space-y-2.5 shrink-0 border-b border-neutral-200 dark:border-neutral-700 bg-surface">
         <div className="relative">
           <Avatar
             src={conversation.avatarUrl || directPartner?.avatarUrl}

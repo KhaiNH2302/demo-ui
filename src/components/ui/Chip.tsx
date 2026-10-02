@@ -44,7 +44,7 @@ export const Chip: React.FC<ChipProps> = ({
         size === 'sm' ? 'px-2.5 py-0.5 text-xs' : 'px-3 py-1 text-xs',
         isSelected
           ? 'bg-brand-50 text-brand-700 border-brand-200 font-semibold'
-          : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-50',
+          : 'bg-surface text-neutral-700 border-neutral-200 hover:bg-neutral-100',
         isInteractive && 'cursor-pointer',
         className,
       )}

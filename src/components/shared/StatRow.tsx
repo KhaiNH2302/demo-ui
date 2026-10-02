@@ -18,7 +18,7 @@ export const StatRow: React.FC<StatRowProps> = ({ items, className }) => {
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm',
+        'flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-neutral-200 bg-surface px-4 py-3 text-sm',
         className,
       )}
     >

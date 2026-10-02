@@ -133,7 +133,7 @@ export const NewMessageDialog: React.FC<NewMessageDialogProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedUser(null)}
-                  className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-white transition-colors"
+                  className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-surface transition-colors"
                 >
                   <X size={16} />
                 </button>
@@ -150,12 +150,12 @@ export const NewMessageDialog: React.FC<NewMessageDialogProps> = ({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Nhập họ tên, mã số sinh viên hoặc email..."
-                    className="w-full pl-9 pr-4 py-2 text-xs bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl focus:bg-white dark:focus:bg-neutral-800 focus:border-brand-500 focus:outline-hidden transition-all text-neutral-900 dark:text-neutral-100"
+                    className="w-full pl-9 pr-4 py-2 text-xs bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl focus:bg-surface focus:border-brand-500 focus:outline-hidden transition-all text-neutral-900 dark:text-neutral-100"
                   />
                 </div>
 
                 {/* Contacts suggestion list */}
-                <div className="max-h-48 overflow-y-auto space-y-1 divide-y divide-neutral-100 dark:divide-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-900 p-1">
+                <div className="max-h-48 overflow-y-auto space-y-1 divide-y divide-neutral-100 dark:divide-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl bg-surface p-1">
                   {filteredUsers.length === 0 ? (
                     <div className="text-center py-6 text-xs text-neutral-400">
                       Không tìm thấy sinh viên phù hợp
@@ -212,7 +212,7 @@ export const NewMessageDialog: React.FC<NewMessageDialogProps> = ({
                   onChange={(e) => setFirstMessage(e.target.value)}
                   placeholder="Chào bạn, mình muốn trao đổi về..."
                   rows={3}
-                  className="w-full p-3 text-xs text-neutral-900 dark:text-neutral-100 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl focus:bg-white dark:focus:bg-neutral-800 focus:border-brand-500 focus:outline-hidden transition-all resize-none leading-relaxed"
+                  className="w-full p-3 text-xs text-neutral-900 dark:text-neutral-100 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl focus:bg-surface focus:border-brand-500 focus:outline-hidden transition-all resize-none leading-relaxed"
                 />
               </div>
             </div>

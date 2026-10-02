@@ -51,15 +51,34 @@ export const seedGroups: Group[] = [
     memberLimit: 4,
     createdAt: '2026-09-18T14:00:00Z',
   },
+  {
+    id: 'grp_04',
+    ownerId: 'usr_mentor_01',
+    name: 'Nhóm Nghiên Cứu Deep Learning & Computer Vision',
+    purpose: 'Dự án',
+    topic: 'Xây dựng mô hình phân loại ảnh y tế và đọc paper CVPR/ECCV',
+    skills: ['Python', 'PyTorch', 'Computer Vision', 'CNN'],
+    activityTime: [
+      { day: 'Wed', start: '19:00', end: '21:30' },
+      { day: 'Sat', start: '09:00', end: '11:30' },
+    ],
+    interests: 'AI, Thị giác máy tính, Nghiên cứu khoa học',
+    joinMode: 'approval',
+    memberCount: 3,
+    memberLimit: 5,
+    createdAt: '2026-09-16T08:00:00Z',
+  },
 ];
 
 export const seedGroupMembers: GroupMember[] = [
   { groupId: 'grp_01', userId: 'usr_student_01', role: 'owner', joinedAt: '2026-09-10T08:00:00Z' },
   { groupId: 'grp_01', userId: 'usr_student_07', role: 'member', joinedAt: '2026-09-15T09:00:00Z' },
-  { groupId: 'grp_01', userId: 'usr_treasurer_04', role: 'member', joinedAt: '2026-09-16T11:00:00Z' },
+  { groupId: 'grp_01', userId: 'usr_manager_03', role: 'member', joinedAt: '2026-09-16T11:00:00Z' },
   { groupId: 'grp_02', userId: 'usr_mentor_02', role: 'owner', joinedAt: '2026-09-12T10:00:00Z' },
   { groupId: 'grp_02', userId: 'usr_student_01', role: 'member', joinedAt: '2026-09-14T10:00:00Z' },
   { groupId: 'grp_03', userId: 'usr_student_07', role: 'owner', joinedAt: '2026-09-18T14:00:00Z' },
+  { groupId: 'grp_04', userId: 'usr_mentor_01', role: 'owner', joinedAt: '2026-09-16T08:00:00Z' },
+  { groupId: 'grp_04', userId: 'usr_student_01', role: 'member', joinedAt: '2026-09-17T10:00:00Z' },
 ];
 
 export const seedJoinRequests: GroupJoinRequest[] = [
@@ -78,5 +97,21 @@ export const seedJoinRequests: GroupJoinRequest[] = [
     message: 'Mình muốn tham gia để luyện nói tiếng Anh chuẩn bị đi thực tập.',
     status: 'Pending',
     createdAt: '2026-09-23T11:00:00Z',
+  },
+  {
+    id: 'jreq_03',
+    groupId: 'grp_02',
+    userId: 'usr_student_01',
+    message: 'Mình có nền tảng C++ và Java tốt, muốn tham gia nhóm để cùng cày đề LeetCode.',
+    status: 'Accepted',
+    createdAt: '2026-09-14T09:00:00Z',
+  },
+  {
+    id: 'jreq_04',
+    groupId: 'grp_04',
+    userId: 'usr_student_01',
+    message: 'Mình đã học xong khóa Deep Learning cơ bản, muốn tham gia nhóm làm đồ án CV.',
+    status: 'Accepted',
+    createdAt: '2026-09-17T08:30:00Z',
   },
 ];

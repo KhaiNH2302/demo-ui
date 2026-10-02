@@ -258,7 +258,7 @@ export const AdminProgramsPage: React.FC = () => {
 
               <div className="space-y-1.5">
                 <span className="font-semibold text-neutral-900 block">Nội dung chi tiết:</span>
-                <div className="rounded-lg border border-neutral-200 bg-white p-3 whitespace-pre-line text-neutral-700 leading-relaxed">
+                <div className="rounded-lg border border-neutral-200 bg-surface p-3 whitespace-pre-line text-neutral-700 leading-relaxed">
                   {selectedProgram.description}
                 </div>
               </div>

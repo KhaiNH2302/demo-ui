@@ -121,7 +121,7 @@ export const GuestHomePage: React.FC = () => {
               </Link>
             </div>
 
-            <div className="rounded-lg border border-neutral-200 bg-white px-4 overflow-hidden">
+            <div className="rounded-lg border border-neutral-200 bg-surface px-4 overflow-hidden">
               <ThreadFeed
                 posts={posts}
                 isLoading={loadingPosts}

@@ -88,14 +88,14 @@ export const SwapMatchCard: React.FC<SwapMatchCardProps> = ({
 
       <CardContent className="space-y-3 pb-3">
         {/* Class swap flow: current -> target */}
-        <div className="p-3 rounded-md bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-100 dark:border-neutral-800/80 text-center">
+        <div className="p-3 rounded-xl bg-neutral-100/70 dark:bg-[#18191a] border border-neutral-200/80 dark:border-[#393a3b] text-center">
           <span className="text-[10px] text-neutral-400 uppercase tracking-wider block mb-0.5">
             Lớp bạn ấy có → muốn đổi
           </span>
           <div className="text-base font-bold font-mono text-neutral-900 dark:text-neutral-100">
-            <span className="text-brand-700 dark:text-brand-300">{partnerRequest.currentClassCode}</span>
+            <span className="text-brand-600 dark:text-brand-400">{partnerRequest.currentClassCode}</span>
             <span className="text-neutral-400 mx-2">→</span>
-            <span className="text-emerald-700 dark:text-emerald-300">{partnerRequest.targetClassCode}</span>
+            <span className="text-emerald-600 dark:text-emerald-400">{partnerRequest.targetClassCode}</span>
           </div>
         </div>
 

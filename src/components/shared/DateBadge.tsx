@@ -27,7 +27,7 @@ export const DateBadge: React.FC<DateBadgeProps> = ({
   return (
     <div
       className={cn(
-        'shrink-0 rounded-md border border-neutral-200 bg-white flex flex-col items-center justify-center select-none text-center',
+        'shrink-0 rounded-md border border-neutral-200 bg-surface flex flex-col items-center justify-center select-none text-center',
         size === 'sm' ? 'h-10 w-10' : 'h-11 w-11',
         className,
       )}

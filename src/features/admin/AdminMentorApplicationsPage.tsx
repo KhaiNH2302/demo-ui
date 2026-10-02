@@ -73,7 +73,7 @@ export const AdminMentorApplicationsPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Tìm theo ngành, MSSV, tên..."
-              className="w-full h-9 pl-9 pr-3 rounded-lg border border-neutral-200 bg-white text-xs focus:ring-2 focus:ring-brand-500/20"
+              className="w-full h-9 pl-9 pr-3 rounded-lg border border-neutral-200 bg-surface text-xs focus:ring-2 focus:ring-brand-500/20"
             />
           </div>
         </div>
@@ -87,7 +87,7 @@ export const AdminMentorApplicationsPage: React.FC = () => {
               description="Danh sách hồ sơ ứng tuyển Mentor theo trạng thái đã chọn hiện đang trống."
             />
           ) : (
-            <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-xs divide-y divide-neutral-100">
+            <div className="bg-surface rounded-2xl border border-neutral-200 overflow-hidden shadow-xs divide-y divide-neutral-100">
               {filteredApps.map((app) => (
                 <div
                   key={app.id}

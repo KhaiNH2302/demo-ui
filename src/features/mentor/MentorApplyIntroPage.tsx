@@ -70,7 +70,7 @@ export const MentorApplyIntroPage: React.FC = () => {
         />
 
         {/* Status Card Banner */}
-        <div className="p-6 rounded-2xl bg-white border border-neutral-200 shadow-sm space-y-6">
+        <div className="p-6 rounded-2xl bg-surface border border-neutral-200 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-neutral-100">
             <div className="flex items-center gap-3.5">
               <div className="h-12 w-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold">
@@ -205,7 +205,7 @@ export const MentorApplyIntroPage: React.FC = () => {
       </div>
 
       {/* 4-Step Process */}
-      <div className="p-6 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-4">
+      <div className="p-6 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-4">
         <h2 className="text-base font-bold text-neutral-900">Quy trình 4 bước trở thành Mentor</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {[
@@ -226,7 +226,7 @@ export const MentorApplyIntroPage: React.FC = () => {
       </div>
 
       {/* Eligibility Checklist */}
-      <div className="p-6 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-4">
+      <div className="p-6 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-4">
         <h2 className="text-base font-bold text-neutral-900 flex items-center gap-2">
           <ShieldCheck size={18} className="text-brand-600" />
           <span>Điều kiện xét duyệt tiêu chuẩn</span>
