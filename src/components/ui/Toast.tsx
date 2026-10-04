@@ -43,11 +43,19 @@ function normalizeSecondArg(arg?: SecondToastArg): Partial<ToastOptions> {
   return arg;
 }
 
+let suppressErrorsUntil = 0;
+
+/** Tạm ẩn toast lỗi (vd: khi thao tác của khách bị chặn và LoginGate đã thay thế thông báo). */
+export function suppressErrorToasts(ms = 1500) {
+  suppressErrorsUntil = Date.now() + ms;
+}
+
 export const toast = {
   success: (msg: string, descOrOpts?: SecondToastArg) => {
     emitToast({ title: msg, variant: 'success', ...normalizeSecondArg(descOrOpts) });
   },
   error: (msg: string, descOrOpts?: SecondToastArg) => {
+    if (Date.now() < suppressErrorsUntil) return;
     emitToast({ title: msg, variant: 'error', ...normalizeSecondArg(descOrOpts) });
   },
   info: (msg: string, descOrOpts?: SecondToastArg) => {

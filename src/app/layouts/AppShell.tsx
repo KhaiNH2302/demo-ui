@@ -6,9 +6,16 @@ import { BottomTabBar } from '@/components/shared/BottomTabBar';
 import { PublicFooter } from '@/components/shared/PublicFooter';
 import { LoginGate } from '@/components/shared/LoginGate';
 import { DevScenarioPanel } from '@/components/shared/DevScenarioPanel';
+import { GuestAccessBoundary } from '@/components/shared/GuestAccessBoundary';
+import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/cn';
 
 export interface AppShellProps {
+  /**
+   * 'member' (mặc định): bố cục đầy đủ cho cả thành viên lẫn khách — khách xem như thành viên,
+   * quyền truy cập do GuestAccessBoundary quyết định.
+   * 'guest': bố cục landing tối giản, chỉ dùng cho /welcome.
+   */
   variant?: 'member' | 'guest';
   children?: React.ReactNode;
 }
@@ -18,7 +25,8 @@ export const AppShell: React.FC<AppShellProps> = ({
   children,
 }) => {
   const location = useLocation();
-  const isFullBleed = variant === 'member' && location.pathname.startsWith('/chats');
+  const user = useAuthStore((s) => s.user);
+  const isFullBleed = variant === 'member' && !!user && location.pathname.startsWith('/chats');
 
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('scs_sidebar') === 'collapsed';
@@ -81,7 +89,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                 : 'max-w-7xl 2xl:max-w-[1600px] 3xl:max-w-[1920px] 4xl:max-w-[2240px] mx-auto px-4 sm:px-6 md:px-8 py-6 pb-24 md:pb-12',
             )}
           >
-            {children ?? <Outlet />}
+            <GuestAccessBoundary>{children ?? <Outlet />}</GuestAccessBoundary>
           </main>
         </div>
       </div>

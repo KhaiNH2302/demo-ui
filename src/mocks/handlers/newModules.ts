@@ -15,6 +15,7 @@ import {
 } from '../data/programs';
 import { seedGroups } from '../data/groups';
 import { seedKnowledgePosts, seedReports } from '../data/knowledge';
+import { getViewerId } from '../utils';
 import type {
   NavCounters,
   MentorApplication,
@@ -38,8 +39,7 @@ const followingUserIds = new Set<string>([
 ]);
 
 function getCurrentUserId(request: Request): string {
-  const authHeader = request.headers.get('Authorization') || '';
-  return authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+  return getViewerId(request);
 }
 
 export const newModulesHandlers = [

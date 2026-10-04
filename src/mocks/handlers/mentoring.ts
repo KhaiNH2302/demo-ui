@@ -7,7 +7,7 @@ import {
   seedMentorProfileSections,
 } from '../data/mentoring';
 import { seedConversations, seedMessages } from '../data/conversations';
-import { mockDelay, isScenarioActive } from '../utils';
+import { mockDelay, isScenarioActive, getViewerId } from '../utils';
 import type {
   Mentor,
   MentorPost,
@@ -84,16 +84,14 @@ export const mentoringHandlers = [
 
   http.get('/api/v1/mentoring/requests/me', async ({ request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
     const reqs = seedMentoringRequests.filter((r) => r.studentId === userId);
     return HttpResponse.json({ data: reqs });
   }),
 
   http.post('/api/v1/mentoring/requests', async ({ request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
     const body = (await request.json()) as Omit<MentoringRequest, 'id' | 'studentId' | 'status' | 'createdAt'>;
 
     const newReq: MentoringRequest = {
@@ -113,16 +111,14 @@ export const mentoringHandlers = [
   // Mentor Center
   http.get('/api/v1/mentor/profile', async ({ request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_mentor_02';
+    const userId = getViewerId(request, 'usr_mentor_02');
     const mentor = seedMentors.find((m) => m.userId === userId);
     return HttpResponse.json({ data: mentor || null });
   }),
 
   http.put('/api/v1/mentor/profile', async ({ request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_mentor_02';
+    const userId = getViewerId(request, 'usr_mentor_02');
     const body = (await request.json()) as Partial<Mentor>;
 
     let mentor = seedMentors.find((m) => m.userId === userId);
@@ -145,16 +141,14 @@ export const mentoringHandlers = [
 
   http.get('/api/v1/mentor/posts', async ({ request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_mentor_02';
+    const userId = getViewerId(request, 'usr_mentor_02');
     const posts = seedMentoringPosts.filter((p) => p.mentorId === userId);
     return HttpResponse.json({ data: posts });
   }),
 
   http.post('/api/v1/mentor/posts', async ({ request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_mentor_02';
+    const userId = getViewerId(request, 'usr_mentor_02');
     const body = (await request.json()) as Omit<MentoringPost, 'id' | 'mentorId'>;
 
     const newPost: MentoringPost = {
@@ -185,8 +179,7 @@ export const mentoringHandlers = [
 
   http.get('/api/v1/mentor/requests', async ({ request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_mentor_02';
+    const userId = getViewerId(request, 'usr_mentor_02');
     const reqs = seedMentoringRequests.filter((r) => r.mentorId === userId);
     return HttpResponse.json({ data: reqs });
   }),

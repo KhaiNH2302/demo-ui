@@ -31,7 +31,7 @@ export const seedConversations: Conversation[] = [
     refId: 'club_01',
     title: 'F-Code Club · Kênh thảo luận chung',
     participantIds: ['usr_student_01', 'usr_mentor_02', 'usr_manager_03', 'usr_treasurer_04'],
-    avatarUrl: 'https://images.unsplash.com/photo-1534972195531-a756b1126f24?auto=format&fit=crop&w=120&q=80',
+    avatarUrl: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=120&q=80',
     lastMessage: 'Chào mừng các bạn tham gia chuẩn bị cho Workshop AI cuối tuần này!',
     lastMessageAt: '2026-09-25T08:00:00Z',
     unreadCount: 2,

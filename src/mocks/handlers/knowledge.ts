@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { seedKnowledgePosts, seedComments, seedReports } from '../data/knowledge';
-import { mockDelay, isScenarioActive } from '../utils';
+import { mockDelay, isScenarioActive, getViewerId } from '../utils';
 import type { KnowledgePost, Comment, ViolationReport } from '@/types/entities';
 
 // In-memory set of followed subjects and saved post IDs for mock session
@@ -56,8 +56,7 @@ export const knowledgeHandlers = [
   // POST /api/v1/posts
   http.post('/api/v1/posts', async ({ request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
     const body = (await request.json()) as Omit<
       KnowledgePost,
       'id' | 'authorId' | 'status' | 'commentCount' | 'createdAt' | 'updatedAt'
@@ -93,8 +92,7 @@ export const knowledgeHandlers = [
   // GET /api/v1/posts/me
   http.get('/api/v1/posts/me', async ({ request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
 
@@ -204,8 +202,7 @@ export const knowledgeHandlers = [
   // POST /api/v1/posts/:id/comments
   http.post('/api/v1/posts/:id/comments', async ({ params, request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
     const body = (await request.json()) as { content: string; parentId?: string };
 
     const newComment: Comment = {
@@ -248,8 +245,7 @@ export const knowledgeHandlers = [
   // POST /api/v1/posts/:id/report
   http.post('/api/v1/posts/:id/report', async ({ params, request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
     const body = (await request.json()) as { reason: string; note?: string };
 
     const newReport: ViolationReport = {
@@ -269,8 +265,7 @@ export const knowledgeHandlers = [
   // POST /api/v1/comments/:id/report
   http.post('/api/v1/comments/:id/report', async ({ params, request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
     const body = (await request.json()) as { reason: string; note?: string };
 
     const newReport: ViolationReport = {

@@ -3,7 +3,7 @@ import { seedSwapRequests, seedSwapConnections } from '../data/swap';
 import { seedCourseOfferings } from '../data/courseOfferings';
 import { seedUsers } from '../data/users';
 import { seedConversations, seedMessages } from '../data/conversations';
-import { mockDelay, isScenarioActive } from '../utils';
+import { mockDelay, isScenarioActive, getViewerId } from '../utils';
 import type { SwapRequest, SwapConnection, AiSwapMatch, User } from '@/types/entities';
 
 export const swapHandlers = [
@@ -33,8 +33,7 @@ export const swapHandlers = [
     const q = (url.searchParams.get('q') || '').toLowerCase().trim();
     const sort = url.searchParams.get('sort') || 'newest';
     const excludeIds = (url.searchParams.get('excludeIds') || '').split(',').filter(Boolean);
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
 
     let list = seedSwapRequests.filter(
       (r) => r.studentId !== userId && r.status === 'Open' && !excludeIds.includes(r.id),
@@ -68,8 +67,7 @@ export const swapHandlers = [
     await mockDelay();
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
 
     let list = seedSwapRequests.filter((r) => r.studentId === userId);
     if (status) {
@@ -93,8 +91,7 @@ export const swapHandlers = [
 
   http.post('/api/v1/swap-requests', async ({ request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
     const body = (await request.json()) as Omit<
       SwapRequest,
       'id' | 'studentId' | 'status' | 'version' | 'createdAt' | 'updatedAt'
@@ -146,8 +143,7 @@ export const swapHandlers = [
       );
     }
 
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
     const isOwner = req.studentId === userId;
 
     const pendingConns = seedSwapConnections.filter(
@@ -326,8 +322,7 @@ export const swapHandlers = [
     const url = new URL(request.url);
     const direction = url.searchParams.get('direction');
     const requestId = url.searchParams.get('requestId');
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
 
     let list = [...seedSwapConnections];
     if (requestId) {
@@ -344,8 +339,7 @@ export const swapHandlers = [
 
   http.post('/api/v1/swap-connections', async ({ request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
     const body = (await request.json()) as { requestAId: string; requestBId: string; message?: string };
 
     const reqA = seedSwapRequests.find((r) => r.id === body.requestAId);

@@ -420,130 +420,148 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           )}
         </button>
 
-        <NotificationBell variant="light" />
-
-        <Link
-          to="/chats"
-          aria-label="Tin nhắn"
-          className="relative p-2 rounded-md text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
-        >
-          <MessageCircle size={19} />
-          {unreadMessagesCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-tier-danger-dot px-1 text-[10px] font-bold text-white">
-              {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
-            </span>
-          )}
-        </Link>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="ml-1 rounded-full focus:outline-none focus:ring-2 focus:ring-brand-500"
-              aria-label="Tài khoản cá nhân"
+        {!user ? (
+          <>
+            <Link
+              to="/login"
+              className="text-sm font-medium text-neutral-700 hover:text-neutral-900 px-2 py-1"
             >
-              <UserAvatar user={user} size="sm" />
-            </button>
-          </DropdownMenuTrigger>
+              Đăng nhập
+            </Link>
+            <Link to="/register">
+              <Button variant="primary" size="sm">
+                Đăng ký
+              </Button>
+            </Link>
+          </>
+        ) : (
+          <>
+          <NotificationBell variant="light" />
 
-          <DropdownMenuContent align="end" className="w-64 p-1.5 text-neutral-800">
-            <DropdownMenuLabel className="font-normal px-2.5 py-2">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-semibold text-neutral-900 leading-none">
-                  {user?.fullName || 'Sinh viên'}
-                </p>
-                <p className="text-xs text-neutral-500 leading-none truncate">
-                  {user?.email || 'student@fpt.edu.vn'}
-                </p>
-              </div>
-            </DropdownMenuLabel>
-
-            <DropdownMenuSeparator />
-
-            <div className="px-2.5 py-2">
-              <div className="flex items-center justify-between text-xs text-neutral-500 mb-1.5 font-medium">
-                <span className="flex items-center gap-1.5">
-                  <Type size={14} />
-                  <span>Cỡ chữ</span>
-                </span>
-                <span className="text-[11px] font-semibold text-brand-600">
-                  {fontScale === 'sm' && 'Nhỏ'}
-                  {fontScale === 'md' && 'Vừa (chuẩn)'}
-                  {fontScale === 'lg' && 'Lớn'}
-                  {fontScale === 'xl' && 'Rất lớn'}
-                </span>
-              </div>
-              <div className="grid grid-cols-4 gap-1 bg-neutral-100 p-1 rounded-md">
-                {(['sm', 'md', 'lg', 'xl'] as FontSizeScale[]).map((scale) => (
-                  <button
-                    key={scale}
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setFontScale(scale);
-                    }}
-                    className={`text-xs py-1 rounded font-medium transition-all ${
-                      fontScale === scale
-                        ? 'bg-surface text-brand-600 dark:text-brand-300 shadow-sm font-bold'
-                        : 'text-neutral-600 hover:text-neutral-900'
-                    }`}
-                  >
-                    {scale === 'sm' && 'A-'}
-                    {scale === 'md' && 'A'}
-                    {scale === 'lg' && 'A+'}
-                    {scale === 'xl' && 'A++'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <DropdownMenuSeparator />
-
-            <DropdownMenuItem onClick={() => navigate('/profile/me')} className="cursor-pointer">
-              <UserIcon size={16} className="mr-2 text-neutral-500" />
-              <span>Hồ sơ cá nhân</span>
-            </DropdownMenuItem>
-
-            <DropdownMenuItem onClick={() => navigate('/requests')} className="cursor-pointer">
-              <Inbox size={16} className="mr-2 text-neutral-500" />
-              <span>Yêu cầu của tôi</span>
-            </DropdownMenuItem>
-
-            {isMentor && (
-              <DropdownMenuItem onClick={() => navigate('/mentor')} className="cursor-pointer">
-                <GraduationCap size={16} className="mr-2 text-brand-600" />
-                <span className="text-brand-700 font-medium">Mentor Center</span>
-              </DropdownMenuItem>
+          <Link
+            to="/chats"
+            aria-label="Tin nhắn"
+            className="relative p-2 rounded-md text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
+          >
+            <MessageCircle size={19} />
+            {unreadMessagesCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-tier-danger-dot px-1 text-[10px] font-bold text-white">
+                {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+              </span>
             )}
+          </Link>
 
-            {isAdmin && (
-              <DropdownMenuItem onClick={() => navigate('/admin')} className="cursor-pointer">
-                <ShieldCheck size={16} className="mr-2 text-brand-600" />
-                <span className="text-brand-700 font-medium">Quản trị hệ thống</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="ml-1 rounded-full focus:outline-none focus:ring-2 focus:ring-brand-500"
+                aria-label="Tài khoản cá nhân"
+              >
+                <UserAvatar user={user} size="sm" />
+              </button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end" className="w-64 p-1.5 text-neutral-800">
+              <DropdownMenuLabel className="font-normal px-2.5 py-2">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-semibold text-neutral-900 leading-none">
+                    {user?.fullName || 'Sinh viên'}
+                  </p>
+                  <p className="text-xs text-neutral-500 leading-none truncate">
+                    {user?.email || 'student@fpt.edu.vn'}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+
+              <DropdownMenuSeparator />
+
+              <div className="px-2.5 py-2">
+                <div className="flex items-center justify-between text-xs text-neutral-500 mb-1.5 font-medium">
+                  <span className="flex items-center gap-1.5">
+                    <Type size={14} />
+                    <span>Cỡ chữ</span>
+                  </span>
+                  <span className="text-[11px] font-semibold text-brand-600">
+                    {fontScale === 'sm' && 'Nhỏ'}
+                    {fontScale === 'md' && 'Vừa (chuẩn)'}
+                    {fontScale === 'lg' && 'Lớn'}
+                    {fontScale === 'xl' && 'Rất lớn'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-1 bg-neutral-100 p-1 rounded-md">
+                  {(['sm', 'md', 'lg', 'xl'] as FontSizeScale[]).map((scale) => (
+                    <button
+                      key={scale}
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setFontScale(scale);
+                      }}
+                      className={`text-xs py-1 rounded font-medium transition-all ${
+                        fontScale === scale
+                          ? 'bg-surface text-brand-600 dark:text-brand-300 shadow-sm font-bold'
+                          : 'text-neutral-600 hover:text-neutral-900'
+                      }`}
+                    >
+                      {scale === 'sm' && 'A-'}
+                      {scale === 'md' && 'A'}
+                      {scale === 'lg' && 'A+'}
+                      {scale === 'xl' && 'A++'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem onClick={() => navigate('/profile/me')} className="cursor-pointer">
+                <UserIcon size={16} className="mr-2 text-neutral-500" />
+                <span>Hồ sơ cá nhân</span>
               </DropdownMenuItem>
-            )}
 
-            <DropdownMenuItem onClick={() => navigate('/settings')} className="cursor-pointer">
-              <Settings size={16} className="mr-2 text-neutral-500" />
-              <span>Cài đặt</span>
-            </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/requests')} className="cursor-pointer">
+                <Inbox size={16} className="mr-2 text-neutral-500" />
+                <span>Yêu cầu của tôi</span>
+              </DropdownMenuItem>
 
-            <DropdownMenuItem onClick={() => navigate('/help')} className="cursor-pointer">
-              <LifeBuoy size={16} className="mr-2 text-neutral-500" />
-              <span>Trợ giúp & FAQ</span>
-            </DropdownMenuItem>
+              {isMentor && (
+                <DropdownMenuItem onClick={() => navigate('/mentor')} className="cursor-pointer">
+                  <GraduationCap size={16} className="mr-2 text-brand-600" />
+                  <span className="text-brand-700 font-medium">Mentor Center</span>
+                </DropdownMenuItem>
+              )}
 
-            <DropdownMenuSeparator />
+              {isAdmin && (
+                <DropdownMenuItem onClick={() => navigate('/admin')} className="cursor-pointer">
+                  <ShieldCheck size={16} className="mr-2 text-brand-600" />
+                  <span className="text-brand-700 font-medium">Quản trị hệ thống</span>
+                </DropdownMenuItem>
+              )}
 
-            <DropdownMenuItem
-              onClick={() => logout()}
-              className="cursor-pointer text-tier-danger-text focus:text-tier-danger-text focus:bg-tier-danger-bg"
-            >
-              <LogOut size={16} className="mr-2" />
-              <span>Đăng xuất</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuItem onClick={() => navigate('/settings')} className="cursor-pointer">
+                <Settings size={16} className="mr-2 text-neutral-500" />
+                <span>Cài đặt</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem onClick={() => navigate('/help')} className="cursor-pointer">
+                <LifeBuoy size={16} className="mr-2 text-neutral-500" />
+                <span>Trợ giúp & FAQ</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem
+                onClick={() => logout()}
+                className="cursor-pointer text-tier-danger-text focus:text-tier-danger-text focus:bg-tier-danger-bg"
+              >
+                <LogOut size={16} className="mr-2" />
+                <span>Đăng xuất</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          </>
+        )}
       </div>
     </header>
   );

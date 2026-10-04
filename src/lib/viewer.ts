@@ -11,14 +11,15 @@ export type ViewerCapability =
   | 'search'
   | 'compose';
 
+// Khách xem được mọi nội dung như thành viên; chỉ thao tác ghi bị chặn bởi LoginGate.
 const GUEST_CAPS: Record<ViewerCapability, boolean> = {
   'knowledge.read': true,
-  'knowledge.browse': false,
+  'knowledge.browse': true,
   'knowledge.interact': false,
   'program.read': true,
   'club.read': true,
-  'profile.open': false,
-  'search': false,
+  'profile.open': true,
+  'search': true,
   'compose': false,
 };
 
@@ -43,36 +44,21 @@ export interface PendingGuestAction {
 }
 
 const STORAGE_KEY = 'scs_pending_guest_action';
-const PREVIEW_POSTS_KEY = 'scs_guest_previewed_posts';
 
-export function recordGuestPreviewPost(postId: string): {
-  allowed: boolean;
-  viewedCount: number;
-  limit: number;
-} {
-  const limit = 3;
-  try {
-    const raw = sessionStorage.getItem(PREVIEW_POSTS_KEY);
-    const list: string[] = raw ? JSON.parse(raw) : [];
-    if (list.includes(postId)) {
-      return { allowed: true, viewedCount: list.length, limit };
-    }
-    if (list.length >= limit) {
-      return { allowed: false, viewedCount: list.length, limit };
-    }
-    list.push(postId);
-    sessionStorage.setItem(PREVIEW_POSTS_KEY, JSON.stringify(list));
-    return { allowed: true, viewedCount: list.length, limit };
-  } catch {
-    return { allowed: true, viewedCount: 1, limit };
-  }
+export interface LoginGateOptions {
+  /** Ghi đè tiêu đề mặc định "Đăng nhập để {actionLabel}". */
+  title?: string;
+  description?: string;
+  /** Hiện nút bỏ qua (vd: "Để sau") — dùng cho nhắc nhở mềm. */
+  dismissLabel?: string;
 }
 
 interface LoginGateState {
   open: boolean;
   actionLabel: string;
   redirectTo: string;
-  openGate: (actionLabel: string, redirectTo?: string) => void;
+  options: LoginGateOptions;
+  openGate: (actionLabel: string, redirectTo?: string, options?: LoginGateOptions) => void;
   closeGate: () => void;
 }
 
@@ -80,7 +66,8 @@ export const useLoginGateStore = create<LoginGateState>((set) => ({
   open: false,
   actionLabel: '',
   redirectTo: '/',
-  openGate: (actionLabel, redirectTo) => {
+  options: {},
+  openGate: (actionLabel, redirectTo, options = {}) => {
     const target =
       redirectTo ||
       (typeof window !== 'undefined'
@@ -91,7 +78,7 @@ export const useLoginGateStore = create<LoginGateState>((set) => ({
       redirectTo: target,
       timestamp: Date.now(),
     });
-    set({ open: true, actionLabel, redirectTo: target });
+    set({ open: true, actionLabel, redirectTo: target, options });
   },
   closeGate: () => set({ open: false }),
 }));
@@ -129,6 +116,15 @@ export function consumePendingGuestAction(): PendingGuestAction | null {
   }
 }
 
+// Một số nơi truyền mã hành động thay cho nhãn hiển thị.
+const ACTION_LABELS: Record<string, string> = {
+  auth: 'tiếp tục thao tác này',
+  like_post: 'thích bài viết',
+  bookmark_post: 'lưu bài viết',
+  comment: 'bình luận',
+  report: 'báo cáo nội dung',
+};
+
 export interface GuardOptions {
   redirectTo?: string;
   targetId?: string;
@@ -150,7 +146,7 @@ export function useGuardedAction() {
 
     return (...args: TArgs) => {
       if (!user) {
-        openGate(actionLabel, redirectTo);
+        openGate(ACTION_LABELS[actionLabel] ?? actionLabel, redirectTo);
         return;
       }
       callback(...args);

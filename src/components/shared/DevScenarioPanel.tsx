@@ -6,6 +6,7 @@ import { isScenarioActive, setScenarioActive } from '@/mocks/utils';
 import { useAuthStore } from '@/store/authStore';
 import { seedUsers } from '@/mocks/data/users';
 import { seedClubMemberships } from '@/mocks/data/clubs';
+import { useGuestBudgetStore } from '@/lib/guestBudget';
 
 const scenarios = [
   { key: 'ai_timeout', label: 'AI Timeout / Lỗi (S4, G1, M2)' },
@@ -30,6 +31,11 @@ export const DevScenarioPanel: React.FC = () => {
 
   const currentUser = useAuthStore((state) => state.user);
   const login = useAuthStore((state) => state.login);
+  const logout = useAuthStore((state) => state.logout);
+  const guestViewed = useGuestBudgetStore((s) => s.viewed.length);
+  const guestLimits = useGuestBudgetStore((s) => s.limits);
+  const setGuestLimits = useGuestBudgetStore((s) => s.setLimits);
+  const resetGuestBudget = useGuestBudgetStore((s) => s.reset);
 
   if (!import.meta.env.DEV) return null;
 
@@ -95,6 +101,48 @@ export const DevScenarioPanel: React.FC = () => {
                     </button>
                   );
                 })}
+              </div>
+            </div>
+
+            <div className="border-t border-neutral-100 dark:border-neutral-700 pt-2.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
+                  Chế độ Khách
+                </span>
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  disabled={!currentUser}
+                  className="text-[11px] font-semibold text-brand-600 hover:underline disabled:text-neutral-400 disabled:no-underline"
+                >
+                  {currentUser ? 'Xem như Khách' : 'Đang là Khách'}
+                </button>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-[11px] text-neutral-700 dark:text-neutral-300">
+                <span>
+                  Đã lướt {guestViewed}/{guestLimits.hard} trang chi tiết
+                </span>
+                <button
+                  type="button"
+                  onClick={resetGuestBudget}
+                  className="font-semibold text-brand-600 hover:underline"
+                >
+                  Reset
+                </button>
+              </div>
+              <div className="flex items-center gap-3 text-[11px] text-neutral-700 dark:text-neutral-300">
+                {(['soft', 'hard'] as const).map((k) => (
+                  <label key={k} className="flex items-center gap-1.5">
+                    {k === 'soft' ? 'Nhắc ở' : 'Chặn sau'}
+                    <input
+                      type="number"
+                      min={1}
+                      value={guestLimits[k]}
+                      onChange={(e) => setGuestLimits({ [k]: Math.max(1, Number(e.target.value) || 1) })}
+                      className="w-12 h-6 px-1.5 rounded border border-neutral-200 dark:border-neutral-700 bg-surface"
+                    />
+                  </label>
+                ))}
               </div>
             </div>
 

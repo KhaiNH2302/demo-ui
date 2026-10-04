@@ -69,7 +69,7 @@ Bạn nào có hình minh họa trực quan hoặc câu thần chú dễ nhớ c
     tags: ['CSD201', 'AVLTree', 'TreeRotation'],
     attachments: [],
     images: [
-      'https://images.unsplash.com/photo-1516116211227-bbc13c7a5223?auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=600&q=80',
     ],
     visibility: 'school',
     status: 'Published',

@@ -4,14 +4,13 @@ import { seedJoinRequests, seedGroups } from '../data/groups';
 import { seedApplications, seedClubEvents, seedClubs } from '../data/clubs';
 import { seedMentoringRequests } from '../data/mentoring';
 import { seedKnowledgePosts } from '../data/knowledge';
-import { mockDelay } from '../utils';
+import { mockDelay, getViewerId } from '../utils';
 
 export const dashboardHandlers = [
   // Nav Counters query (dùng chung cho IconRailNav, BottomTabBar, Topbar)
   http.get('/api/v1/nav/counters', async ({ request }) => {
     await mockDelay(100, 300);
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
 
     const unreadMessages = 3;
     const pendingSwapInvites = seedSwapConnections.filter(
@@ -33,8 +32,7 @@ export const dashboardHandlers = [
   // /me/summary query (cho C13 Của tôi)
   http.get('/api/v1/me/summary', async ({ request }) => {
     await mockDelay(200, 400);
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
 
     const openSwaps = seedSwapRequests.filter((r) => r.studentId === userId && r.status === 'Open').length;
     const pendingSwapConns = seedSwapConnections.filter((c) => c.recipientId === userId && c.status === 'Pending').length;
@@ -107,8 +105,7 @@ export const dashboardHandlers = [
 
   http.get('/api/v1/dashboard/summary', async ({ request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
 
     const openSwaps = seedSwapRequests.filter((r) => r.studentId === userId && r.status === 'Open').length;
     const pendingSwapConns = seedSwapConnections.filter((c) => c.recipientId === userId && c.status === 'Pending').length;

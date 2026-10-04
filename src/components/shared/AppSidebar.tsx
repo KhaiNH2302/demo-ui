@@ -8,6 +8,7 @@ import {
   Clock,
   AlertCircle,
   CheckCircle2,
+  Lock,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import {
@@ -21,6 +22,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import type { NavCounters } from '@/types/entities';
 import { cn } from '@/lib/cn';
+import { getGuestAccess } from '@/lib/access';
 
 export interface AppSidebarProps {
   variant?: 'expanded' | 'collapsed' | 'sheet';
@@ -94,6 +96,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
     const isActive = activeKey === item.key;
     const Icon = item.icon;
+    const lockedForGuest = !user && getGuestAccess(item.href) === 'member';
 
     // 05-social-patterns.md #3: Mục đang chọn chỉ dùng bg-neutral-100 text-neutral-900 font-semibold, bỏ vạch dọc màu
     const content = (
@@ -121,7 +124,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         {!isCollapsed && (
           <>
             <span className="flex-1 truncate text-sm">{item.label}</span>
-            {renderBadge(item)}
+            {lockedForGuest ? (
+              <Lock size={12} className="text-neutral-400 shrink-0" aria-label="Cần đăng nhập" />
+            ) : (
+              renderBadge(item)
+            )}
           </>
         )}
 
@@ -145,7 +152,28 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     return <div key={item.key}>{content}</div>;
   };
 
+  const renderJoinCard = () => {
+    if (isCollapsed) return null;
+    return (
+      <div className="mx-2 my-3 p-3 rounded-lg border border-brand-200 bg-brand-50/50 space-y-2">
+        <p className="text-caption font-semibold text-neutral-900">Bạn đang xem với tư cách khách</p>
+        <p className="text-caption text-neutral-600 leading-snug">
+          Đăng nhập để đăng bài, tham gia nhóm, nhắn tin và theo dõi CLB.
+        </p>
+        <div className="flex items-center gap-3 text-caption font-semibold pt-0.5">
+          <Link to="/login" onClick={onNavigate} className="text-brand-600 hover:underline">
+            Đăng nhập
+          </Link>
+          <Link to="/register" onClick={onNavigate} className="text-neutral-600 hover:text-neutral-900">
+            Tạo tài khoản
+          </Link>
+        </div>
+      </div>
+    );
+  };
+
   const renderBecomeMentorCard = () => {
+    if (!user) return renderJoinCard();
     if (isMentor) return null;
 
     const status = counters?.mentorApplicationStatus;

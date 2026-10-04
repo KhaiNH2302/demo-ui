@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import type { NavCounters } from '@/types/entities';
 import { cn } from '@/lib/cn';
+import { useAuthStore } from '@/store/authStore';
 
 export const BottomTabBar: React.FC = () => {
   const location = useLocation();
@@ -16,12 +17,14 @@ export const BottomTabBar: React.FC = () => {
   const [sidebarSheetOpen, setSidebarSheetOpen] = useState(false);
 
   const activeTab = getActiveMobileTab(location.pathname);
+  const user = useAuthStore((s) => s.user);
 
   // Counters for badges
   const { data: counters } = useQuery<NavCounters>({
     queryKey: ['nav', 'counters'],
     queryFn: () => apiClient.get('/nav/counters'),
     refetchInterval: 30000,
+    enabled: !!user,
   });
 
   const unreadMessagesCount = (counters?.unreadMessages || 0) + (counters?.pendingMessageRequests || 0);

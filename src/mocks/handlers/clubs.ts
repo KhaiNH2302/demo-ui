@@ -7,7 +7,7 @@ import {
   seedConnectionInvites,
 } from '../data/clubs';
 import { seedUsers } from '../data/users';
-import { mockDelay } from '../utils';
+import { mockDelay, getViewerId } from '../utils';
 import type {
   Club,
   ClubOpportunity,
@@ -17,8 +17,7 @@ import type {
 import type { OpportunityResponseStatus } from '@/types/status';
 
 function getCurrentUserId(request: Request): string {
-  const authHeader = request.headers.get('Authorization') || '';
-  return authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+  return getViewerId(request);
 }
 
 export const clubHandlers = [

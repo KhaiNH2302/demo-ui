@@ -3,13 +3,12 @@ import { seedUsers, seedProfiles, seedFollows } from '../data/users';
 import { seedKnowledgePosts } from '../data/knowledge';
 import { seedClubs } from '../data/clubs';
 import { seedProgramChannels } from '../data/programs';
-import { mockDelay } from '../utils';
+import { mockDelay, getViewerId } from '../utils';
 import type { StudentProfile } from '@/types/entities';
 
 async function handleUpdateProfile(request: Request) {
   await mockDelay();
-  const authHeader = request.headers.get('Authorization') || '';
-  const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+  const userId = getViewerId(request);
   const body = (await request.json()) as Partial<StudentProfile> & {
     fullName?: string;
     avatarUrl?: string;
@@ -69,8 +68,7 @@ async function handleUpdateProfile(request: Request) {
 export const profileHandlers = [
   http.get('/api/v1/profile/me', async ({ request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
     const user = seedUsers.find((u) => u.id === userId);
     const profile = seedProfiles[userId] || {
       userId,

@@ -14,7 +14,6 @@ const SwapMatchRedirect: React.FC = () => {
 // Layouts
 import { AuthLayout } from './layouts/AuthLayout';
 import { AppShell } from './layouts/AppShell';
-import { PublicOrAuthRoute } from './layouts/PublicOrAuthRoute';
 import { AdminShell } from './layouts/AdminShell';
 import { ProtectedRoute } from './ProtectedRoute';
 
@@ -131,32 +130,18 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // Public-Previewable Routes (AppShell variant="guest" when unauthenticated, AppShell variant="member" when logged in)
-  {
-    element: <PublicOrAuthRoute />,
-    children: [
-      { path: '/knowledge', element: <KnowledgeHubPage /> },
-      { path: '/knowledge/:id', element: <KnowledgePostDetailPage /> },
-      { path: '/clubs', element: <ClubsExplorePage /> },
-      { path: '/clubs/:id', element: <ClubProfilePage /> },
-      { path: '/clubs/opportunities/:oppId', element: <ClubOpportunityDetailPage /> },
-      { path: '/opportunities/:oppId', element: <ClubOpportunityDetailPage /> },
-      { path: '/programs', element: <ProgramsExplorePage /> },
-      { path: '/programs/:id', element: <ProgramDetailPage /> },
-      { path: '/help', element: <HelpPage /> },
-    ],
-  },
-
-  // Main App Routes (AppShell) — Protected (shows AppShell variant="guest" + EmptyState Lock for guests)
+  // Main App Routes (AppShell) — khách xem như thành viên; GuestAccessBoundary + lib/access.ts
+  // quyết định trang nào làm mờ (dữ liệu cá nhân) và giới hạn lướt; thao tác ghi bị chặn ở apiClient.
   {
     path: '/',
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowGuest>
         <AppShell />
       </ProtectedRoute>
     ),
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: 'help', element: <HelpPage /> },
       { path: 'search', element: <SearchPage /> },
       { path: 'discover', element: <Navigate to="/knowledge" replace /> },
       { path: 'me', element: <Navigate to="/requests" replace /> },
@@ -179,7 +164,9 @@ export const router = createBrowserRouter([
       { path: 'swap/:id/match', element: <SwapMatchRedirect /> },
       { path: 'swap/connections', element: <SwapConnectionsPage /> },
 
-      // FE-02: Knowledge (Protected actions & redirects)
+      // FE-02: Knowledge
+      { path: 'knowledge', element: <KnowledgeHubPage /> },
+      { path: 'knowledge/:id', element: <KnowledgePostDetailPage /> },
       { path: 'knowledge/new', element: <Navigate to="/knowledge" replace /> },
       { path: 'knowledge/:id/edit', element: <Navigate to="/knowledge" replace /> },
       { path: 'knowledge/me', element: <MyPostsPage /> },
@@ -191,7 +178,11 @@ export const router = createBrowserRouter([
       { path: 'groups/me', element: <MyGroupsPage /> },
       { path: 'groups/:id/manage', element: <GroupManagePage /> },
 
-      // FE-04: Club Connection (Protected actions & Representative Manage)
+      // FE-04: Club Connection
+      { path: 'clubs', element: <ClubsExplorePage /> },
+      { path: 'clubs/:id', element: <ClubProfilePage /> },
+      { path: 'clubs/opportunities/:oppId', element: <ClubOpportunityDetailPage /> },
+      { path: 'opportunities/:oppId', element: <ClubOpportunityDetailPage /> },
       { path: 'clubs/opportunities/:oppId/register', element: <ClubOpportunityRegisterPage /> },
       { path: 'clubs/registrations/:respId', element: <ClubRegistrationDetailPage /> },
       { path: 'clubs/manage/new', element: <ClubOpportunityFormPage /> },
@@ -205,7 +196,9 @@ export const router = createBrowserRouter([
       { path: 'clubs/:id/apply', element: <Navigate to="/clubs" replace /> },
       { path: 'clubs/:clubId/workspace/*', element: <Navigate to="/clubs?tab=manage" replace /> },
 
-      // FE-06: Community Program Registration (Protected actions & Organizer Manage)
+      // FE-06: Community Program Registration
+      { path: 'programs', element: <ProgramsExplorePage /> },
+      { path: 'programs/:id', element: <ProgramDetailPage /> },
       { path: 'programs/new', element: <ProgramFormPage /> },
       { path: 'programs/:id/edit', element: <ProgramFormPage /> },
       { path: 'programs/:id/register', element: <ProgramRegisterPage /> },
@@ -228,7 +221,7 @@ export const router = createBrowserRouter([
       {
         path: 'mentor',
         element: (
-          <ProtectedRoute requireRoles={['mentor', 'Mentor']}>
+          <ProtectedRoute allowGuest requireRoles={['mentor', 'Mentor']}>
             <MentorCenterShell />
           </ProtectedRoute>
         ),

@@ -94,21 +94,19 @@ export const ClubsExplorePage: React.FC = () => {
         title="Kết nối Câu lạc bộ"
         description="Khám phá các sự kiện, đợt tuyển thành viên và cộng tác viên từ các Câu lạc bộ sinh viên trong trường."
         actions={
-          !isGuest ? (
-            hasRepClub ? (
+          !isGuest && hasRepClub ? (
               <Link to="/clubs/manage/new">
                 <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>
                   Đăng cơ hội CLB
                 </Button>
               </Link>
-            ) : (
-              <Link to="/clubs/represent">
-                <Button variant="secondary" leftIcon={<ShieldCheck className="h-4 w-4" />}>
-                  Yêu cầu đại diện CLB
-                </Button>
-              </Link>
-            )
-          ) : undefined
+          ) : (
+            <Link to="/clubs/represent">
+              <Button variant="secondary" leftIcon={<ShieldCheck className="h-4 w-4" />}>
+                Yêu cầu đại diện CLB
+              </Button>
+            </Link>
+          )
         }
       />
 
@@ -229,7 +227,7 @@ export const ClubsExplorePage: React.FC = () => {
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(isGuest ? opportunities.slice(0, 6) : opportunities).map((opp) => {
+                {opportunities.map((opp) => {
                   const myResp = myResponseMap.get(opp.id);
                   return (
                     <OpportunityCard
@@ -343,7 +341,7 @@ export const ClubsExplorePage: React.FC = () => {
             )}
           </div>
 
-          {!isGuest && (
+          {(isGuest || !hasRepClub) && (
             <Card className="p-4 bg-neutral-50 border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-start gap-2.5">
                 <ShieldCheck className="h-5 w-5 text-brand-600 shrink-0 mt-0.5" />

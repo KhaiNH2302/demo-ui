@@ -34,6 +34,15 @@
     font-size: 0.75rem;
     color: var(--color-neutral-400);
   }
+  /* Cỡ chữ cho control (Button sm / md / lg) — không đặt màu để giữ màu theo variant */
+  .text-small {
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+  }
+  .text-body {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
 
   /* Automatic Dark Mode safety for any legacy bg-white */
   .dark .bg-white:not([data-keep-white]),

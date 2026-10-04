@@ -103,7 +103,7 @@ const DEFAULT_SPACES: MySpaceItem[] = [
     name: 'F-Code Club',
     roleNote: 'Đại diện CLB',
     logoUrl:
-      'https://images.unsplash.com/photo-1534972195531-a756b1126f24?auto=format&fit=crop&w=120&q=80',
+      'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=120&q=80',
     hasUpdate: true,
     href: '/clubs/club_01',
   },
@@ -133,7 +133,7 @@ const HOME_FEED_INSERTS: HomeFeedInsertEntry[] = [
       title: 'Seminar: Ứng dụng LLM & RAG trong Đồ án Tốt nghiệp SEP490',
       clubName: 'F-Code Club',
       clubLogoUrl:
-        'https://images.unsplash.com/photo-1534972195531-a756b1126f24?auto=format&fit=crop&w=120&q=80',
+        'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=120&q=80',
       typeLabel: 'Sự kiện CLB',
       coverImageUrl:
         'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=900&auto=format&fit=crop&q=80',
@@ -242,6 +242,7 @@ export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
+  const isGuest = !user;
 
   const [feedTab, setFeedTab] = useState<'for_you' | 'following'>('for_you');
   const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
@@ -262,6 +263,7 @@ export const DashboardPage: React.FC = () => {
   });
 
   const needsProfileOnboarding =
+    !isGuest &&
     !onboardingDismissed && (!user?.major || !user?.skills || user.skills.length === 0);
 
   const handleDismissOnboarding = () => {
@@ -279,6 +281,7 @@ export const DashboardPage: React.FC = () => {
   // C6.T.2: TodayPanel query
   const todayQuery = useQuery<{ items: TodayTaskItem[]; total: number }>({
     queryKey: ['home', 'today'],
+    enabled: !isGuest,
     queryFn: async () => {
       try {
         const res = await apiClient.get<{ items: TodayTaskItem[]; total: number }>('/home/today');
@@ -293,6 +296,7 @@ export const DashboardPage: React.FC = () => {
   // C6.T.3: MySpaces query
   const spacesQuery = useQuery<MySpaceItem[]>({
     queryKey: ['home', 'spaces'],
+    enabled: !isGuest,
     queryFn: async () => {
       try {
         const res = await apiClient.get<MySpaceItem[]>('/home/spaces');
@@ -306,6 +310,7 @@ export const DashboardPage: React.FC = () => {
 
   const followingSubjectsQuery = useQuery<string[]>({
     queryKey: ['subjects', 'following'],
+    enabled: !isGuest,
     queryFn: () => apiClient.get('/subjects/following'),
   });
 
@@ -330,7 +335,7 @@ export const DashboardPage: React.FC = () => {
   const posts = feedQuery.data || [];
   const todayItems = todayQuery.data?.items || [];
   const todayTotal = todayQuery.data?.total ?? todayItems.length;
-  const spaces = spacesQuery.data || DEFAULT_SPACES;
+  const spaces = isGuest ? [] : spacesQuery.data || DEFAULT_SPACES;
 
   const unansweredQuestions = posts.filter(
     (p) => p.type === 'question' && !p.isSolved && p.commentCount <= 1,
@@ -434,6 +439,24 @@ export const DashboardPage: React.FC = () => {
             {getTodayFormatted()}
           </span>
         </div>
+
+        {isGuest && (
+          <div className="px-4 py-3 rounded-lg border border-brand-200 bg-brand-50/50 flex flex-wrap items-center justify-between gap-3 text-sm">
+            <span className="text-neutral-700">
+              Bạn đang xem bảng tin với tư cách khách. Đăng nhập để đăng bài, theo dõi môn học và nhận gợi ý riêng.
+            </span>
+            <div className="flex items-center gap-3 shrink-0 text-xs font-semibold">
+              <Link to="/login" className="text-brand-600 hover:underline">
+                Đăng nhập
+              </Link>
+              <Link to="/register">
+                <Button variant="primary" size="sm">
+                  Tạo tài khoản
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* C6.T.2 — TodayPanel ("Hôm nay") */}
         {todayItems.length > 0 && (
@@ -634,6 +657,7 @@ export const DashboardPage: React.FC = () => {
       {/* Desktop Right Column (≥1280px, width 300px sticky) */}
       <aside className="hidden xl:block w-[300px] shrink-0 sticky top-20 space-y-5">
         {/* C6.T.3 — Box 1: Không gian của bạn (MySpacesList) */}
+        {!isGuest && (
         <div className="bg-surface border border-neutral-200 rounded-lg overflow-hidden">
           <div className="px-4 py-2.5 border-b border-neutral-200 flex items-center justify-between">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
@@ -677,11 +701,14 @@ export const DashboardPage: React.FC = () => {
             ))}
           </div>
         </div>
+        )}
 
         {/* Box 2: Môn học theo dõi */}
         <div className="bg-surface border border-neutral-200 rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-neutral-900">Môn bạn theo dõi</h3>
+            <h3 className="text-sm font-semibold text-neutral-900">
+              {isGuest ? 'Môn học nổi bật' : 'Môn bạn theo dõi'}
+            </h3>
             <Link to="/knowledge" className="text-xs font-medium text-brand-600 hover:underline">
               Thêm
             </Link>

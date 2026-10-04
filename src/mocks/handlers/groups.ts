@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { seedGroups, seedGroupMembers, seedJoinRequests } from '../data/groups';
 import { seedUsers } from '../data/users';
-import { mockDelay, isScenarioActive } from '../utils';
+import { mockDelay, isScenarioActive, getViewerId } from '../utils';
 import type { Group, GroupJoinRequest, AiGroupMatch, AiMemberSuggestion } from '@/types/entities';
 
 export const groupHandlers = [
@@ -47,8 +47,7 @@ export const groupHandlers = [
     await mockDelay();
     const url = new URL(request.url);
     const role = url.searchParams.get('role');
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
 
     if (role === 'owner') {
       const owned = seedGroups.filter((g) => g.ownerId === userId);
@@ -62,8 +61,7 @@ export const groupHandlers = [
 
   http.get('/api/v1/join-requests/mine', async ({ request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
     const myRequests = seedJoinRequests.filter((r) => r.userId === userId);
     return HttpResponse.json({ data: myRequests });
   }),
@@ -80,8 +78,7 @@ export const groupHandlers = [
 
   http.post('/api/v1/groups', async ({ request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
     const body = (await request.json()) as Omit<Group, 'id' | 'ownerId' | 'memberCount' | 'createdAt'>;
 
     const newGroup: Group = {
@@ -112,8 +109,7 @@ export const groupHandlers = [
 
   http.post('/api/v1/groups/:id/join-requests', async ({ params, request }) => {
     await mockDelay();
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
     const body = (await request.json()) as { message?: string };
     const group = seedGroups.find((g) => g.id === params.id);
 

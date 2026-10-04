@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ContextHeader } from '@/components/shared/ContextHeader';
@@ -13,7 +13,7 @@ import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useToast } from '@/components/ui/Toast';
 import { useAuthStore } from '@/store/authStore';
 import { useViewer } from '@/lib/viewer';
-import { useGuardedAction, recordGuestPreviewPost } from '@/lib/guestGate';
+import { useGuardedAction } from '@/lib/guestGate';
 import { apiClient } from '@/lib/apiClient';
 import { formatRelativeTime } from '@/lib/format';
 import { seedUsers } from '@/mocks/data/users';
@@ -53,16 +53,9 @@ export default function KnowledgePostDetailPage() {
   } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
 
-  // K7: Check 3-post session preview limit for unauthenticated guests
-  const guestPreviewStatus = useMemo(() => {
-    if (canInteract) return { allowed: true, viewedCount: 0, limit: 3 };
-    return recordGuestPreviewPost(id);
-  }, [id, canInteract]);
-
   const postDetailQuery = useQuery<{ post: KnowledgePost; comments: Comment[] }>({
     queryKey: ['knowledge', 'detail', id],
     queryFn: () => apiClient.get(`/posts/${id}`),
-    enabled: guestPreviewStatus.allowed,
   });
 
   const addCommentMutation = useMutation({
@@ -102,14 +95,6 @@ export default function KnowledgePostDetailPage() {
       navigate('/knowledge');
     },
   });
-
-  if (!guestPreviewStatus.allowed) {
-    return (
-      <div className="max-w-[720px] mx-auto py-8">
-        <LimitNotice noun="bài viết" remaining={24} alwaysShow />
-      </div>
-    );
-  }
 
   if (postDetailQuery.isLoading) {
     return (
@@ -181,15 +166,6 @@ export default function KnowledgePostDetailPage() {
           title="Chi tiết thảo luận"
           className="rounded-t-xl px-5 sm:px-6"
         />
-
-        {!canInteract && (
-          <div className="mx-5 sm:mx-6 mt-4 rounded-lg border border-brand-200 bg-brand-50/70 px-3.5 py-2 text-xs text-brand-700 flex items-center justify-between">
-            <span>
-              Chế độ xem thử cho Khách: đã xem {guestPreviewStatus.viewedCount}/
-              {guestPreviewStatus.limit} bài viết công khai.
-            </span>
-          </div>
-        )}
 
         {/* Main Post Full View */}
         <div className="px-5 sm:px-6">

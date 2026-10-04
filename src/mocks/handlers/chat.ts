@@ -1,15 +1,14 @@
 import { http, HttpResponse } from 'msw';
 import { seedConversations, seedMessages } from '../data/conversations';
 import { seedUsers } from '../data/users';
-import { mockDelay } from '../utils';
+import { mockDelay, getViewerId } from '../utils';
 import type { Message, MessageAttachment } from '@/types/entities';
 
 export const chatHandlers = [
   // GET /api/v1/conversations
   http.get('/api/v1/conversations', async ({ request }) => {
     await mockDelay(80, 150);
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
 
     const userConvs = seedConversations.filter((c) => c.participantIds.includes(userId));
     return HttpResponse.json({ data: userConvs });
@@ -25,8 +24,7 @@ export const chatHandlers = [
   // POST /api/v1/conversations/:id/messages
   http.post('/api/v1/conversations/:id/messages', async ({ params, request }) => {
     await mockDelay(80, 150);
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
     const body = (await request.json()) as {
       content: string;
       type?: 'text' | 'image' | 'file' | 'link' | 'like';
@@ -69,8 +67,7 @@ export const chatHandlers = [
   // POST /api/v1/conversations/direct
   http.post('/api/v1/conversations/direct', async ({ request }) => {
     await mockDelay(100, 200);
-    const authHeader = request.headers.get('Authorization') || '';
-    const userId = authHeader.replace('Bearer mock_jwt_token_', '') || 'usr_student_01';
+    const userId = getViewerId(request);
     const body = (await request.json()) as {
       targetUserId: string;
       firstMessage?: string;
