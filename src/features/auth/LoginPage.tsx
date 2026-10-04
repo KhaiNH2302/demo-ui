@@ -72,7 +72,7 @@ export default function LoginPage() {
   /**
    * Quy tắc điều hướng sau đăng nhập (01-common-screens.md § C1 & SCS_UI_Plan.md § 18.2):
    * - Mọi lần đăng nhập thành công đều điều hướng về `/` (HomeFeedPage)
-   *   (hoặc `/admin` nếu tài khoản chỉ có role admin).
+   *   (hoặc `/admin` nếu tài khoản có role admin — vào thẳng Admin Dashboard).
    * - KHÔNG tự nhảy thẳng sang trang đích; giữ pendingAction trong sessionStorage
    *   để HomeFeedPage hiển thị dòng nhắc "Tiếp tục: ... · Mở lại · ×".
    */
@@ -84,12 +84,11 @@ export default function LoginPage() {
         timestamp: Date.now(),
       });
     }
-    const isPureAdmin =
-      loggedUser.roles.some((r) => ['system_admin', 'school_admin', 'SystemAdmin', 'SchoolAdmin'].includes(r)) &&
-      !loggedUser.roles.includes('student') &&
-      !loggedUser.roles.includes('Student');
+    const isAdmin = loggedUser.roles.some((r) =>
+      ['system_admin', 'school_admin', 'SystemAdmin', 'SchoolAdmin'].includes(r),
+    );
 
-    navigate(isPureAdmin ? '/admin' : '/', { replace: true });
+    navigate(isAdmin ? '/admin' : '/', { replace: true });
   };
 
   const onSubmit = async (data: LoginInput) => {
