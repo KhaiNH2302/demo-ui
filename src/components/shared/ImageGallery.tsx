@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ImageOff } from 'lucide-react';
 import { ImageLightbox, type MediaImageItem } from './ImageLightbox';
 import { cn } from '@/lib/cn';
 
@@ -10,6 +11,29 @@ export interface ImageGalleryProps {
   title?: string;
   className?: string;
 }
+
+/** Ảnh trong lưới; link hỏng (vd: ảnh mock bị gỡ) hiện ô placeholder thay vì khoảng trống. */
+const GalleryImage: React.FC<{ src: string; alt: string; className?: string }> = ({
+  src,
+  alt,
+  className,
+}) => {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div
+        role="img"
+        aria-label={alt}
+        className={cn('flex min-h-40 items-center justify-center text-neutral-400', className)}
+      >
+        <ImageOff className="h-6 w-6" />
+      </div>
+    );
+  }
+  return (
+    <img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} className={className} />
+  );
+};
 
 /**
  * Lưới ảnh kiểu Facebook/LinkedIn (02-shared-components.md § 42):
@@ -52,10 +76,9 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
           onClick={() => handleOpen(0)}
           className="block w-full overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 text-left focus:outline-none"
         >
-          <img
+          <GalleryImage
             src={images[0].thumbnailUrl || images[0].url}
             alt={images[0].alt || images[0].caption || 'Ảnh hoạt động'}
-            loading="lazy"
             className="w-full max-h-80 object-cover"
           />
           {images[0].caption && (
@@ -75,10 +98,9 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
               onClick={() => handleOpen(idx)}
               className="overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 aspect-[4/3] focus:outline-none"
             >
-              <img
+              <GalleryImage
                 src={img.thumbnailUrl || img.url}
                 alt={img.alt || img.caption || `Ảnh ${idx + 1}`}
-                loading="lazy"
                 className="w-full h-full object-cover hover:opacity-95 transition-opacity"
               />
             </button>
@@ -93,10 +115,9 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
             onClick={() => handleOpen(0)}
             className="col-span-2 h-full overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 focus:outline-none"
           >
-            <img
+            <GalleryImage
               src={images[0].thumbnailUrl || images[0].url}
               alt={images[0].alt || images[0].caption || 'Ảnh 1'}
-              loading="lazy"
               className="w-full h-full object-cover"
             />
           </button>
@@ -108,10 +129,9 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
                 onClick={() => handleOpen(idx + 1)}
                 className="h-full overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 focus:outline-none"
               >
-                <img
+                <GalleryImage
                   src={img.thumbnailUrl || img.url}
                   alt={img.alt || img.caption || `Ảnh ${idx + 2}`}
-                  loading="lazy"
                   className="w-full h-full object-cover"
                 />
               </button>
@@ -131,10 +151,9 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
                 onClick={() => handleOpen(idx)}
                 className="relative overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 aspect-[4/3] focus:outline-none"
               >
-                <img
+                <GalleryImage
                   src={img.thumbnailUrl || img.url}
                   alt={img.alt || img.caption || `Ảnh ${idx + 1}`}
-                  loading="lazy"
                   className="w-full h-full object-cover"
                 />
                 {isLastWithExtra && (

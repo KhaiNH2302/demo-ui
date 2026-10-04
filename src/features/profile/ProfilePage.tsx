@@ -408,11 +408,12 @@ export const ProfilePage: React.FC = () => {
 
         {/* Header Main Bar (Avatar + Details + Actions) */}
         <div className="px-5 sm:px-8 pb-5 pt-0">
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between items-center sm:items-start lg:items-end gap-4 -mt-16 sm:-mt-20">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between items-center sm:items-start lg:items-end gap-4 pt-3">
             {/* Left: Avatar + Identity */}
             <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 text-center sm:text-left min-w-0 flex-1">
               {/* Avatar with Camera Button */}
-              <div className="relative group shrink-0">
+              {/* Chỉ avatar đè lên ảnh bìa; tên/tiểu sử luôn nằm dưới mép ảnh bìa dù dài bao nhiêu */}
+              <div className="relative group shrink-0 -mt-[4.75rem] sm:-mt-[5.75rem]">
                 <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-surface overflow-hidden shadow-lg bg-neutral-100 dark:bg-neutral-800 shrink-0">
                   <UserAvatar
                     user={{

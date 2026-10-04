@@ -199,9 +199,9 @@ export const ProgramManagePage: React.FC = () => {
                     <tr>
                       <th className="py-3 px-4">Sinh viên</th>
                       <th className="py-3 px-4">Ca / Câu trả lời</th>
-                      <th className="py-3 px-4">Ngày gửi</th>
+                      <th className="py-3 px-4 whitespace-nowrap">Ngày gửi</th>
                       <th className="py-3 px-4">Trạng thái</th>
-                      <th className="py-3 px-4 text-right">Duyệt nhanh</th>
+                      <th className="py-3 px-4 text-right whitespace-nowrap">Duyệt nhanh</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
@@ -226,7 +226,7 @@ export const ProgramManagePage: React.FC = () => {
                             {reg.answers.map((a) => `${a.value}`).join(' · ')}
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-caption text-neutral-500">
+                        <td className="py-3 px-4 whitespace-nowrap text-caption text-neutral-500">
                           {new Date(reg.submittedAt).toLocaleDateString('vi-VN')}
                         </td>
                         <td className="py-3 px-4">

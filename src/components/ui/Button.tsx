@@ -4,11 +4,12 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer',
+  'inline-flex items-center justify-center whitespace-nowrap [&_svg]:shrink-0 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer',
   {
     variants: {
       variant: {
-        primary: 'bg-brand-500 text-white hover:bg-brand-600 shadow-sm',
+        // brand-600: chữ trắng trên brand-500 (#3366ff) chỉ ~4.4:1, dưới AA cho chữ 13px (dark mode 500 = 600)
+        primary: 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm',
         secondary: 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200',
         outline: 'border border-neutral-300 bg-surface text-neutral-700 hover:bg-neutral-100 shadow-sm',
         ghost: 'text-neutral-700 hover:bg-neutral-100',
