@@ -3,30 +3,24 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { AppHeader } from '@/components/shared/AppHeader';
 import { AppSidebar } from '@/components/shared/AppSidebar';
 import { BottomTabBar } from '@/components/shared/BottomTabBar';
-import { PublicFooter } from '@/components/shared/PublicFooter';
 import { LoginGate } from '@/components/shared/LoginGate';
 import { DevScenarioPanel } from '@/components/shared/DevScenarioPanel';
 import { GuestAccessBoundary } from '@/components/shared/GuestAccessBoundary';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/cn';
 
+/**
+ * Bố cục chung cho cả thành viên lẫn khách — khách xem như thành viên,
+ * quyền truy cập do GuestAccessBoundary quyết định.
+ */
 export interface AppShellProps {
-  /**
-   * 'member' (mặc định): bố cục đầy đủ cho cả thành viên lẫn khách — khách xem như thành viên,
-   * quyền truy cập do GuestAccessBoundary quyết định.
-   * 'guest': bố cục landing tối giản, chỉ dùng cho /welcome.
-   */
-  variant?: 'member' | 'guest';
   children?: React.ReactNode;
 }
 
-export const AppShell: React.FC<AppShellProps> = ({
-  variant = 'member',
-  children,
-}) => {
+export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
-  const isFullBleed = variant === 'member' && !!user && location.pathname.startsWith('/chats');
+  const isFullBleed = !!user && location.pathname.startsWith('/chats');
 
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('scs_sidebar') === 'collapsed';
@@ -40,20 +34,6 @@ export const AppShell: React.FC<AppShellProps> = ({
     });
   };
 
-  if (variant === 'guest') {
-    return (
-      <div className="bg-neutral-50/50 flex flex-col antialiased min-h-screen">
-        <AppHeader variant="guest" />
-        <main className="flex-1 w-full max-w-[1080px] 2xl:max-w-[1440px] 3xl:max-w-[1600px] 4xl:max-w-[1920px] mx-auto px-4 lg:px-6 py-8">
-          {children ?? <Outlet />}
-        </main>
-        <PublicFooter />
-        <LoginGate />
-        <DevScenarioPanel />
-      </div>
-    );
-  }
-
   return (
     <div
       className={cn(
@@ -62,7 +42,6 @@ export const AppShell: React.FC<AppShellProps> = ({
       )}
     >
       <AppHeader
-        variant="member"
         onToggleSidebar={toggleSidebar}
         sidebarCollapsed={collapsed}
       />

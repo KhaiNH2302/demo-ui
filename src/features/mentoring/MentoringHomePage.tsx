@@ -7,11 +7,32 @@ import { QueryBoundary } from '@/components/shared/QueryBoundary';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Sparkles, Search, Clock, ArrowRight } from 'lucide-react';
+import { UserMiniCard } from '@/components/shared/UserMiniCard';
+import { useAuthStore } from '@/store/authStore';
+import {
+  Sparkles,
+  Search,
+  Clock,
+  ArrowRight,
+  PencilLine,
+  Send,
+  Hourglass,
+  GraduationCap,
+} from 'lucide-react';
 import type { MentoringRequest } from '@/types/entities';
+
+// Luồng FE-05 phía Học viên (specs/flows/FE05 § 4 — bước 1 → 7)
+const STUDENT_STEPS = [
+  { icon: PencilLine, title: 'Mô tả nhu cầu', desc: 'Môn học, nội dung, thời gian, hình thức' },
+  { icon: Search, title: 'Chọn cách tìm', desc: 'Gợi ý AI hoặc tự duyệt danh sách' },
+  { icon: Send, title: 'Gửi yêu cầu', desc: 'Chọn Mentor phù hợp và gửi request' },
+  { icon: Hourglass, title: 'Chờ Mentor phản hồi', desc: 'Chấp nhận → mở chat trao đổi' },
+];
 
 export const MentoringHomePage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const isMentor = user?.roles?.some((r) => r.toLowerCase() === 'mentor');
 
   const requestsQuery = useQuery({
     queryKey: ['mentoring', 'requests', 'me'],
@@ -27,18 +48,41 @@ export const MentoringHomePage: React.FC = () => {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Tư vấn & Hướng dẫn học tập (Mentoring)"
-        description="Kết nối với các sinh viên khóa trên và Mentor xuất sắc để nhận trợ giúp học tập và định hướng"
+        title="Tìm Mentor"
+        description="Dành cho học viên: mô tả điều bạn cần hỗ trợ, tìm Mentor phù hợp và gửi yêu cầu mentoring"
         breadcrumbs={[
           { label: 'Trang chủ', href: '/' },
-          { label: 'Mentoring' },
+          { label: 'Mentoring · Học viên' },
         ]}
         actions={
           <Button variant="outline" onClick={() => navigate('/mentoring/requests')}>
-            Yêu cầu của tôi ({requestList.length})
+            <Send className="w-4 h-4 mr-1.5" /> Yêu cầu đã gửi ({requestList.length})
           </Button>
         }
       />
+
+      {/* Các bước của luồng học viên */}
+      <ol className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {STUDENT_STEPS.map((step, i) => {
+          const Icon = step.icon;
+          return (
+            <li
+              key={step.title}
+              className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-surface p-3"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600 text-sm font-semibold">
+                {i + 1}
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-neutral-900 flex items-center gap-1.5">
+                  <Icon className="w-3.5 h-3.5 text-brand-600" /> {step.title}
+                </p>
+                <p className="text-xs text-neutral-500 leading-snug mt-0.5">{step.desc}</p>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
 
       {/* 2 Main Choice Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -89,7 +133,7 @@ export const MentoringHomePage: React.FC = () => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-semibold flex items-center gap-2 text-neutral-900">
-            <Clock className="w-4 h-4 text-brand-600" /> Yêu cầu hỗ trợ gần đây của bạn
+            <Clock className="w-4 h-4 text-brand-600" /> Yêu cầu bạn đã gửi gần đây
           </h3>
           {recentRequests.length > 0 && (
             <Button variant="ghost" size="sm" onClick={() => navigate('/mentoring/requests')}>
@@ -123,6 +167,10 @@ export const MentoringHomePage: React.FC = () => {
                         {req.content}
                       </p>
                     </div>
+                    <div className="pt-2 border-t border-neutral-100">
+                      <span className="text-[11px] text-neutral-500 block mb-1">Gửi tới Mentor</span>
+                      <UserMiniCard userId={req.mentorId} />
+                    </div>
                   </Card>
                 ))}
               </div>
@@ -130,6 +178,24 @@ export const MentoringHomePage: React.FC = () => {
           }}
         </QueryBoundary>
       </div>
+
+      {/* Học viên chưa là Mentor: lối vào đăng ký (MR0) */}
+      {!isMentor && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+          <div className="flex items-center gap-3">
+            <GraduationCap className="w-6 h-6 text-neutral-600 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-neutral-900">Bạn muốn giúp đỡ người khác?</p>
+              <p className="text-xs text-neutral-600">
+                Đăng ký làm Mentor, sau khi Admin duyệt bạn sẽ có Mentor Center để nhận yêu cầu.
+              </p>
+            </div>
+          </div>
+          <Button variant="outline" onClick={() => navigate('/mentor/apply')}>
+            Trở thành Mentor <ArrowRight className="w-4 h-4 ml-1.5" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

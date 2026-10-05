@@ -190,6 +190,13 @@ export const mentoringHandlers = [
     if (!req) {
       return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Yêu cầu không tồn tại' } }, { status: 404 });
     }
+    if (req.status !== 'PENDING_MENTOR_RESPONSE') {
+      // FE-05 bước 10: request đã xử lý / hết hạn → không xử lý lại, trả về trạng thái hiện tại
+      return HttpResponse.json(
+        { error: { code: 'MENTORING_REQUEST_NOT_PENDING', message: 'Yêu cầu đã được xử lý hoặc hết hạn', details: { status: req.status } } },
+        { status: 409 }
+      );
+    }
     req.status = 'ACCEPTED';
 
     const newConv = {
@@ -218,10 +225,18 @@ export const mentoringHandlers = [
     await mockDelay();
     const body = (await request.json()) as { reason?: string };
     const req = seedMentoringRequests.find((r) => r.id === params.id);
-    if (req) {
-      req.status = 'REJECTED';
-      req.rejectReason = body.reason;
+    if (!req) {
+      return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Yêu cầu không tồn tại' } }, { status: 404 });
     }
+    if (req.status !== 'PENDING_MENTOR_RESPONSE') {
+      // FE-05 bước 10: request đã xử lý / hết hạn → không xử lý lại, trả về trạng thái hiện tại
+      return HttpResponse.json(
+        { error: { code: 'MENTORING_REQUEST_NOT_PENDING', message: 'Yêu cầu đã được xử lý hoặc hết hạn', details: { status: req.status } } },
+        { status: 409 }
+      );
+    }
+    req.status = 'REJECTED';
+    req.rejectReason = body.reason;
     return HttpResponse.json({ data: req });
   }),
 

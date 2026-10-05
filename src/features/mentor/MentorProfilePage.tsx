@@ -65,11 +65,6 @@ export const MentorProfilePage: React.FC = () => {
       <PageHeader
         title="Hồ sơ Mentor của bạn"
         description="Thiết lập môn học phụ trách, kinh nghiệm, khung giờ rảnh và trạng thái nhận học viên"
-        breadcrumbs={[
-          { label: 'Trang chủ', href: '/' },
-          { label: 'Mentor Center' },
-          { label: 'Hồ sơ Mentor' },
-        ]}
       />
 
       <QueryBoundary queries={[profileQuery]}>

@@ -34,12 +34,12 @@ export const MyMentoringRequestsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Yêu cầu Mentoring của tôi"
-        description="Theo dõi tình trạng phản hồi và mở kênh trao đổi khi Mentor chấp nhận hỗ trợ"
+        title="Yêu cầu đã gửi"
+        description="Phía học viên: theo dõi phản hồi của Mentor với các yêu cầu bạn đã gửi, mở chat khi được chấp nhận"
         breadcrumbs={[
           { label: 'Trang chủ', href: '/' },
-          { label: 'Mentoring', href: '/mentoring' },
-          { label: 'Yêu cầu của tôi' },
+          { label: 'Mentoring · Học viên', href: '/mentoring' },
+          { label: 'Yêu cầu đã gửi' },
         ]}
         actions={
           <Button onClick={() => navigate('/mentoring')}>
@@ -52,10 +52,10 @@ export const MyMentoringRequestsPage: React.FC = () => {
         <TabsList className="grid w-full grid-cols-4 max-w-md">
           <TabsTrigger value="all">Tất cả ({allRequests.length})</TabsTrigger>
           <TabsTrigger value="pending">
-            Chờ duyệt ({allRequests.filter((r) => r.status === 'PENDING_MENTOR_RESPONSE').length})
+            Chờ Mentor ({allRequests.filter((r) => r.status === 'PENDING_MENTOR_RESPONSE').length})
           </TabsTrigger>
           <TabsTrigger value="accepted">
-            Đã nhận ({allRequests.filter((r) => r.status === 'ACCEPTED').length})
+            Được nhận ({allRequests.filter((r) => r.status === 'ACCEPTED').length})
           </TabsTrigger>
           <TabsTrigger value="rejected">
             Từ chối ({allRequests.filter((r) => r.status === 'REJECTED').length})
@@ -67,7 +67,7 @@ export const MyMentoringRequestsPage: React.FC = () => {
             {filteredRequests.length === 0 ? (
               <EmptyState
                 title="Không có yêu cầu nào"
-                description="Bạn chưa có yêu cầu hỗ trợ Mentoring nào trong danh mục này."
+                description="Bạn chưa gửi yêu cầu Mentoring nào trong danh mục này."
                 action={
                   <Button onClick={() => navigate('/mentoring')}>
                     Tìm Mentor ngay
@@ -101,7 +101,7 @@ export const MyMentoringRequestsPage: React.FC = () => {
                       )}
 
                       <div className="pt-2 border-t border-[var(--border-subtle)]">
-                        <span className="text-xs text-[var(--text-muted)] block mb-1">Mentor phụ trách:</span>
+                        <span className="text-xs text-[var(--text-muted)] block mb-1">Đã gửi tới Mentor:</span>
                         <UserMiniCard userId={req.mentorId} showMajor />
                       </div>
                     </CardContent>

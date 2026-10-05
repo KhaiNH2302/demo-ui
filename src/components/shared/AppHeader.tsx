@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Menu,
   Search,
@@ -10,7 +10,7 @@ import {
   LifeBuoy,
   LogOut,
   ShieldCheck,
-  GraduationCap,
+  BadgeCheck,
   Inbox,
   Type,
   Clock,
@@ -37,7 +37,6 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import type { NavCounters } from '@/types/entities';
 import type { FontSizeScale } from '@/types/status';
-import { cn } from '@/lib/cn';
 
 const RECENT_SEARCHES_KEY = 'scs_recent_searches';
 const DEFAULT_RECENT_SEARCHES = [
@@ -71,19 +70,11 @@ function saveRecentSearch(term: string) {
 }
 
 export interface AppHeaderProps {
-  variant?: 'member' | 'guest';
   onToggleSidebar?: () => void;
   sidebarCollapsed?: boolean;
 }
 
-const GUEST_NAV_LINKS = [
-  { to: '/knowledge', label: 'Kiến thức' },
-  { to: '/programs', label: 'Tình nguyện & Workshop' },
-  { to: '/clubs', label: 'Câu lạc bộ' },
-];
-
 export const AppHeader: React.FC<AppHeaderProps> = ({
-  variant = 'member',
   onToggleSidebar,
 }) => {
   const navigate = useNavigate();
@@ -103,7 +94,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     queryKey: ['nav', 'counters'],
     queryFn: () => apiClient.get('/nav/counters'),
     refetchInterval: 30000,
-    enabled: variant === 'member' && !!user,
+    enabled: !!user,
   });
 
   useEffect(() => {
@@ -144,97 +135,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       // ignore
     }
   };
-
-  // =========================================================================
-  // GUEST HEADER VARIANT (01-common-screens.md § GU5.1)
-  // =========================================================================
-  if (variant === 'guest') {
-    return (
-      <header className="sticky top-0 z-30 w-full bg-surface border-b border-neutral-200">
-        <div className="max-w-[1080px] mx-auto h-14 px-4 lg:px-6 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-6">
-            <Link to="/welcome" className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-md bg-brand-600 text-white flex items-center justify-center font-bold text-sm">
-                S
-              </div>
-              <span className="font-bold text-base tracking-tight text-neutral-900">
-                SCS
-              </span>
-            </Link>
-
-            <nav aria-label="Khám phá công khai" className="hidden sm:flex items-center gap-5">
-              {GUEST_NAV_LINKS.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    cn(
-                      'text-sm transition-colors py-1',
-                      isActive
-                        ? 'text-neutral-900 font-semibold'
-                        : 'text-neutral-600 hover:text-neutral-900 font-medium',
-                    )
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              ))}
-            </nav>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label="Đổi giao diện sáng/tối"
-              className="p-2 rounded-lg text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer"
-              title={resolvedTheme === 'dark' ? 'Chuyển sang chế độ Sáng' : 'Chuyển sang chế độ Tối'}
-            >
-              {resolvedTheme === 'dark' ? (
-                <Sun size={18} className="text-amber-400" />
-              ) : (
-                <Moon size={18} />
-              )}
-            </button>
-            <Link
-              to="/login"
-              className="text-sm font-medium text-neutral-700 hover:text-neutral-900 px-2 py-1"
-            >
-              Đăng nhập
-            </Link>
-            <Link to="/register">
-              <Button variant="primary" size="sm">
-                Đăng ký
-              </Button>
-            </Link>
-          </div>
-        </div>
-
-        {/* Mobile sub-bar for 3 public links (< 640px) */}
-        <nav
-          aria-label="Khám phá công khai di động"
-          className="sm:hidden h-9 px-4 border-t border-neutral-200 flex items-center gap-5 overflow-x-auto bg-surface"
-        >
-          {GUEST_NAV_LINKS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  'text-xs whitespace-nowrap transition-colors',
-                  isActive
-                    ? 'text-neutral-900 font-semibold'
-                    : 'text-neutral-600 hover:text-neutral-900',
-                )
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-      </header>
-    );
-  }
 
   // =========================================================================
   // MEMBER HEADER VARIANT (05-social-patterns.md #1 & #9) — White 56px Header
@@ -527,7 +427,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
               {isMentor && (
                 <DropdownMenuItem onClick={() => navigate('/mentor')} className="cursor-pointer">
-                  <GraduationCap size={16} className="mr-2 text-brand-600" />
+                  <BadgeCheck size={16} className="mr-2 text-brand-600" />
                   <span className="text-brand-700 font-medium">Mentor Center</span>
                 </DropdownMenuItem>
               )}

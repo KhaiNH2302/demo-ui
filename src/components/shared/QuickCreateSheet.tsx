@@ -6,6 +6,7 @@ import {
   Building2,
   Camera,
   GraduationCap,
+  BadgeCheck,
   HeartHandshake,
   Users,
 } from 'lucide-react';
@@ -32,6 +33,7 @@ export const QuickCreateSheet: React.FC<QuickCreateSheetProps> = ({
   const navigate = useNavigate();
   const representedClubs = useAuthStore((s) => s.representedClubs);
   const hasRepresentedClub = representedClubs.length > 0;
+  const isMentor = useAuthStore((s) => s.user?.roles?.some((r) => r.toLowerCase() === 'mentor'));
 
   const actions = [
     {
@@ -84,16 +86,28 @@ export const QuickCreateSheet: React.FC<QuickCreateSheetProps> = ({
         navigate('/programs/new');
       },
     },
-    {
-      key: 'mentoring',
-      title: 'Tìm Mentor hỗ trợ',
-      description: 'Gửi yêu cầu 1-1 tới sinh viên khóa trên đã hoàn thành tốt môn học',
-      icon: GraduationCap,
-      onClick: () => {
-        onOpenChange(false);
-        navigate('/mentoring');
-      },
-    },
+    // FE-05: Mentor tạo nội dung trong Mentor Center; học viên đi tìm Mentor
+    isMentor
+      ? {
+          key: 'mentoring',
+          title: 'Đăng bài / mở khóa học Mentor',
+          description: 'Chia sẻ kinh nghiệm hoặc mở khóa hỗ trợ để học viên gửi yêu cầu cho bạn',
+          icon: BadgeCheck,
+          onClick: () => {
+            onOpenChange(false);
+            navigate('/mentor/posts');
+          },
+        }
+      : {
+          key: 'mentoring',
+          title: 'Tìm Mentor hỗ trợ',
+          description: 'Gửi yêu cầu 1-1 tới sinh viên khóa trên đã hoàn thành tốt môn học',
+          icon: GraduationCap,
+          onClick: () => {
+            onOpenChange(false);
+            navigate('/mentoring');
+          },
+        },
     {
       key: 'club',
       title: hasRepresentedClub ? 'Đăng cơ hội CLB mới' : 'Yêu cầu đại diện CLB',

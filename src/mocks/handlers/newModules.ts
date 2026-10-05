@@ -15,6 +15,7 @@ import {
 } from '../data/programs';
 import { seedGroups } from '../data/groups';
 import { seedKnowledgePosts, seedReports } from '../data/knowledge';
+import { seedMentoringRequests } from '../data/mentoring';
 import { getViewerId } from '../utils';
 import type {
   NavCounters,
@@ -213,7 +214,12 @@ export const newModulesHandlers = [
       pendingSwapInvites: 1,
       pendingRequestsTotal:
         needMoreInfoCount + clubPendingReviews + pendingProgramRegs + pendingFollows + 3,
-      pendingMentoringRequests: 2,
+      pendingMentoringRequests: seedMentoringRequests.filter(
+        (r) => r.mentorId === userId && r.status === 'PENDING_MENTOR_RESPONSE'
+      ).length,
+      mentoringRequestUpdates: seedMentoringRequests.filter(
+        (r) => r.studentId === userId && r.status === 'ACCEPTED'
+      ).length,
       pendingOpportunityResponses: needMoreInfoCount + clubPendingReviews,
       pendingProgramRegistrations: pendingProgramRegs,
       pendingFollowRequests: pendingFollows,

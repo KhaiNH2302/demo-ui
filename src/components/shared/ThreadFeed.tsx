@@ -46,7 +46,7 @@ export interface ThreadFeedProps {
  * - K0 Knowledge Sharing (KnowledgeHubPage)
  * - K5 Bài viết của tôi (MyPostsPage)
  * - C7/C8 Hồ sơ (tab Bài viết)
- * - K7/C12 Màn cho khách (GuestHomePage & KnowledgeHubPage guest mode)
+ * - K7/C12 Màn cho khách (KnowledgeHubPage guest mode)
  */
 export const ThreadFeed: React.FC<ThreadFeedProps> = ({
   posts,

@@ -1,31 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ContextHeader } from '@/components/shared/ContextHeader';
+import { useQuery } from '@tanstack/react-query';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { Switch } from '@/components/ui/Switch';
-import { useToast } from '@/components/ui/Toast';
-import { useAuthStore } from '@/store/authStore';
 import { apiClient } from '@/lib/apiClient';
-import type { Mentor, MentoringRequest } from '@/types/entities';
+import type { MentoringRequest } from '@/types/entities';
 
+/**
+ * [MC0] Khung Mentor Center — luồng FE-05 phía Mentor.
+ * Trang đầu tiên là Yêu cầu nhận được; bật/tắt "Nhận yêu cầu" cấu hình ở tab Hồ sơ Mentor.
+ */
 export const MentorCenterShell: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuthStore();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const { data: mentor } = useQuery({
-    queryKey: ['mentor', 'profile'],
-    queryFn: async () => {
-      try {
-        return await apiClient.get<Mentor>('/mentor/profile');
-      } catch {
-        return null;
-      }
-    },
-  });
 
   const { data: requests } = useQuery({
     queryKey: ['mentor', 'requests'],
@@ -38,81 +24,38 @@ export const MentorCenterShell: React.FC = () => {
     },
   });
 
-  const [accepting, setAccepting] = useState(mentor?.acceptingRequests ?? true);
-
-  const toggleAcceptingMutation = useMutation({
-    mutationFn: (newVal: boolean) =>
-      apiClient.put('/mentor/profile', { ...mentor, acceptingRequests: newVal }),
-    onSuccess: (_, newVal) => {
-      setAccepting(newVal);
-      queryClient.invalidateQueries({ queryKey: ['mentor', 'profile'] });
-      toast({
-        variant: 'success',
-        title: newVal ? 'Đã bật nhận yêu cầu' : 'Đã tạm ngưng nhận yêu cầu',
-      });
-    },
-    onError: () => {
-      toast({ variant: 'error', title: 'Không thể cập nhật trạng thái' });
-    },
-  });
-
-  const pendingCount = (requests || []).filter(
+  const pendingCount = (Array.isArray(requests) ? requests : []).filter(
     (r) => r.status === 'PENDING_MENTOR_RESPONSE'
   ).length;
 
-  const currentTab = location.pathname.includes('/posts')
+  const path = location.pathname;
+  const currentTab = path.startsWith('/mentor/posts')
     ? 'posts'
-    : location.pathname.includes('/requests')
-    ? 'requests'
-    : 'profile';
+    : path.startsWith('/mentor/profile')
+    ? 'profile'
+    : 'requests';
 
   const menuOptions = [
-    { value: 'profile', label: 'Hồ sơ Mentor' },
-    { value: 'posts', label: 'Bài đăng' },
     {
       value: 'requests',
-      label: pendingCount > 0 ? `Yêu cầu (${pendingCount})` : 'Yêu cầu',
+      label: 'Yêu cầu nhận được',
+      badge: pendingCount > 0 ? pendingCount : undefined,
     },
+    { value: 'posts', label: 'Bài đăng' },
+    { value: 'profile', label: 'Hồ sơ Mentor' },
   ];
-
-  const handleTabChange = (val: string) => {
-    if (val === 'profile') navigate('/mentor/profile');
-    else if (val === 'posts') navigate('/mentor/posts');
-    else if (val === 'requests') navigate('/mentor/requests');
-  };
 
   return (
     <div className="space-y-6">
-      {/* ContextHeader L3: Quay lại /me */}
-      <ContextHeader
-        backHref="/me"
-        title="Mentor Center"
-        avatar={{ src: user?.avatarUrl, name: user?.fullName || 'Mentor' }}
-        actions={
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-neutral-600 hidden sm:inline">
-              {accepting ? 'Đang nhận yêu cầu' : 'Tạm bận'}
-            </span>
-            <Switch
-              checked={accepting}
-              onCheckedChange={(checked) => toggleAcceptingMutation.mutate(checked)}
-              aria-label="Bật tắt trạng thái nhận yêu cầu"
-            />
-          </div>
-        }
-      />
-
-      {/* Sub-menu SegmentedControl */}
-      <div className="border-b border-neutral-200 pb-3">
+      <div className="border-b border-neutral-200 pb-3 overflow-x-auto">
         <SegmentedControl
           options={menuOptions}
           value={currentTab}
-          onValueChange={handleTabChange}
+          onValueChange={(val) => navigate(`/mentor/${val}`)}
           size="md"
         />
       </div>
 
-      {/* Child Pages Outlet */}
       <div className="pt-2">
         <Outlet />
       </div>

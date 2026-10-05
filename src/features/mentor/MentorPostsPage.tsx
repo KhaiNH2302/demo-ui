@@ -182,12 +182,8 @@ export const MentorPostsPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <PageHeader
-        title="Mentor Center"
+        title="Bài đăng & Khóa học"
         description="Quản lý bài chia sẻ học thuật và các khóa học / workshop bạn đang phụ trách"
-        breadcrumbs={[
-          { label: 'Trang chủ', href: '/' },
-          { label: 'Mentor Center' },
-        ]}
         actions={
           activeTab === 'courses' ? (
             <Button onClick={handleOpenCreateCourse} leftIcon={<Plus className="w-4 h-4" />}>

@@ -31,6 +31,12 @@ function getMemberCopy(pathname: string): { title: string; description: string }
       description: 'Cập nhật kỹ năng, lịch rảnh và quyền riêng tư cho tài khoản của bạn.',
     };
   }
+  if (pathname.startsWith('/knowledge/')) {
+    return {
+      title: 'Đăng nhập để đọc bài viết',
+      description: 'Xem nội dung đầy đủ, bình luận và trả lời trong cộng đồng sau khi đăng nhập.',
+    };
+  }
   if (pathname.startsWith('/mentor')) {
     return {
       title: 'Đăng nhập để vào Mentor Center',

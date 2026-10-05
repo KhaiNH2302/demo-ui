@@ -18,7 +18,6 @@ import { AdminShell } from './layouts/AdminShell';
 import { ProtectedRoute } from './ProtectedRoute';
 
 // Public & Auth Pages
-import GuestHomePage from '@/features/guest/GuestHomePage';
 import LoginPage from '@/features/auth/LoginPage';
 import RegisterPage from '@/features/auth/RegisterPage';
 import VerifyEmailPage from '@/features/auth/VerifyEmailPage';
@@ -76,11 +75,10 @@ import ProgramRegisterPage from '@/features/programs/ProgramRegisterPage';
 import ProgramFormPage from '@/features/programs/ProgramFormPage';
 import ProgramManagePage from '@/features/programs/ProgramManagePage';
 
-// FE-05: Mentoring (Student)
+// FE-05: Mentoring — phía Học viên (/mentoring/*): tìm Mentor, gửi & theo dõi yêu cầu đã gửi
 import MentoringHomePage from '@/features/mentoring/MentoringHomePage';
 import MentorAiSearchPage from '@/features/mentoring/MentorAiSearchPage';
 import MentorBrowsePage from '@/features/mentoring/MentorBrowsePage';
-import MentorDetailPage from '@/features/mentoring/MentorDetailPage';
 import MentoringPostDetailPage from '@/features/mentoring/MentoringPostDetailPage';
 import MyMentoringRequestsPage from '@/features/mentoring/MyMentoringRequestsPage';
 
@@ -89,7 +87,7 @@ import MentorApplyIntroPage from '@/features/mentor/MentorApplyIntroPage';
 import MentorApplyFormPage from '@/features/mentor/MentorApplyFormPage';
 import MentorApplyReviewPage from '@/features/mentor/MentorApplyReviewPage';
 
-// FE-05: Mentoring (Mentor Center)
+// FE-05: Mentoring — phía Mentor (/mentor/*, Mentor Center): nhận & phản hồi yêu cầu
 import MentorCenterShell from '@/features/mentor/MentorCenterShell';
 import MentorProfilePage from '@/features/mentor/MentorProfilePage';
 import MentorPostsPage from '@/features/mentor/MentorPostsPage';
@@ -113,10 +111,9 @@ import AuditLogsPage from '@/features/admin/AuditLogsPage';
 import KitchenSinkPage from '@/features/dev/KitchenSinkPage';
 
 export const router = createBrowserRouter([
-  // Public Landing & Legal Routes
-  { path: '/welcome', element: <GuestHomePage /> },
-  { path: '/terms', element: <Navigate to="/welcome?legal=terms" replace /> },
-  { path: '/privacy', element: <Navigate to="/welcome?legal=privacy" replace /> },
+  // Legal: mở hộp điều khoản ngay trên Home Feed
+  { path: '/terms', element: <Navigate to="/?legal=terms" replace /> },
+  { path: '/privacy', element: <Navigate to="/?legal=privacy" replace /> },
 
   // Auth Routes
   {
@@ -226,7 +223,8 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         children: [
-          { index: true, element: <Navigate to="profile" replace /> },
+          // Trang đầu tiên của luồng Mentor: yêu cầu nhận được
+          { index: true, element: <Navigate to="requests" replace /> },
           { path: 'profile', element: <MentorProfilePage /> },
           { path: 'posts', element: <MentorPostsPage /> },
           { path: 'requests', element: <MentorRequestsPage /> },

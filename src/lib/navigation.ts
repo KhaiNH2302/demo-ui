@@ -12,6 +12,7 @@ import {
   Settings,
   LifeBuoy,
   ShieldAlert,
+  BadgeCheck,
   type LucideIcon,
 } from 'lucide-react';
 import type { NavCounters } from '@/types/entities';
@@ -25,6 +26,8 @@ export interface NavItemConfig {
   requiresRole?: 'mentor' | 'admin';
   badgeType?: 'count' | 'dot';
   badge?: (counters: NavCounters) => number | boolean | undefined;
+  /** Ghi đè khi tài khoản có role 'mentor' (cùng vị trí menu, khác nhãn & trang đầu tiên). */
+  mentorVariant?: Partial<Pick<NavItemConfig, 'label' | 'href' | 'to' | 'icon' | 'badge'>>;
 }
 
 export interface NavSection {
@@ -55,12 +58,21 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       {
         key: 'mentoring',
-        label: 'Mentor',
+        label: 'Tìm Mentor',
         href: '/mentoring',
         to: '/mentoring',
         icon: GraduationCap,
         badgeType: 'dot',
-        badge: (c) => (c.pendingMentoringRequests || 0) > 0,
+        // Học viên: có yêu cầu đã gửi vừa được Mentor phản hồi
+        badge: (c) => (c.mentoringRequestUpdates || 0) > 0,
+        // Mentor: vào thẳng Mentor Center, trang đầu là Yêu cầu nhận được
+        mentorVariant: {
+          label: 'Mentor Center',
+          href: '/mentor',
+          to: '/mentor',
+          icon: BadgeCheck,
+          badge: (c) => (c.pendingMentoringRequests || 0) > 0,
+        },
       },
       {
         key: 'swap',

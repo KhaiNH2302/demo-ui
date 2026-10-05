@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
-import { PageHeader } from '@/components/shared/PageHeader';
 import { QueryBoundary } from '@/components/shared/QueryBoundary';
 import { UserMiniCard } from '@/components/shared/UserMiniCard';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -12,15 +11,19 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
-import { toast } from '@/components/ui/Toast';
-import { Check, X, Clock, MessageSquare, Calendar, Sparkles } from 'lucide-react';
+import { Check, X, Clock, MessageSquare, Calendar } from 'lucide-react';
 import type { MentoringRequest } from '@/types/entities';
+import { useMentorRequestActions } from './useMentorRequestActions';
 
 export const MentorRequestsPage: React.FC = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab');
 
-  const [tab, setTab] = useState<'pending' | 'accepted' | 'rejected'>('pending');
+  const [tab, setTab] = useState<'pending' | 'accepted' | 'rejected'>(
+    initialTab === 'accepted' || initialTab === 'rejected' ? initialTab : 'pending'
+  );
+  const [acceptedConvId, setAcceptedConvId] = useState<string | null>(null);
   const [selectedReq, setSelectedReq] = useState<MentoringRequest | null>(null);
   const [rejectReqId, setRejectReqId] = useState<string | null>(null);
 
@@ -29,26 +32,16 @@ export const MentorRequestsPage: React.FC = () => {
     queryFn: () => apiClient.get<MentoringRequest[]>('/mentor/requests'),
   });
 
-  const acceptMutation = useMutation({
-    mutationFn: (id: string) => apiClient.post<{ request: MentoringRequest; conversationId: string }>(`/mentor/requests/${id}/accept`),
-    onSuccess: (data) => {
-      toast.success('Đã chấp nhận hướng dẫn sinh viên! Kênh chat trao đổi đã được kích hoạt.');
-      setSelectedReq(null);
-      queryClient.invalidateQueries({ queryKey: ['mentor', 'requests'] });
+  const { accept: acceptMutation, reject: rejectMutation } = useMentorRequestActions({
+    // Spec MC3: chấp nhận xong → hiện nút "Mở chat" ngay trong chi tiết trước khi đóng
+    onAccepted: (data) => {
+      setSelectedReq(data.request);
+      setAcceptedConvId(data.conversationId);
     },
-    onError: () => toast.error('Có lỗi xảy ra, vui lòng thử lại.'),
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
-      apiClient.post(`/mentor/requests/${id}/reject`, { reason }),
-    onSuccess: () => {
-      toast.success('Đã từ chối yêu cầu.');
+    onRejected: () => {
       setRejectReqId(null);
       setSelectedReq(null);
-      queryClient.invalidateQueries({ queryKey: ['mentor', 'requests'] });
     },
-    onError: () => toast.error('Có lỗi xảy ra.'),
   });
 
   const allRequests = requestsQuery.data || [];
@@ -60,15 +53,12 @@ export const MentorRequestsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Yêu cầu học tập nhận được"
-        description="Xét duyệt các yêu cầu cần trợ giúp từ sinh viên và trao đổi lịch học"
-        breadcrumbs={[
-          { label: 'Trang chủ', href: '/' },
-          { label: 'Mentor Center' },
-          { label: 'Yêu cầu nhận được' },
-        ]}
-      />
+      <div>
+        <h2 className="text-lg font-semibold text-neutral-900">Yêu cầu nhận được</h2>
+        <p className="text-sm text-neutral-600">
+          Phía Mentor: yêu cầu học viên gửi cho bạn. Mở chi tiết rồi Chấp nhận hoặc Từ chối — yêu cầu đã xử lý sẽ không xử lý lại.
+        </p>
+      </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-md">
@@ -76,7 +66,7 @@ export const MentorRequestsPage: React.FC = () => {
             Chờ phản hồi ({allRequests.filter((r) => r.status === 'PENDING_MENTOR_RESPONSE').length})
           </TabsTrigger>
           <TabsTrigger value="accepted">
-            Đã nhận ({allRequests.filter((r) => r.status === 'ACCEPTED').length})
+            Đã chấp nhận ({allRequests.filter((r) => r.status === 'ACCEPTED').length})
           </TabsTrigger>
           <TabsTrigger value="rejected">
             Đã từ chối ({allRequests.filter((r) => r.status === 'REJECTED').length})
@@ -88,7 +78,7 @@ export const MentorRequestsPage: React.FC = () => {
             {filteredRequests.length === 0 ? (
               <EmptyState
                 title="Không có yêu cầu nào"
-                description="Hiện không có yêu cầu nào trong danh mục này."
+                description="Chưa có yêu cầu học viên gửi cho bạn trong danh mục này."
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -132,7 +122,7 @@ export const MentorRequestsPage: React.FC = () => {
                           <Button
                             size="sm"
                             onClick={() => acceptMutation.mutate(req.id)}
-                            loading={acceptMutation.isPending}
+                            loading={acceptMutation.isPending && acceptMutation.variables === req.id}
                           >
                             <Check className="w-3.5 h-3.5 mr-1" /> Chấp nhận
                           </Button>
@@ -152,7 +142,13 @@ export const MentorRequestsPage: React.FC = () => {
       </Tabs>
 
       {/* Request Detail Dialog */}
-      <Dialog open={!!selectedReq} onOpenChange={() => setSelectedReq(null)}>
+      <Dialog
+        open={!!selectedReq}
+        onOpenChange={() => {
+          setSelectedReq(null);
+          setAcceptedConvId(null);
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Chi tiết yêu cầu hỗ trợ học tập</DialogTitle>
@@ -160,7 +156,7 @@ export const MentorRequestsPage: React.FC = () => {
           {selectedReq && (
             <div className="space-y-4 py-2">
               <div className="p-3 bg-[var(--surface-muted)] rounded-lg">
-                <span className="text-xs text-[var(--text-muted)] block mb-1">Sinh viên gửi yêu cầu:</span>
+                <span className="text-xs text-[var(--text-muted)] block mb-1">Học viên gửi yêu cầu:</span>
                 <UserMiniCard userId={selectedReq.studentId} showMajor />
               </div>
 
@@ -183,6 +179,16 @@ export const MentorRequestsPage: React.FC = () => {
               )}
 
               <DialogFooter className="pt-4 border-t border-[var(--border-subtle)]">
+                {selectedReq.status !== 'PENDING_MENTOR_RESPONSE' && (
+                  <div className="flex items-center justify-between w-full gap-2">
+                    <StatusBadge status={selectedReq.status} domain="mentoring" />
+                    {selectedReq.status === 'ACCEPTED' && (
+                      <Button onClick={() => navigate(acceptedConvId ? `/chats/${acceptedConvId}` : '/chats')}>
+                        <MessageSquare className="w-4 h-4 mr-1.5" /> Mở chat với học viên
+                      </Button>
+                    )}
+                  </div>
+                )}
                 {selectedReq.status === 'PENDING_MENTOR_RESPONSE' && (
                   <div className="flex items-center gap-2 w-full justify-end">
                     <Button
@@ -213,7 +219,7 @@ export const MentorRequestsPage: React.FC = () => {
         open={!!rejectReqId}
         onOpenChange={() => setRejectReqId(null)}
         title="Từ chối yêu cầu Mentoring"
-        description="Gửi phản hồi cho sinh viên lý do bạn không thể hỗ trợ đợt này."
+        description="Học viên sẽ thấy lý do này trong mục Yêu cầu đã gửi."
         label="Lý do từ chối (tùy chọn)"
         placeholder="Ví dụ: Đã kín lịch vào khung giờ này..."
         onConfirm={(reason) => {

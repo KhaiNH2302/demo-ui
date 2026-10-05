@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   UsersRound,
@@ -245,7 +245,12 @@ export const DashboardPage: React.FC = () => {
   const isGuest = !user;
 
   const [feedTab, setFeedTab] = useState<'for_you' | 'following'>('for_you');
-  const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
+  // /terms, /privacy chuyển về /?legal=... để mở hộp điều khoản ngay trên Home Feed
+  const [searchParams] = useSearchParams();
+  const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(() => {
+    const legal = searchParams.get('legal');
+    return legal === 'terms' || legal === 'privacy' ? legal : null;
+  });
 
   // C6.0 Line 1: Pending guest action before login
   const [pendingAction, setPendingAction] = useState<PendingGuestAction | null>(() =>

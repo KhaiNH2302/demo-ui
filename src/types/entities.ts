@@ -1044,7 +1044,10 @@ export interface NavCounters {
   pendingGroupJoinRequests: number;
   pendingSwapInvites: number;
   pendingRequestsTotal: number;
+  /** Mentor: số yêu cầu mentoring nhận được đang chờ mình phản hồi */
   pendingMentoringRequests: number;
+  /** Học viên: số yêu cầu đã gửi vừa được Mentor chấp nhận/từ chối (chưa xem) */
+  mentoringRequestUpdates?: number;
   pendingOpportunityResponses?: number;
   pendingProgramRegistrations?: number;
   pendingFollowRequests?: number;

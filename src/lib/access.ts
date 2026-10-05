@@ -24,6 +24,8 @@ const RULES: AccessRule[] = [
   { pattern: '/settings', access: 'member' },
   { pattern: '/profile/me', access: 'member' },
   { pattern: '/knowledge/me', access: 'member' },
+  // Chi tiết bài viết Knowledge (kèm bình luận) chỉ dành cho thành viên
+  { pattern: '/knowledge/:id', access: 'member' },
   { pattern: '/groups/me', access: 'member' },
   { pattern: '/groups/:id/manage', access: 'member' },
   { pattern: '/swap/connections', access: 'member' },
@@ -47,7 +49,6 @@ const RULES: AccessRule[] = [
   { pattern: '/mentor/apply/form', access: 'action' },
 
   // ---- open: trang chi tiết tính vào giới hạn lướt ----
-  { pattern: '/knowledge/:id', access: 'open', countsTowardBudget: true },
   { pattern: '/groups/:id', access: 'open', countsTowardBudget: true },
   { pattern: '/swap/:id', access: 'open', countsTowardBudget: true },
   { pattern: '/clubs/opportunities/:oppId', access: 'open', countsTowardBudget: true },

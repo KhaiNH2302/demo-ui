@@ -89,7 +89,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     );
   };
 
-  const renderItem = (item: NavItemConfig) => {
+  const renderItem = (rawItem: NavItemConfig) => {
+    const item = isMentor && rawItem.mentorVariant ? { ...rawItem, ...rawItem.mentorVariant } : rawItem;
     if (item.requiresRole === 'mentor' && !isMentor) {
       return null;
     }
