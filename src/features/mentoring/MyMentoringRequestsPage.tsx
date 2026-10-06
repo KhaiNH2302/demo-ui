@@ -50,7 +50,7 @@ export const MyMentoringRequestsPage: React.FC = () => {
         breadcrumbs={[{ label: 'Trang chủ', href: '/' }, { label: 'Mentoring', href: '/mentoring' }, { label: 'Yêu cầu' }]}
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate('/mentoring/feed')}>Mở Mentoring Feed</Button>
+            <Button variant="outline" onClick={() => navigate('/mentoring')}>Mở Mentoring Feed</Button>
             <Button onClick={() => navigate('/mentoring')}><Plus className="mr-1.5 h-4 w-4" /> Tạo kết nối mới</Button>
           </div>
         }

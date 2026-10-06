@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import {
   seedMentors,
+  seedMentoringComments,
   seedMentoringPosts,
   seedMentoringRequests,
   seedMentorCourses,
@@ -15,6 +16,7 @@ import type {
   MentorProfileSection,
   MentoringRequest,
   AiMentorMatch,
+  Comment,
 } from '@/types/entities';
 
 export const mentoringHandlers = [
@@ -90,6 +92,49 @@ export const mentoringHandlers = [
         mentor,
       },
     });
+  }),
+
+  http.get('/api/v1/mentoring/comments', async () => {
+    await mockDelay();
+    return HttpResponse.json({ data: seedMentoringComments });
+  }),
+
+  http.post('/api/v1/mentoring/posts/:id/like', async ({ params }) => {
+    await mockDelay();
+    const post = seedMentoringPosts.find((item) => item.id === params.id);
+    if (post && !post.liked) {
+      post.liked = true;
+      post.likeCount += 1;
+    }
+    return HttpResponse.json({ data: { liked: true, likeCount: post?.likeCount || 0 } });
+  }),
+
+  http.delete('/api/v1/mentoring/posts/:id/like', async ({ params }) => {
+    await mockDelay();
+    const post = seedMentoringPosts.find((item) => item.id === params.id);
+    if (post?.liked) {
+      post.liked = false;
+      post.likeCount = Math.max(0, post.likeCount - 1);
+    }
+    return HttpResponse.json({ data: { liked: false, likeCount: post?.likeCount || 0 } });
+  }),
+
+  http.post('/api/v1/mentoring/posts/:id/comments', async ({ params, request }) => {
+    await mockDelay();
+    const body = (await request.json()) as { content: string; parentId?: string };
+    const newComment: Comment = {
+      id: `mcmt_${Date.now()}`,
+      postId: params.id as string,
+      authorId: getViewerId(request),
+      content: body.content,
+      parentId: body.parentId,
+      likesCount: 0,
+      createdAt: new Date().toISOString(),
+    };
+    seedMentoringComments.push(newComment);
+    const post = seedMentoringPosts.find((item) => item.id === params.id);
+    if (post) post.commentCount += 1;
+    return HttpResponse.json({ data: newComment });
   }),
 
   http.post('/api/v1/mentoring/ai-search', async () => {

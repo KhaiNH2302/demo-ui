@@ -4,7 +4,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowRight,
   CalendarDays,
+  CornerDownRight,
   Filter,
+  Heart,
   MessageCircleMore,
   Newspaper,
   Plus,
@@ -28,7 +30,7 @@ import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { toast } from '@/components/ui/Toast';
-import type { MentorPost, SupportMode } from '@/types/entities';
+import type { Comment, MentorPost, SupportMode } from '@/types/entities';
 
 const FIELD_OPTIONS = [
   { label: 'Tất cả lĩnh vực', value: 'all' },
@@ -80,10 +82,17 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({
   const [mode, setMode] = useState<SupportMode>('online');
   const [capacity, setCapacity] = useState(1);
   const [deadline, setDeadline] = useState(defaultDeadline);
+  const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
 
   const postsQuery = useQuery({
     queryKey: ['mentoring', 'posts'],
     queryFn: () => apiClient.get<MentorPost[]>('/mentoring/posts'),
+  });
+
+  const commentsQuery = useQuery({
+    queryKey: ['mentoring', 'comments'],
+    queryFn: () => apiClient.get<Comment[]>('/mentoring/comments'),
   });
 
   const createPostMutation = useMutation({
@@ -110,6 +119,26 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({
       queryClient.invalidateQueries({ queryKey: ['mentoring', 'posts'] });
     },
     onError: () => toast.error('Không thể đăng bài. Vui lòng kiểm tra nội dung và thử lại.'),
+  });
+
+  const likeMutation = useMutation({
+    mutationFn: ({ postId, liked }: { postId: string; liked: boolean }) =>
+      liked
+        ? apiClient.post(`/mentoring/posts/${postId}/like`)
+        : apiClient.delete(`/mentoring/posts/${postId}/like`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['mentoring', 'posts'] }),
+    onError: () => toast.error('Không thể cập nhật lượt thích.'),
+  });
+
+  const addCommentMutation = useMutation({
+    mutationFn: ({ postId, content }: { postId: string; content: string }) =>
+      apiClient.post<Comment>(`/mentoring/posts/${postId}/comments`, { content }),
+    onSuccess: (_comment, variables) => {
+      setCommentDrafts((current) => ({ ...current, [variables.postId]: '' }));
+      queryClient.invalidateQueries({ queryKey: ['mentoring', 'comments'] });
+      queryClient.invalidateQueries({ queryKey: ['mentoring', 'posts'] });
+    },
+    onError: () => toast.error('Không thể gửi bình luận.'),
   });
 
   const posts = useMemo(() => {
@@ -144,12 +173,20 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({
       {!embedded && (
         <PageHeader
           title="Mentoring Feed"
-          description="Feed dùng chung để Student và Mentor tìm thấy nhau qua các bài đăng mentoring."
-          breadcrumbs={[{ label: 'Trang chủ', href: '/' }, { label: 'Mentoring', href: '/mentoring' }, { label: 'Feed' }]}
+          description="Lướt bài đăng, tìm Mentor phù hợp hoặc đăng nhu cầu mentoring của bạn."
+          breadcrumbs={[{ label: 'Trang chủ', href: '/' }, { label: 'Tìm Mentor' }]}
           actions={
-            <Button onClick={() => setComposerOpen(true)}>
-              <Plus className="mr-1.5 h-4 w-4" /> Tạo bài
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => navigate('/mentoring/browse')}>
+                <Search className="mr-1.5 h-4 w-4" /> Danh sách Mentor
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/mentoring/ai')}>
+                Gợi ý bằng AI
+              </Button>
+              <Button onClick={() => setComposerOpen(true)}>
+                <Plus className="mr-1.5 h-4 w-4" /> Tạo bài
+              </Button>
+            </div>
           }
         />
       )}
@@ -177,7 +214,7 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({
             className="min-h-11 flex-1 rounded-full border border-neutral-200 bg-surface px-4 text-left text-sm text-neutral-500 transition-colors hover:border-violet-300 hover:bg-violet-50/40"
           >
             {currentRole === 'mentor'
-              ? 'Bạn muốn nhận hỗ trợ chủ đề nào? Hãy đăng Offer Mentoring...'
+              ? 'Giới thiệu bản thân để sinh viên phù hợp tìm thấy bạn...'
               : 'Bạn đang cần Mentor hỗ trợ điều gì? Hãy đăng Need Mentor...'}
           </button>
           <Badge variant={currentRole === 'mentor' ? 'brand' : 'secondary'}>
@@ -206,7 +243,7 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({
             <p className="mt-1 text-sm text-neutral-500">Hãy đổi bộ lọc hoặc tạo bài mentoring mới.</p>
           </Card>
         ) : (
-          <div className="mx-auto max-w-2xl space-y-4">
+          <div className="w-full space-y-4">
             {posts.map((post) => {
               const ownerId = post.authorId || post.mentorId;
               const isOwner = ownerId === user?.id;
@@ -214,6 +251,9 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({
               const filled = post.filledCount || 0;
               const remaining = Math.max(total - filled, 0);
               const isNeed = post.postType === 'NEED_MENTOR';
+              const postComments = (commentsQuery.data || []).filter((comment) => comment.postId === post.id);
+              const rootComments = postComments.filter((comment) => !comment.parentId);
+              const commentsOpen = Boolean(expandedComments[post.id]);
               return (
                 <Card key={post.id} className="overflow-hidden">
                   <CardHeader className="space-y-3 pb-3">
@@ -253,9 +293,26 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({
                     </div>
                   </CardContent>
                   <CardFooter className="flex items-center justify-between border-t border-neutral-100 pt-4">
-                    <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-                      <MessageCircleMore className="h-4 w-4" />
-                      {post.commentCount || 0} trao đổi
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={post.liked ? 'text-rose-600' : 'text-neutral-600'}
+                        loading={likeMutation.isPending && likeMutation.variables?.postId === post.id}
+                        onClick={() => likeMutation.mutate({ postId: post.id, liked: !post.liked })}
+                      >
+                        <Heart className={`mr-1.5 h-4 w-4 ${post.liked ? 'fill-current' : ''}`} />
+                        {post.likeCount || 0} Thích
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-neutral-600"
+                        onClick={() => setExpandedComments((current) => ({ ...current, [post.id]: !current[post.id] }))}
+                      >
+                        <MessageCircleMore className="mr-1.5 h-4 w-4" />
+                        {post.commentCount || 0} Bình luận
+                      </Button>
                     </div>
                     {isOwner ? (
                       <Button
@@ -271,6 +328,69 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({
                       </Button>
                     )}
                   </CardFooter>
+
+                  {commentsOpen && (
+                    <div className="space-y-4 border-t border-neutral-100 bg-neutral-50/60 p-4">
+                      {rootComments.length === 0 ? (
+                        <p className="text-center text-xs text-neutral-500">Chưa có bình luận. Hãy bắt đầu cuộc trò chuyện.</p>
+                      ) : (
+                        <div className="space-y-4">
+                          {rootComments.map((comment) => {
+                            const replies = postComments.filter((reply) => reply.parentId === comment.id);
+                            return (
+                              <div key={comment.id} className="space-y-2.5">
+                                <div className="rounded-xl border border-neutral-200 bg-surface p-3">
+                                  <UserMiniCard
+                                    userId={comment.authorId}
+                                    size="sm"
+                                    subtitle={new Date(comment.createdAt).toLocaleString('vi-VN')}
+                                  />
+                                  <p className="mt-2 text-sm leading-relaxed text-neutral-700">{comment.content}</p>
+                                </div>
+                                {replies.map((reply) => (
+                                  <div key={reply.id} className="ml-6 flex gap-2 sm:ml-10">
+                                    <CornerDownRight className="mt-3 h-4 w-4 shrink-0 text-neutral-400" />
+                                    <div className="min-w-0 flex-1 rounded-xl border border-violet-100 bg-violet-50/60 p-3">
+                                      <UserMiniCard
+                                        userId={reply.authorId}
+                                        size="sm"
+                                        subtitle={`Phản hồi · ${new Date(reply.createdAt).toLocaleString('vi-VN')}`}
+                                      />
+                                      <p className="mt-2 text-sm leading-relaxed text-neutral-700">{reply.content}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      <form
+                        className="flex gap-2"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          const content = (commentDrafts[post.id] || '').trim();
+                          if (content) addCommentMutation.mutate({ postId: post.id, content });
+                        }}
+                      >
+                        <Input
+                          value={commentDrafts[post.id] || ''}
+                          onChange={(event) => setCommentDrafts((current) => ({ ...current, [post.id]: event.target.value }))}
+                          placeholder="Viết bình luận hoặc đặt câu hỏi cho Mentor..."
+                        />
+                        <Button
+                          type="submit"
+                          size="sm"
+                          disabled={!(commentDrafts[post.id] || '').trim()}
+                          loading={addCommentMutation.isPending && addCommentMutation.variables?.postId === post.id}
+                        >
+                          <Send className="h-4 w-4" />
+                          <span className="sr-only">Gửi bình luận</span>
+                        </Button>
+                      </form>
+                    </div>
+                  )}
                 </Card>
               );
             })}
@@ -287,14 +407,22 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({
             <div className="rounded-lg border border-violet-100 bg-violet-50 p-3 text-sm text-violet-800">
               Loại bài được hệ thống tự gán theo role <strong>{currentRole === 'mentor' ? 'Mentor' : 'Student'}</strong>. Bạn không cần chọn loại bài.
             </div>
-            <FormField label="Tiêu đề" required>
-              <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={currentRole === 'mentor' ? 'Ví dụ: Nhận hướng dẫn CSD201 và PRJ301' : 'Ví dụ: Cần Mentor review kiến trúc Capstone'} required />
+            <FormField label={currentRole === 'mentor' ? 'Câu giới thiệu nổi bật' : 'Tiêu đề'} required>
+              <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={currentRole === 'mentor' ? 'Ví dụ: Mình là Minh — Mentor backend luôn sẵn sàng đồng hành' : 'Ví dụ: Cần Mentor review kiến trúc Capstone'} required />
             </FormField>
-            <FormField label="Nội dung" required>
-              <Textarea value={content} onChange={(event) => setContent(event.target.value)} rows={5} placeholder="Mô tả mục tiêu, kỹ năng hoặc phạm vi hỗ trợ..." required />
+            <FormField label={currentRole === 'mentor' ? 'Giới thiệu về bạn' : 'Nội dung'} required>
+              <Textarea
+                value={content}
+                onChange={(event) => setContent(event.target.value)}
+                rows={5}
+                placeholder={currentRole === 'mentor'
+                  ? 'Bạn là ai, phong cách đồng hành của bạn thế nào và vì sao sinh viên nên kết nối với bạn?'
+                  : 'Mô tả mục tiêu, vấn đề và sự hỗ trợ bạn đang cần...'}
+                required
+              />
             </FormField>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Lĩnh vực" required>
+              <FormField label={currentRole === 'mentor' ? 'Bạn có thể hỗ trợ về' : 'Lĩnh vực'} required>
                 <Select value={postField} onChange={(event) => setPostField(event.target.value)} options={FIELD_OPTIONS.filter((option) => option.value !== 'all')} />
               </FormField>
               <FormField label="Hình thức">

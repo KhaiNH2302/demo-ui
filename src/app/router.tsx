@@ -80,7 +80,6 @@ import ProgramFormPage from '@/features/programs/ProgramFormPage';
 import ProgramManagePage from '@/features/programs/ProgramManagePage';
 
 // FE-05: Mentoring — phía Học viên (/mentoring/*): tìm Mentor, gửi & theo dõi yêu cầu đã gửi
-import MentoringHomePage from '@/features/mentoring/MentoringHomePage';
 import MentorAiSearchPage from '@/features/mentoring/MentorAiSearchPage';
 import MentorBrowsePage from '@/features/mentoring/MentorBrowsePage';
 import MentoringPostDetailPage from '@/features/mentoring/MentoringPostDetailPage';
@@ -207,7 +206,7 @@ export const router = createBrowserRouter([
       { path: 'programs/manage/:id', element: <ProgramManagePage /> },
 
       // FE-05: Mentoring (Student)
-      { path: 'mentoring', element: <MentoringHomePage /> },
+      { path: 'mentoring', element: <MentoringFeedPage /> },
       { path: 'mentoring/ai', element: <MentorAiSearchPage /> },
       { path: 'mentoring/browse', element: <MentorBrowsePage /> },
       { path: 'mentoring/feed', element: <MentoringFeedPage /> },

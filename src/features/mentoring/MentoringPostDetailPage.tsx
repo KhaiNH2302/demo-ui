@@ -45,7 +45,7 @@ export const MentoringPostDetailPage: React.FC = () => {
         <PageHeader
           title={post.title}
           description={`${isNeed ? 'Need Mentor' : 'Offer Mentoring'} • ${post.field || 'Mentoring'}`}
-          breadcrumbs={[{ label: 'Trang chủ', href: '/' }, { label: 'Mentoring Feed', href: '/mentoring/feed' }, { label: 'Chi tiết bài' }]}
+          breadcrumbs={[{ label: 'Trang chủ', href: '/' }, { label: 'Mentoring Feed', href: '/mentoring' }, { label: 'Chi tiết bài' }]}
           actions={
             <Button variant="outline" onClick={() => navigate(-1)}>
               <ArrowLeft className="mr-1.5 h-4 w-4" /> Quay lại
