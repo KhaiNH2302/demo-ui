@@ -7,7 +7,7 @@ import type { MentoringRequest } from '@/types/entities';
 
 /**
  * [MC0] Khung Mentor Center — luồng FE-05 phía Mentor.
- * Trang đầu tiên là Yêu cầu nhận được; bật/tắt "Nhận yêu cầu" cấu hình ở tab Hồ sơ Mentor.
+ * Trang đầu tiên là Yêu cầu nhận được; Mentoring Feed dùng chung với Student.
  */
 export const MentorCenterShell: React.FC = () => {
   const navigate = useNavigate();
@@ -41,7 +41,7 @@ export const MentorCenterShell: React.FC = () => {
       label: 'Yêu cầu nhận được',
       badge: pendingCount > 0 ? pendingCount : undefined,
     },
-    { value: 'posts', label: 'Bài đăng' },
+    { value: 'posts', label: 'Mentoring Feed' },
     { value: 'profile', label: 'Hồ sơ Mentor' },
   ];
 

@@ -1,94 +1,119 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { ArrowLeft, CalendarDays, Send, ShieldCheck, Users } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useAuthStore } from '@/store/authStore';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { QueryBoundary } from '@/components/shared/QueryBoundary';
 import { UserMiniCard } from '@/components/shared/UserMiniCard';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { ArrowLeft, Send, Users, Sparkles, BookOpen } from 'lucide-react';
+import { Chip } from '@/components/ui/Chip';
 import { SendMentoringRequestDialog } from './SendMentoringRequestDialog';
-import type { MentoringPost, Mentor } from '@/types/entities';
+import type { MentorPost } from '@/types/entities';
 
 interface PostDetailResponse {
-  post: MentoringPost;
-  mentor?: Mentor;
+  post: MentorPost;
 }
 
 export const MentoringPostDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [isSendOpen, setIsSendOpen] = useState(false);
-
+  const user = useAuthStore((state) => state.user);
+  const [sendOpen, setSendOpen] = useState(false);
   const postQuery = useQuery({
     queryKey: ['mentoring', 'posts', id],
     queryFn: () => apiClient.get<PostDetailResponse>(`/mentoring/posts/${id}`),
-    enabled: !!id,
+    enabled: Boolean(id),
   });
 
   const post = postQuery.data?.post;
-  const mentor = postQuery.data?.mentor;
+  if (!post) return <QueryBoundary query={postQuery}>{null}</QueryBoundary>;
+
+  const ownerId = post.authorId || post.mentorId;
+  const isOwner = ownerId === user?.id;
+  const isNeed = post.postType === 'NEED_MENTOR';
+  const total = post.capacity || post.slots || 1;
+  const filled = post.filledCount || 0;
+  const remaining = Math.max(total - filled, 0);
 
   return (
-    <QueryBoundary queries={[postQuery]}>
-      {post && (
-        <div className="max-w-3xl mx-auto space-y-6">
-          <PageHeader
-            title={post.title}
-            description={`Chuyên ngành: ${post.field} • Hình thức: ${post.mode}`}
-            breadcrumbs={[
-              { label: 'Trang chủ', href: '/' },
-              { label: 'Mentoring', href: '/mentoring' },
-              { label: 'Chi tiết bài đăng' },
-            ]}
-            actions={
-              <Button variant="outline" onClick={() => navigate(-1)}>
-                <ArrowLeft className="w-4 h-4 mr-1.5" /> Quay lại
+    <QueryBoundary query={postQuery}>
+      <div className="mx-auto max-w-3xl space-y-6">
+        <PageHeader
+          title={post.title}
+          description={`${isNeed ? 'Need Mentor' : 'Offer Mentoring'} • ${post.field || 'Mentoring'}`}
+          breadcrumbs={[{ label: 'Trang chủ', href: '/' }, { label: 'Mentoring Feed', href: '/mentoring/feed' }, { label: 'Chi tiết bài' }]}
+          actions={
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              <ArrowLeft className="mr-1.5 h-4 w-4" /> Quay lại
+            </Button>
+          }
+        />
+
+        <Card>
+          <CardHeader className="space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <UserMiniCard userId={ownerId} showMajor />
+              <div className="flex flex-col items-end gap-1.5">
+                <Badge variant={isNeed ? 'attention' : 'brand'}>{isNeed ? 'Need Mentor' : 'Offer Mentoring'}</Badge>
+                <Badge variant={post.status === 'PUBLISHED' || !post.status ? 'success' : 'neutral'} dot>
+                  {post.status || 'PUBLISHED'}
+                </Badge>
+              </div>
+            </div>
+            <CardTitle className="text-xl">{post.title}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <p className="whitespace-pre-line text-sm leading-relaxed text-neutral-700">{post.content || post.contentMd}</p>
+
+            <div className="flex flex-wrap gap-1.5">
+              {post.field && <Chip size="sm">{post.field}</Chip>}
+              {post.mode && <Chip size="sm">{String(post.mode)}</Chip>}
+              {(post.tags || []).map((tag) => <Chip key={tag} size="sm">#{tag}</Chip>)}
+            </div>
+
+            <div className="grid gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4 sm:grid-cols-2">
+              <div className="flex items-center gap-2 text-sm text-neutral-700">
+                <CalendarDays className="h-4 w-4 text-neutral-400" />
+                <span>Deadline: <strong>{post.deadline ? new Date(post.deadline).toLocaleDateString('vi-VN') : 'Chưa đặt'}</strong></span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-neutral-700 sm:justify-end">
+                <Users className="h-4 w-4 text-neutral-400" />
+                <span>Capacity còn lại: <strong>{remaining}/{total}</strong></span>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-xs text-emerald-800">
+              <p className="flex items-center gap-1.5 font-semibold">
+                <ShieldCheck className="h-4 w-4" /> SCS sẽ kiểm tra deadline, capacity và duplicate trước khi chuyển yêu cầu cho Post Owner.
+              </p>
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-end border-t border-neutral-100 pt-4">
+            {isOwner ? (
+              <Button variant="secondary" onClick={() => navigate(user?.roles?.some((role) => role.toLowerCase() === 'mentor') ? '/mentor/requests' : '/mentoring/requests')}>
+                Xem yêu cầu nhận được
               </Button>
-            }
-          />
-
-          <Card>
-            <CardHeader className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Badge variant="secondary">{post.field}</Badge>
-                <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
-                  <Users className="w-3.5 h-3.5" /> Còn trống {post.slots} slot
-                </span>
-              </div>
-              <CardTitle className="text-xl">{post.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="p-4 bg-[var(--surface-muted)] rounded-lg">
-                <span className="text-xs text-[var(--text-muted)] block mb-1">Mentor phụ trách:</span>
-                <UserMiniCard userId={post.mentorId} showMajor />
-              </div>
-
-              <div>
-                <h4 className="text-sm font-semibold mb-2">Nội dung chi tiết chương trình:</h4>
-                <p className="text-sm text-[var(--text-main)] whitespace-pre-line leading-relaxed">
-                  {post.content}
-                </p>
-              </div>
-            </CardContent>
-            <CardFooter className="border-t border-[var(--border-subtle)] pt-4 flex justify-end">
-              <Button onClick={() => setIsSendOpen(true)}>
-                <Send className="w-4 h-4 mr-1.5" /> Đăng ký học cùng Mentor
+            ) : (
+              <Button onClick={() => setSendOpen(true)} disabled={remaining === 0 || post.status === 'FILLED'}>
+                <Send className="mr-1.5 h-4 w-4" /> Gửi yêu cầu cho Post Owner
               </Button>
-            </CardFooter>
-          </Card>
+            )}
+          </CardFooter>
+        </Card>
 
-          {/* Send Request Dialog */}
-          <SendMentoringRequestDialog
-            open={isSendOpen}
-            onOpenChange={setIsSendOpen}
-            mentorId={post.mentorId}
-            initialTopic={post.title}
-          />
-        </div>
-      )}
+        <SendMentoringRequestDialog
+          open={sendOpen}
+          onOpenChange={setSendOpen}
+          mentorId={ownerId}
+          sourcePostId={post.id}
+          recipientLabel="Post Owner"
+          initialTopic={post.title}
+        />
+      </div>
     </QueryBoundary>
   );
 };

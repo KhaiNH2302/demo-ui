@@ -9,13 +9,15 @@ import type { MentoringRequest } from '@/types/entities';
  * Nếu request không còn pending (409 MENTORING_REQUEST_NOT_PENDING) → báo trạng thái hiện tại, không xử lý lại.
  */
 export function useMentorRequestActions(opts?: {
-  onAccepted?: (data: { request: MentoringRequest; conversationId: string }) => void;
+  onAccepted?: (data: { request: MentoringRequest; connectionId: string }) => void;
   onRejected?: () => void;
 }) {
   const queryClient = useQueryClient();
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ['mentor', 'requests'] });
+    queryClient.invalidateQueries({ queryKey: ['mentoring', 'requests'] });
+    queryClient.invalidateQueries({ queryKey: ['mentoring', 'posts'] });
     queryClient.invalidateQueries({ queryKey: ['nav', 'counters'] });
   };
 
@@ -34,9 +36,9 @@ export function useMentorRequestActions(opts?: {
 
   const accept = useMutation({
     mutationFn: (id: string) =>
-      apiClient.post<{ request: MentoringRequest; conversationId: string }>(`/mentor/requests/${id}/accept`),
+      apiClient.post<{ request: MentoringRequest; connectionId: string }>(`/mentor/requests/${id}/accept`),
     onSuccess: (data) => {
-      toast.success('Đã chấp nhận yêu cầu', 'Kênh chat với học viên đã được tạo.');
+      toast.success('Đã chấp nhận yêu cầu', 'Mentoring Connection đã được tạo và hai bên đã nhận thông báo.');
       refresh();
       opts?.onAccepted?.(data);
     },

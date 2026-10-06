@@ -6,7 +6,6 @@ import {
   seedMentorCourses,
   seedMentorProfileSections,
 } from '../data/mentoring';
-import { seedConversations, seedMessages } from '../data/conversations';
 import { mockDelay, isScenarioActive, getViewerId } from '../utils';
 import type {
   Mentor,
@@ -37,7 +36,42 @@ export const mentoringHandlers = [
 
   http.get('/api/v1/mentoring/posts', async () => {
     await mockDelay();
-    return HttpResponse.json({ data: seedMentoringPosts.filter((p) => p.open !== false) });
+    return HttpResponse.json({
+      data: seedMentoringPosts.filter(
+        (post) => post.open !== false && (!post.status || post.status === 'PUBLISHED')
+      ),
+    });
+  }),
+
+  http.post('/api/v1/mentoring/posts', async ({ request }) => {
+    await mockDelay();
+    const userId = getViewerId(request);
+    const body = (await request.json()) as Partial<MentoringPost>;
+    const capacity = Math.max(1, Number(body.capacity || body.slots || 1));
+    const newPost: MentoringPost = {
+      id: `mpost_${Date.now()}`,
+      mentorId: userId,
+      authorId: userId,
+      authorRole: body.authorRole === 'mentor' ? 'mentor' : 'student',
+      postType: body.authorRole === 'mentor' ? 'OFFER_MENTORING' : 'NEED_MENTOR',
+      title: body.title || '',
+      content: body.content || body.contentMd || '',
+      contentMd: body.contentMd || body.content || '',
+      field: body.field || 'Mentoring',
+      mode: body.mode || 'online',
+      slots: capacity,
+      capacity,
+      filledCount: 0,
+      deadline: body.deadline,
+      status: 'PUBLISHED',
+      open: true,
+      likeCount: 0,
+      commentCount: 0,
+      createdAt: new Date().toISOString(),
+      tags: body.tags || [],
+    };
+    seedMentoringPosts.unshift(newPost);
+    return HttpResponse.json({ data: newPost });
   }),
 
   http.get('/api/v1/mentoring/posts/:id', async ({ params }) => {
@@ -75,7 +109,7 @@ export const mentoringHandlers = [
       reasons: [
         'Kinh nghiệm chuyên sâu môn CSD201 và PRJ301',
         'Hình thức hỗ trợ phù hợp (Online + Chat)',
-        'Khung giờ rảnh tối T3/T5 tương thích 100%',
+        'Hình thức hỗ trợ phù hợp với nhu cầu đã nhập',
       ],
     }));
 
@@ -85,7 +119,12 @@ export const mentoringHandlers = [
   http.get('/api/v1/mentoring/requests/me', async ({ request }) => {
     await mockDelay();
     const userId = getViewerId(request);
-    const reqs = seedMentoringRequests.filter((r) => r.studentId === userId);
+    const reqs = seedMentoringRequests.filter(
+      (item) =>
+        item.requesterId === userId ||
+        item.recipientId === userId ||
+        (!item.requesterId && item.studentId === userId)
+    );
     return HttpResponse.json({ data: reqs });
   }),
 
@@ -94,13 +133,68 @@ export const mentoringHandlers = [
     const userId = getViewerId(request);
     const body = (await request.json()) as Omit<MentoringRequest, 'id' | 'studentId' | 'status' | 'createdAt'>;
 
+    const sourcePost = body.sourcePostId
+      ? seedMentoringPosts.find((post) => post.id === body.sourcePostId)
+      : undefined;
+    const recipientId = body.recipientId || body.mentorId;
+    const requesterIsMentor = sourcePost?.postType === 'NEED_MENTOR';
+    if (!body.deadline || new Date(body.deadline).getTime() <= Date.now()) {
+      return HttpResponse.json(
+        { error: { code: 'INVALID_DEADLINE', message: 'Deadline phản hồi không hợp lệ.' } },
+        { status: 422 }
+      );
+    }
+    if (sourcePost) {
+      const postCapacity = sourcePost.capacity || sourcePost.slots || 1;
+      const postFilled = sourcePost.filledCount || 0;
+      const postExpired = Boolean(
+        sourcePost.deadline && new Date(sourcePost.deadline).getTime() <= Date.now()
+      );
+      if (
+        sourcePost.status !== 'PUBLISHED' ||
+        sourcePost.open === false ||
+        postFilled >= postCapacity ||
+        postExpired
+      ) {
+        return HttpResponse.json(
+          { error: { code: 'POST_NOT_AVAILABLE', message: 'Bài đăng không còn hiệu lực hoặc đã đủ capacity.' } },
+          { status: 409 }
+        );
+      }
+    } else {
+      const mentor = seedMentors.find((item) => item.userId === recipientId);
+      if (!mentor?.acceptingRequests) {
+        return HttpResponse.json(
+          { error: { code: 'MENTOR_UNAVAILABLE', message: 'Mentor hiện không nhận thêm yêu cầu.' } },
+          { status: 409 }
+        );
+      }
+    }
+    const duplicate = seedMentoringRequests.some(
+      (item) =>
+        item.status === 'PENDING_MENTOR_RESPONSE' &&
+        (item.requesterId || item.studentId) === userId &&
+        (item.recipientId || item.mentorId) === recipientId &&
+        item.sourcePostId === body.sourcePostId
+    );
+    if (duplicate) {
+      return HttpResponse.json(
+        { error: { code: 'DUPLICATE_REQUEST', message: 'Bạn đã có một yêu cầu đang chờ phản hồi.' } },
+        { status: 409 }
+      );
+    }
+
     const newReq: MentoringRequest = {
       id: `mreq_${Date.now()}`,
-      studentId: userId,
-      mentorId: body.mentorId,
+      studentId: requesterIsMentor ? recipientId : userId,
+      mentorId: requesterIsMentor ? userId : recipientId,
+      requesterId: userId,
+      recipientId,
+      sourceType: body.sourcePostId ? 'POST' : 'DIRECT',
+      sourcePostId: body.sourcePostId,
       topic: body.topic,
       content: body.content,
-      preferredTime: body.preferredTime,
+      deadline: body.deadline,
       status: 'PENDING_MENTOR_RESPONSE',
       createdAt: new Date().toISOString(),
     };
@@ -180,7 +274,9 @@ export const mentoringHandlers = [
   http.get('/api/v1/mentor/requests', async ({ request }) => {
     await mockDelay();
     const userId = getViewerId(request, 'usr_mentor_02');
-    const reqs = seedMentoringRequests.filter((r) => r.mentorId === userId);
+    const reqs = seedMentoringRequests.filter(
+      (item) => item.recipientId === userId || (!item.recipientId && item.mentorId === userId)
+    );
     return HttpResponse.json({ data: reqs });
   }),
 
@@ -197,28 +293,34 @@ export const mentoringHandlers = [
         { status: 409 }
       );
     }
+    if (req.deadline && new Date(req.deadline).getTime() < Date.now()) {
+      return HttpResponse.json(
+        { error: { code: 'REQUEST_EXPIRED', message: 'Yêu cầu đã hết deadline' } },
+        { status: 409 }
+      );
+    }
+    const sourcePost = req.sourcePostId
+      ? seedMentoringPosts.find((post) => post.id === req.sourcePostId)
+      : undefined;
+    if (sourcePost) {
+      const capacity = sourcePost.capacity || sourcePost.slots || 1;
+      const filled = sourcePost.filledCount || 0;
+      if (filled >= capacity || sourcePost.status !== 'PUBLISHED') {
+        return HttpResponse.json(
+          { error: { code: 'POST_CAPACITY_REACHED', message: 'Bài đăng không còn capacity' } },
+          { status: 409 }
+        );
+      }
+      sourcePost.filledCount = filled + 1;
+      if (sourcePost.filledCount >= capacity) {
+        sourcePost.status = 'FILLED';
+        sourcePost.open = false;
+      }
+    }
     req.status = 'ACCEPTED';
+    req.connectionId = `mconn_${Date.now()}`;
 
-    const newConv = {
-      id: `conv_${Date.now()}`,
-      kind: 'mentoring' as const,
-      refId: req.id,
-      title: `Mentoring: ${req.topic}`,
-      participantIds: [req.studentId, req.mentorId],
-      lastMessage: 'Mentor đã chấp nhận yêu cầu của bạn. Hãy trao đổi tại đây!',
-      lastMessageAt: new Date().toISOString(),
-    };
-    seedConversations.push(newConv);
-
-    seedMessages.push({
-      id: `msg_${Date.now()}`,
-      conversationId: newConv.id,
-      senderId: req.mentorId,
-      content: `Chào bạn, mình đã nhận yêu cầu về chủ đề "${req.topic}". Chúng ta trao đổi lịch cụ thể nhé!`,
-      createdAt: new Date().toISOString(),
-    });
-
-    return HttpResponse.json({ data: { request: req, conversationId: newConv.id } });
+    return HttpResponse.json({ data: { request: req, connectionId: req.connectionId } });
   }),
 
   http.post('/api/v1/mentor/requests/:id/reject', async ({ params, request }) => {

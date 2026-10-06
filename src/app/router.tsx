@@ -85,6 +85,7 @@ import MentorAiSearchPage from '@/features/mentoring/MentorAiSearchPage';
 import MentorBrowsePage from '@/features/mentoring/MentorBrowsePage';
 import MentoringPostDetailPage from '@/features/mentoring/MentoringPostDetailPage';
 import MyMentoringRequestsPage from '@/features/mentoring/MyMentoringRequestsPage';
+import MentoringFeedPage from '@/features/mentoring/MentoringFeedPage';
 
 // FE-05: Mentoring Application Flow (MR0 - MR3)
 import MentorApplyIntroPage from '@/features/mentor/MentorApplyIntroPage';
@@ -209,6 +210,7 @@ export const router = createBrowserRouter([
       { path: 'mentoring', element: <MentoringHomePage /> },
       { path: 'mentoring/ai', element: <MentorAiSearchPage /> },
       { path: 'mentoring/browse', element: <MentorBrowsePage /> },
+      { path: 'mentoring/feed', element: <MentoringFeedPage /> },
       { path: 'mentoring/mentors/:id', element: <MentorDetailRedirect /> },
       { path: 'mentoring/posts/:id', element: <MentoringPostDetailPage /> },
       { path: 'mentoring/requests', element: <MyMentoringRequestsPage /> },

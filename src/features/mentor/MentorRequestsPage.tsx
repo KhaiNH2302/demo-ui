@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { QueryBoundary } from '@/components/shared/QueryBoundary';
@@ -10,20 +10,19 @@ import { ReasonDialog } from '@/components/shared/ReasonDialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
-import { Check, X, Clock, MessageSquare, Calendar } from 'lucide-react';
+import { CalendarClock, Check, Clock, ShieldCheck, X } from 'lucide-react';
 import type { MentoringRequest } from '@/types/entities';
 import { useMentorRequestActions } from './useMentorRequestActions';
 
 export const MentorRequestsPage: React.FC = () => {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab');
 
   const [tab, setTab] = useState<'pending' | 'accepted' | 'rejected'>(
     initialTab === 'accepted' || initialTab === 'rejected' ? initialTab : 'pending'
   );
-  const [acceptedConvId, setAcceptedConvId] = useState<string | null>(null);
   const [selectedReq, setSelectedReq] = useState<MentoringRequest | null>(null);
   const [rejectReqId, setRejectReqId] = useState<string | null>(null);
 
@@ -33,10 +32,8 @@ export const MentorRequestsPage: React.FC = () => {
   });
 
   const { accept: acceptMutation, reject: rejectMutation } = useMentorRequestActions({
-    // Spec MC3: chấp nhận xong → hiện nút "Mở chat" ngay trong chi tiết trước khi đóng
     onAccepted: (data) => {
       setSelectedReq(data.request);
-      setAcceptedConvId(data.conversationId);
     },
     onRejected: () => {
       setRejectReqId(null);
@@ -56,7 +53,7 @@ export const MentorRequestsPage: React.FC = () => {
       <div>
         <h2 className="text-lg font-semibold text-neutral-900">Yêu cầu nhận được</h2>
         <p className="text-sm text-neutral-600">
-          Phía Mentor: yêu cầu học viên gửi cho bạn. Mở chi tiết rồi Chấp nhận hoặc Từ chối — yêu cầu đã xử lý sẽ không xử lý lại.
+          Mở yêu cầu rồi Chấp nhận hoặc Từ chối. Khi chấp nhận, SCS kiểm tra lại deadline, capacity và duplicate trước khi tạo Mentoring Connection.
         </p>
       </div>
 
@@ -99,11 +96,12 @@ export const MentorRequestsPage: React.FC = () => {
                       <p className="text-xs text-[var(--text-muted)] line-clamp-3 bg-[var(--surface-muted)] p-2.5 rounded">
                         {req.content}
                       </p>
-                      {req.preferredTime && (
-                        <div className="text-xs text-[var(--text-subtle)] flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5" /> Khung giờ: {Array.isArray(req.preferredTime) ? req.preferredTime.join(', ') : req.preferredTime}
-                        </div>
-                      )}
+                      <div className="flex items-center justify-between gap-2 text-xs text-[var(--text-subtle)]">
+                        <span className="flex items-center gap-1">
+                          <CalendarClock className="h-3.5 w-3.5" /> Deadline: {req.deadline ? new Date(req.deadline).toLocaleDateString('vi-VN') : 'Chưa đặt'}
+                        </span>
+                        <Badge variant="outline">{req.sourceType === 'POST' ? 'Từ Mentoring Feed' : 'Yêu cầu trực tiếp'}</Badge>
+                      </div>
                     </CardContent>
 
                     <CardFooter className="p-4 border-t border-[var(--border-subtle)] flex items-center justify-between">
@@ -128,9 +126,7 @@ export const MentorRequestsPage: React.FC = () => {
                           </Button>
                         </div>
                       ) : req.status === 'ACCEPTED' ? (
-                        <Button size="sm" onClick={() => navigate('/chats')}>
-                          <MessageSquare className="w-3.5 h-3.5 mr-1" /> Mở Chat
-                        </Button>
+                        <Badge variant="success" dot>Mentoring Connection đã tạo</Badge>
                       ) : null}
                     </CardFooter>
                   </Card>
@@ -146,7 +142,6 @@ export const MentorRequestsPage: React.FC = () => {
         open={!!selectedReq}
         onOpenChange={() => {
           setSelectedReq(null);
-          setAcceptedConvId(null);
         }}
       >
         <DialogContent className="max-w-lg">
@@ -167,26 +162,18 @@ export const MentorRequestsPage: React.FC = () => {
                 </p>
               </div>
 
-              {selectedReq.preferredTime && (
-                <div className="text-xs text-[var(--text-muted)]">
-                  Thời gian rảnh mong muốn:{' '}
-                  <strong className="text-[var(--text-main)]">
-                    {Array.isArray(selectedReq.preferredTime)
-                      ? selectedReq.preferredTime.join(', ')
-                      : selectedReq.preferredTime}
-                  </strong>
-                </div>
-              )}
+              <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600">
+                <p className="flex items-center gap-1.5 font-semibold text-neutral-800">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Kiểm tra cuối khi chấp nhận
+                </p>
+                <p className="mt-1">Deadline • capacity • duplicate</p>
+              </div>
 
               <DialogFooter className="pt-4 border-t border-[var(--border-subtle)]">
                 {selectedReq.status !== 'PENDING_MENTOR_RESPONSE' && (
                   <div className="flex items-center justify-between w-full gap-2">
                     <StatusBadge status={selectedReq.status} domain="mentoring" />
-                    {selectedReq.status === 'ACCEPTED' && (
-                      <Button onClick={() => navigate(acceptedConvId ? `/chats/${acceptedConvId}` : '/chats')}>
-                        <MessageSquare className="w-4 h-4 mr-1.5" /> Mở chat với học viên
-                      </Button>
-                    )}
+                    {selectedReq.status === 'ACCEPTED' && <Badge variant="success" dot>Mentoring Connection đã tạo</Badge>}
                   </div>
                 )}
                 {selectedReq.status === 'PENDING_MENTOR_RESPONSE' && (

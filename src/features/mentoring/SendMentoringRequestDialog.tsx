@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { toast } from '@/components/ui/Toast';
-import { Send, Sparkles } from 'lucide-react';
+import { CalendarClock, CheckCircle2, Send, Sparkles } from 'lucide-react';
 import type { MentoringRequest } from '@/types/entities';
 
 interface SendMentoringRequestDialogProps {
@@ -18,7 +18,15 @@ interface SendMentoringRequestDialogProps {
   mentorId: string;
   initialTopic?: string;
   initialContent?: string;
+  sourcePostId?: string;
+  recipientLabel?: string;
 }
+
+const getDefaultDeadline = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + 7);
+  return date.toISOString().slice(0, 10);
+};
 
 export const SendMentoringRequestDialog: React.FC<SendMentoringRequestDialogProps> = ({
   open,
@@ -26,20 +34,15 @@ export const SendMentoringRequestDialog: React.FC<SendMentoringRequestDialogProp
   mentorId,
   initialTopic = '',
   initialContent = '',
+  sourcePostId,
+  recipientLabel = 'Mentor',
 }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [topic, setTopic] = useState(initialTopic);
   const [content, setContent] = useState(initialContent);
-  const [preferredTime, setPreferredTime] = useState('');
-
-  useEffect(() => {
-    if (open) {
-      if (initialTopic) setTopic(initialTopic);
-      if (initialContent) setContent(initialContent);
-    }
-  }, [open, initialTopic, initialContent]);
+  const [deadline, setDeadline] = useState(getDefaultDeadline);
 
   const sendMutation = useMutation({
     mutationFn: () =>
@@ -47,7 +50,9 @@ export const SendMentoringRequestDialog: React.FC<SendMentoringRequestDialogProp
         mentorId,
         topic,
         content,
-        preferredTime: preferredTime ? [preferredTime] : ['Tối Thứ 3 / Thứ 5'],
+        sourceType: sourcePostId ? 'POST' : 'DIRECT',
+        sourcePostId,
+        deadline,
       }),
     onSuccess: () => {
       toast.success('Đã gửi yêu cầu hỗ trợ tới Mentor thành công!');
@@ -60,8 +65,8 @@ export const SendMentoringRequestDialog: React.FC<SendMentoringRequestDialogProp
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!topic.trim() || !content.trim()) {
-      toast.error('Vui lòng nhập chủ đề và nội dung cần hỗ trợ');
+    if (!topic.trim() || !content.trim() || !deadline) {
+      toast.error('Vui lòng nhập chủ đề, nội dung và deadline phản hồi');
       return;
     }
     sendMutation.mutate();
@@ -78,7 +83,7 @@ export const SendMentoringRequestDialog: React.FC<SendMentoringRequestDialogProp
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="p-3 bg-[var(--surface-muted)] rounded-lg">
-            <span className="text-xs text-[var(--text-muted)] block mb-1">Gửi tới Mentor:</span>
+            <span className="text-xs text-[var(--text-muted)] block mb-1">Gửi tới {recipientLabel}:</span>
             <UserMiniCard userId={mentorId} showMajor />
           </div>
 
@@ -101,13 +106,23 @@ export const SendMentoringRequestDialog: React.FC<SendMentoringRequestDialogProp
             />
           </FormField>
 
-          <FormField label="Khung giờ mong muốn">
+          <FormField label="Deadline phản hồi" required>
             <Input
-              placeholder="Ví dụ: Tối Thứ 3 hoặc Chiều Thứ 7 tuần này"
-              value={preferredTime}
-              onChange={(e) => setPreferredTime(e.target.value)}
+              type="date"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              required
             />
           </FormField>
+
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600">
+            <p className="mb-1.5 flex items-center gap-1.5 font-semibold text-neutral-800">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Kiểm tra trước khi gửi
+            </p>
+            <p className="flex items-center gap-1.5">
+              <CalendarClock className="h-3.5 w-3.5" /> Deadline còn hiệu lực • còn capacity • không có yêu cầu trùng
+            </p>
+          </div>
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
