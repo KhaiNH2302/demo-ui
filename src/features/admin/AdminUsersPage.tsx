@@ -60,6 +60,7 @@ export const AdminUsersPage: React.FC = () => {
               { label: 'Tất cả vai trò', value: 'all' },
               { label: 'Sinh viên (Student)', value: 'student' },
               { label: 'Mentor', value: 'mentor' },
+              { label: 'Quản lý nghiệp vụ (Manager)', value: 'manager' },
               { label: 'Quản trị viên (Admin)', value: 'system_admin' },
             ]}
           />

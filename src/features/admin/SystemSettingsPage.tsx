@@ -34,10 +34,7 @@ export const SystemSettingsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const isSystemAdmin =
-    user?.roles.includes('system_admin') ||
-    user?.roles.includes('school_admin') ||
-    user?.roles.includes('SystemAdmin') ||
-    user?.roles.includes('SchoolAdmin');
+    user?.roles.includes('system_admin') || user?.roles.includes('SystemAdmin');
 
   const settingsQuery = useQuery({
     queryKey: ['admin', 'settings'],

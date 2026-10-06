@@ -6,6 +6,10 @@ const MentorDetailRedirect: React.FC = () => {
   return <Navigate to={`/users/${id}`} replace />;
 };
 
+const SystemAdminOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <ProtectedRoute requireRoles={['system_admin', 'SystemAdmin']}>{children}</ProtectedRoute>
+);
+
 const SwapMatchRedirect: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={`/swap/${id}`} replace />;
@@ -241,23 +245,24 @@ export const router = createBrowserRouter([
   {
     path: '/admin',
     element: (
-      <ProtectedRoute requireRoles={['system_admin', 'school_admin', 'SystemAdmin', 'SchoolAdmin']}>
+      <ProtectedRoute requireRoles={['system_admin', 'manager', 'SystemAdmin', 'Manager']}>
         <AdminShell />
       </ProtectedRoute>
     ),
     children: [
       { index: true, element: <AdminDashboardPage /> },
-      { path: 'users', element: <AdminUsersPage /> },
-      { path: 'users/:id', element: <AdminUserDetailPage /> },
+      // Quản lý người dùng, cấu hình, phân quyền, nhật ký: chỉ System Admin (Manager → /403)
+      { path: 'users', element: <SystemAdminOnly><AdminUsersPage /></SystemAdminOnly> },
+      { path: 'users/:id', element: <SystemAdminOnly><AdminUserDetailPage /></SystemAdminOnly> },
       { path: 'moderation', element: <ModerationPage /> },
       { path: 'clubs', element: <AdminClubsPage /> },
       { path: 'programs', element: <AdminProgramsPage /> },
       { path: 'mentor-applications', element: <AdminMentorApplicationsPage /> },
       { path: 'mentor-applications/:id', element: <AdminMentorApplicationDetailPage /> },
       { path: 'master-data', element: <MasterDataPage /> },
-      { path: 'settings', element: <SystemSettingsPage /> },
-      { path: 'admins', element: <AdminManagementPage /> },
-      { path: 'audit-logs', element: <AuditLogsPage /> },
+      { path: 'settings', element: <SystemAdminOnly><SystemSettingsPage /></SystemAdminOnly> },
+      { path: 'admins', element: <SystemAdminOnly><AdminManagementPage /></SystemAdminOnly> },
+      { path: 'audit-logs', element: <SystemAdminOnly><AuditLogsPage /></SystemAdminOnly> },
     ],
   },
 

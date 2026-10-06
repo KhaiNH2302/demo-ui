@@ -85,7 +85,7 @@ export default function LoginPage() {
       });
     }
     const isAdmin = loggedUser.roles.some((r) =>
-      ['system_admin', 'school_admin', 'SystemAdmin', 'SchoolAdmin'].includes(r),
+      ['system_admin', 'manager', 'SystemAdmin', 'Manager'].includes(r),
     );
 
     navigate(isAdmin ? '/admin' : '/', { replace: true });
@@ -186,9 +186,9 @@ export default function LoginPage() {
       roleLabel: 'System Admin',
     },
     {
-      email: 'schooladmin@fpt.edu.vn',
+      email: 'manager@fpt.edu.vn',
       name: 'Đỗ Hải Phong',
-      roleLabel: 'School Admin',
+      roleLabel: 'Manager · Quản lý nghiệp vụ',
     },
   ];
 

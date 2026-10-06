@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
+import { useAuthStore } from '@/store/authStore';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { QueryBoundary } from '@/components/shared/QueryBoundary';
 import { SummaryCard } from '@/components/shared/SummaryCard';
@@ -29,6 +30,7 @@ interface DashboardResponse {
 
 export const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const isSystemAdmin = useAuthStore((s) => s.hasRole('system_admin'));
 
   const dashboardQuery = useQuery({
     queryKey: ['admin', 'dashboard'],
@@ -157,6 +159,7 @@ export const AdminDashboardPage: React.FC = () => {
                     <ArrowRight className="w-4 h-4 text-neutral-400" />
                   </div>
 
+                  {isSystemAdmin && (
                   <div
                     className="p-3 border border-neutral-200 rounded-lg flex items-center justify-between hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => navigate('/admin/users')}
@@ -171,6 +174,7 @@ export const AdminDashboardPage: React.FC = () => {
                     </div>
                     <ArrowRight className="w-4 h-4 text-neutral-400" />
                   </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

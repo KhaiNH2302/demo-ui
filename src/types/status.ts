@@ -10,14 +10,15 @@ export type Role =
   | 'organizer'
   | 'treasurer'
   | 'system_admin'
-  | 'school_admin'
+  // Quản lý nghiệp vụ (business admin): kiểm duyệt, duyệt CLB/chương trình/Mentor, danh mục
+  | 'manager'
   | 'admin'
   | 'Student'
   | 'Mentor'
   | 'ClubManager'
   | 'ClubTreasurer'
   | 'SystemAdmin'
-  | 'SchoolAdmin'
+  | 'Manager'
   | 'Admin';
 
 export type UserRole = Role;

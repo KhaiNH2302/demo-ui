@@ -425,7 +425,7 @@ export const adminHandlers = [
   http.get('/api/v1/admin/admins', async () => {
     await mockDelay();
     const admins = seedUsers.filter(
-      (u) => u.roles.includes('system_admin') || u.roles.includes('school_admin')
+      (u) => u.roles.includes('system_admin') || u.roles.includes('manager')
     );
     const safe = admins.map(({ password: _, ...u }) => u);
     return HttpResponse.json({ data: safe });
@@ -435,7 +435,7 @@ export const adminHandlers = [
     await mockDelay();
     const body = (await request.json()) as {
       userId: string;
-      role: 'system_admin' | 'school_admin';
+      role: 'system_admin' | 'manager';
     };
     const user = seedUsers.find((u) => u.id === body.userId);
     if (user && !user.roles.includes(body.role)) {
@@ -467,7 +467,7 @@ export const adminHandlers = [
 
     if (targetUser) {
       targetUser.roles = targetUser.roles.filter(
-        (r) => r !== 'system_admin' && r !== 'school_admin'
+        (r) => r !== 'system_admin' && r !== 'manager'
       );
     }
 

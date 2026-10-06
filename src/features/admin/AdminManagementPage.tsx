@@ -23,7 +23,7 @@ export const AdminManagementPage: React.FC = () => {
   const isSystemAdmin = user?.roles.includes('system_admin');
 
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [addForm, setAddForm] = useState({ userId: '', role: 'school_admin' as 'system_admin' | 'school_admin' });
+  const [addForm, setAddForm] = useState({ userId: '', role: 'manager' as 'system_admin' | 'manager' });
   const [revokeUserId, setRevokeUserId] = useState<string | null>(null);
 
   const adminsQuery = useQuery({
@@ -37,7 +37,7 @@ export const AdminManagementPage: React.FC = () => {
     onSuccess: () => {
       toast.success('Thêm quản trị viên thành công!');
       setIsAddOpen(false);
-      setAddForm({ userId: '', role: 'school_admin' });
+      setAddForm({ userId: '', role: 'manager' });
       queryClient.invalidateQueries({ queryKey: ['admin', 'admins'] });
     },
     onError: () => toast.error('Không thể thêm quản trị viên.'),
@@ -110,7 +110,7 @@ export const AdminManagementPage: React.FC = () => {
                         </Badge>
                       ) : (
                         <Badge variant="secondary">
-                          Quản trị trường (School)
+                          Quản lý nghiệp vụ (Manager)
                         </Badge>
                       )}
                     </td>
@@ -155,7 +155,7 @@ export const AdminManagementPage: React.FC = () => {
                 value={addForm.role}
                 onChange={(e) => setAddForm({ ...addForm, role: e.target.value as any })}
                 options={[
-                  { label: 'Quản trị viên Trường (School Admin)', value: 'school_admin' },
+                  { label: 'Quản lý nghiệp vụ (Manager)', value: 'manager' },
                   { label: 'Quản trị viên Hệ thống (System Admin)', value: 'system_admin' },
                 ]}
               />
