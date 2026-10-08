@@ -148,7 +148,7 @@ export const useAuthStore = create<AuthState>()(
         if (!user) return false;
         if (
           user.roles.some((r) =>
-            ['system_admin', 'manager', 'admin', 'SystemAdmin', 'Manager', 'Admin'].includes(r)
+            ['super_admin', 'system_admin', 'manager', 'admin', 'SuperAdmin', 'SystemAdmin', 'Manager', 'Admin'].includes(r)
           )
         ) {
           return true;
@@ -159,7 +159,7 @@ export const useAuthStore = create<AuthState>()(
         const user = get().user;
         if (!user) return false;
         return user.roles.some((r) =>
-          ['system_admin', 'manager', 'admin', 'SystemAdmin', 'Manager', 'Admin'].includes(r)
+            ['super_admin', 'system_admin', 'manager', 'admin', 'SuperAdmin', 'SystemAdmin', 'Manager', 'Admin'].includes(r)
         );
       },
       setRepresentedClubs: (representedClubs) => set({ representedClubs }),

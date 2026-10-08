@@ -10,6 +10,7 @@ export type Role =
   | 'organizer'
   | 'treasurer'
   | 'system_admin'
+  | 'super_admin'
   // Quản lý nghiệp vụ (business admin): kiểm duyệt, duyệt CLB/chương trình/Mentor, danh mục
   | 'manager'
   | 'admin'
@@ -18,6 +19,7 @@ export type Role =
   | 'ClubManager'
   | 'ClubTreasurer'
   | 'SystemAdmin'
+  | 'SuperAdmin'
   | 'Manager'
   | 'Admin';
 

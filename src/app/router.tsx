@@ -7,7 +7,7 @@ const MentorDetailRedirect: React.FC = () => {
 };
 
 const SystemAdminOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <ProtectedRoute requireRoles={['system_admin', 'SystemAdmin']}>{children}</ProtectedRoute>
+  <ProtectedRoute requireRoles={['system_admin', 'super_admin', 'SystemAdmin', 'SuperAdmin']}>{children}</ProtectedRoute>
 );
 
 const SwapMatchRedirect: React.FC = () => {
@@ -246,7 +246,7 @@ export const router = createBrowserRouter([
   {
     path: '/admin',
     element: (
-      <ProtectedRoute requireRoles={['system_admin', 'manager', 'SystemAdmin', 'Manager']}>
+      <ProtectedRoute requireRoles={['super_admin', 'system_admin', 'manager', 'SuperAdmin', 'SystemAdmin', 'Manager']}>
         <AdminShell />
       </ProtectedRoute>
     ),

@@ -101,6 +101,8 @@ export interface User {
   bio?: string;
   skills?: string[];
   roles: Role[];
+  /** Các khu vực Admin Portal mà Manager được phép xem. System Admin mặc định toàn quyền. */
+  adminPermissions?: string[];
   status: UserAccountStatus;
   accountStatus?: UserAccountStatus;
   isMentorAvailable?: boolean;

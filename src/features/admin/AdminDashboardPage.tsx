@@ -30,7 +30,7 @@ interface DashboardResponse {
 
 export const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const isSystemAdmin = useAuthStore((s) => s.hasRole('system_admin'));
+  const isSystemAdmin = useAuthStore((s) => s.hasRole('super_admin') || s.hasRole('system_admin'));
 
   const dashboardQuery = useQuery({
     queryKey: ['admin', 'dashboard'],

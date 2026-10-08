@@ -32,23 +32,25 @@ export const AdminShell: React.FC = () => {
   const hasRole = useAuthStore((state) => state.hasRole);
   const navigate = useNavigate();
 
-  const isSystemAdmin = hasRole('system_admin') || hasRole('SystemAdmin');
+  const isSuperAdmin = hasRole('super_admin') || hasRole('SuperAdmin');
+  const isSystemAdmin = isSuperAdmin || hasRole('system_admin') || hasRole('SystemAdmin');
   const { resolvedTheme, toggleTheme } = useThemeStore();
 
   // Manager (quản lý nghiệp vụ) chỉ thấy các mục nghiệp vụ; System Admin thấy thêm các mục hệ thống
+  const managerPermissions = user?.adminPermissions || [];
   const navItems = [
-    { to: '/admin', label: 'Tổng quan', icon: LayoutDashboard, end: true },
-    { to: '/admin/users', label: 'Quản lý người dùng', icon: Users, systemOnly: true },
-    { to: '/admin/moderation', label: 'Kiểm duyệt nội dung', icon: CheckSquare },
-    { to: '/admin/clubs', label: 'Quyền đại diện CLB', icon: Building2 },
-    { to: '/admin/programs', label: 'Duyệt kênh chương trình', icon: HeartHandshake },
-    { to: '/admin/mentor-applications', label: 'Duyệt Mentor', icon: GraduationCap },
-    { to: '/admin/master-data', label: 'Dữ liệu danh mục', icon: Database },
-    { to: '/admin/settings', label: 'Cấu hình hệ thống', icon: Sliders, systemOnly: true },
-    { to: '/admin/admins', label: 'Phân quyền quản trị', icon: UserCheck, systemOnly: true },
-    { to: '/admin/audit-logs', label: 'Nhật ký kiểm toán', icon: FileText, systemOnly: true },
-  ].filter((item) => isSystemAdmin || !item.systemOnly);
-  const roleLabel = isSystemAdmin ? 'System Admin' : 'Manager';
+    { to: '/admin', label: 'Tổng quan', icon: LayoutDashboard, end: true, permission: 'dashboard' },
+    { to: '/admin/users', label: 'Quản lý người dùng', icon: Users, systemOnly: true, permission: 'users' },
+    { to: '/admin/moderation', label: 'Kiểm duyệt nội dung', icon: CheckSquare, permission: 'moderation' },
+    { to: '/admin/clubs', label: 'Quyền đại diện CLB', icon: Building2, permission: 'clubs' },
+    { to: '/admin/programs', label: 'Duyệt kênh chương trình', icon: HeartHandshake, permission: 'programs' },
+    { to: '/admin/mentor-applications', label: 'Duyệt Mentor', icon: GraduationCap, permission: 'mentoring' },
+    { to: '/admin/master-data', label: 'Dữ liệu danh mục', icon: Database, permission: 'master_data' },
+    { to: '/admin/settings', label: 'Cấu hình hệ thống', icon: Sliders, systemOnly: true, permission: 'settings' },
+    { to: '/admin/admins', label: 'Phân quyền quản trị', icon: UserCheck, systemOnly: true, permission: 'admins' },
+    { to: '/admin/audit-logs', label: 'Nhật ký kiểm toán', icon: FileText, systemOnly: true, permission: 'reports' },
+  ].filter((item) => isSystemAdmin || (!item.systemOnly && managerPermissions.includes(item.permission)));
+  const roleLabel = isSuperAdmin ? 'Super Admin' : isSystemAdmin ? 'System Admin' : 'Manager';
 
   return (
     <div className="min-h-screen bg-neutral-100 flex flex-col antialiased">
