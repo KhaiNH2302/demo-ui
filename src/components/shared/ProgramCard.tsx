@@ -7,6 +7,7 @@ import type { ProgramChannel } from '@/types/entities';
 import type { ProgramRegistrationStatus } from '@/types/status';
 
 export const PROGRAM_TYPE_LABELS: Record<ProgramChannel['type'], string> = {
+  Event: 'Sự kiện',
   Volunteer: 'Tình nguyện',
   Workshop: 'Workshop',
 };

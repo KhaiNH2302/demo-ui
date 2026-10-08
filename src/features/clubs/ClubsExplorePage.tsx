@@ -97,7 +97,7 @@ export const ClubsExplorePage: React.FC = () => {
           !isGuest && hasRepClub ? (
               <Link to="/clubs/manage/new">
                 <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>
-                  Đăng cơ hội CLB
+                  Đăng hoạt động CLB
                 </Button>
               </Link>
           ) : (
@@ -113,7 +113,7 @@ export const ClubsExplorePage: React.FC = () => {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="opportunities">
-            Khám phá cơ hội ({opportunities.length})
+            Khám phá hoạt động ({opportunities.length})
           </TabsTrigger>
           <TabsTrigger value="directory">
             Danh sách CLB ({clubs.length})
@@ -148,7 +148,7 @@ export const ClubsExplorePage: React.FC = () => {
                 onChange={(e) => setTypeFilter(e.target.value)}
                 className="w-full sm:w-48"
               >
-                <option value="all">Tất cả loại cơ hội</option>
+                <option value="all">Tất cả loại hoạt động</option>
                 <option value="Event">Sự kiện CLB</option>
                 <option value="MemberRecruitment">Tuyển thành viên</option>
                 <option value="CollaboratorRecruitment">Tuyển cộng tác viên</option>
@@ -221,8 +221,8 @@ export const ClubsExplorePage: React.FC = () => {
           ) : opportunities.length === 0 ? (
             <EmptyState
               icon={Building2}
-              title="Không tìm thấy cơ hội phù hợp"
-              description="Thử thay đổi bộ lọc loại cơ hội hoặc từ khóa tìm kiếm của bạn."
+              title="Không tìm thấy hoạt động phù hợp"
+              description="Thử thay đổi bộ lọc loại hoạt động hoặc từ khóa tìm kiếm của bạn."
             />
           ) : (
             <>
@@ -239,7 +239,7 @@ export const ClubsExplorePage: React.FC = () => {
                   );
                 })}
               </div>
-              <LimitNotice noun="cơ hội" count={Math.min(opportunities.length, 6)} />
+              <LimitNotice noun="hoạt động" count={Math.min(opportunities.length, 6)} />
             </>
           )}
         </TabsContent>
@@ -323,7 +323,7 @@ export const ClubsExplorePage: React.FC = () => {
                     <div className="flex items-center gap-3 text-caption text-neutral-600">
                       <span className="inline-flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5 text-neutral-400" />
-                        <strong>{club.openOpportunitiesCount ?? 0}</strong> cơ hội đang mở
+                        <strong>{club.openOpportunitiesCount ?? 0}</strong> hoạt động đang mở
                       </span>
                       <span className="inline-flex items-center gap-1">
                         <Users className="h-3.5 w-3.5 text-neutral-400" />
@@ -347,7 +347,7 @@ export const ClubsExplorePage: React.FC = () => {
                 <ShieldCheck className="h-5 w-5 text-brand-600 shrink-0 mt-0.5" />
                 <div>
                   <div className="text-sm font-semibold text-neutral-900">
-                    Bạn là Ban chủ nhiệm CLB nhưng chưa có quyền đăng cơ hội?
+                    Bạn là Ban chủ nhiệm CLB nhưng chưa có quyền đăng hoạt động?
                   </div>
                   <p className="text-caption text-neutral-500">
                     Gửi yêu cầu xác minh quyền đại diện hoặc đề xuất bổ sung CLB mới vào danh bạ trường.
@@ -369,7 +369,7 @@ export const ClubsExplorePage: React.FC = () => {
             {myRegistrations.length === 0 ? (
               <EmptyState
                 icon={FileText}
-                title="Bạn chưa đăng ký cơ hội CLB nào"
+                        title="Bạn chưa đăng ký hoạt động CLB nào"
                 description="Khám phá các sự kiện và đợt tuyển thành viên/CTV đang mở để tham gia."
               />
             ) : (
@@ -444,7 +444,7 @@ export const ClubsExplorePage: React.FC = () => {
             <Card className="p-4 bg-neutral-50 border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-card-title text-neutral-900">
-                  Quản lý bài đăng cơ hội của CLB bạn đại diện
+                  Quản lý bài đăng hoạt động của CLB bạn đại diện
                 </h3>
                 <p className="text-caption text-neutral-500">
                   Đang đại diện: <strong>{representedClubs.map((c) => c.name).join(', ')}</strong> · Xem danh sách sinh viên đăng ký, phản hồi đơn và xuất CSV
@@ -469,7 +469,7 @@ export const ClubsExplorePage: React.FC = () => {
             {myManagedOpps.length === 0 ? (
               <EmptyState
                 icon={Building2}
-                title="Chưa có bài đăng cơ hội nào"
+                        title="Chưa có bài đăng hoạt động nào"
                 description="Tạo bài đăng sự kiện, tuyển thành viên hoặc tuyển cộng tác viên cho CLB."
               />
             ) : (

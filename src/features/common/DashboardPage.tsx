@@ -167,7 +167,7 @@ const HOME_FEED_INSERTS: HomeFeedInsertEntry[] = [
   {
     id: 'ins_prog_01',
     kind: 'program',
-    contextLabel: 'Tình nguyện & Workshop',
+    contextLabel: 'Hoạt động',
     actionHref: '/programs',
     data: {
       id: 'prog_01',

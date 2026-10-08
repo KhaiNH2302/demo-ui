@@ -78,8 +78,8 @@ export const QuickCreateSheet: React.FC<QuickCreateSheetProps> = ({
     },
     {
       key: 'program',
-      title: 'Mở kênh Tình nguyện / Workshop',
-      description: 'Tổ chức chiến dịch tình nguyện hoặc buổi chia sẻ kỹ năng cho sinh viên',
+      title: 'Tạo hoạt động mới',
+      description: 'Tạo sự kiện, hoạt động tình nguyện hoặc workshop cho sinh viên',
       icon: HeartHandshake,
       onClick: () => {
         onOpenChange(false);
@@ -110,10 +110,10 @@ export const QuickCreateSheet: React.FC<QuickCreateSheetProps> = ({
         },
     {
       key: 'club',
-      title: hasRepresentedClub ? 'Đăng cơ hội CLB mới' : 'Yêu cầu đại diện CLB',
+      title: hasRepresentedClub ? 'Đăng hoạt động CLB mới' : 'Yêu cầu đại diện CLB',
       description: hasRepresentedClub
         ? 'Mở đăng ký sự kiện, tuyển thành viên hoặc tuyển cộng tác viên cho CLB'
-        : 'Xác minh quyền đại diện để quản lý hồ sơ và đăng cơ hội cho CLB của bạn',
+        : 'Xác minh quyền đại diện để quản lý hồ sơ và đăng hoạt động cho CLB của bạn',
       icon: Building2,
       onClick: () => {
         onOpenChange(false);

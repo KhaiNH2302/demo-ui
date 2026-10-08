@@ -24,7 +24,7 @@ export const MasterDataPage: React.FC = () => {
 
   const coursesQuery = useQuery({
     queryKey: ['admin', 'master-data', 'courses'],
-    queryFn: () => apiClient.get<CourseOffering[]>('/admin/master-data/courses'),
+    queryFn: () => apiClient.get<CourseOffering[]>('/admin/master-data/course-offerings'),
   });
 
   return (

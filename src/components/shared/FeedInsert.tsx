@@ -28,7 +28,7 @@ const KIND_META: Record<
   },
   program: {
     icon: HeartHandshake,
-    defaultLabel: 'Tình nguyện & Workshop',
+    defaultLabel: 'Hoạt động',
     defaultHref: '/programs',
   },
   group: {

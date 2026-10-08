@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   Building2,
   HeartHandshake,
-  Download,
   ExternalLink,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -25,7 +24,6 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { FilterSelect } from '@/components/shared/FilterSelect';
 import { MonthCalendar } from '@/components/shared/MonthCalendar';
 import { EventDetailDialog, type CalendarEventItem } from '@/components/shared/EventDetailDialog';
-import { useToast } from '@/components/ui/Toast';
 import { formatDateTime } from '@/lib/format';
 
 export const EventsPage: React.FC = () => {
@@ -33,7 +31,6 @@ export const EventsPage: React.FC = () => {
   const [onlyRegistered, setOnlyRegistered] = useState(false);
   const [viewMode, setViewMode] = useState<'calendar' | 'grid'>('calendar');
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventItem | null>(null);
-  const { toast } = useToast();
 
   const { data: events, isLoading } = useQuery<CalendarEventItem[]>({
     queryKey: ['events', sourceFilter, onlyRegistered],
@@ -53,22 +50,6 @@ export const EventsPage: React.FC = () => {
     { value: 'workshop', label: 'Workshop' },
   ];
 
-  const handleDownloadIcs = (event: CalendarEventItem, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const icsContent = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//SCS FPT//Event//VI\nBEGIN:VEVENT\nSUMMARY:${event.title}\nDESCRIPTION:${event.description.replace(/\n/g, '\\n')}\nLOCATION:${event.location}\nSTATUS:CONFIRMED\nEND:VEVENT\nEND:VCALENDAR`;
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = window.URL.createObjectURL(blob);
-    link.setAttribute('download', `${event.id}.ics`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast({
-      title: 'Đã tải tệp lịch .ics',
-      description: 'Mở tệp để thêm vào Google hoặc Apple Calendar.',
-    });
-  };
 
   return (
     <div className="space-y-6">
@@ -219,17 +200,6 @@ export const EventsPage: React.FC = () => {
               </div>
 
               <div className="px-5 py-3 bg-neutral-50/60 border-t border-neutral-100 flex items-center justify-between">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => handleDownloadIcs(evt, e)}
-                  leftIcon={<Download size={14} />}
-                  className="text-neutral-600 hover:text-neutral-900"
-                >
-                  Lưu .ics
-                </Button>
-
                 <Link
                   to={evt.detailUrl}
                   onClick={(e) => e.stopPropagation()}

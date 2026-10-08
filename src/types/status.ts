@@ -100,7 +100,7 @@ export type OpportunityResponseStatus =
 export type ConnectionInviteStatus = 'Pending' | 'Accepted' | 'Declined' | 'Withdrawn' | 'Cancelled';
 
 // FE-06 — Community Program Registration (29/09/2026)
-export type ProgramType = 'Volunteer' | 'Workshop';
+export type ProgramType = 'Event' | 'Volunteer' | 'Workshop';
 export type ProgramChannelStatus =
   | 'Draft'
   | 'PendingReview'

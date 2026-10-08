@@ -101,7 +101,7 @@ export const ProgramsExplorePage: React.FC = () => {
       <PageHeader
         variant="band"
         icon={HeartHandshake}
-        title="Tình nguyện & Workshop"
+        title="Hoạt động"
         description="Các chiến dịch tình nguyện vì cộng đồng và buổi chia sẻ kỹ năng do chính sinh viên trong trường khởi xướng, đã được Admin xác minh."
         actions={
           <Link to="/programs/new">
@@ -150,7 +150,8 @@ export const ProgramsExplorePage: React.FC = () => {
                 className="w-40"
               >
                 <option value="all">Tất cả loại kênh</option>
-                <option value="Volunteer">Tình nguyện</option>
+                        <option value="Event">Sự kiện</option>
+                        <option value="Volunteer">Tình nguyện</option>
                 <option value="Workshop">Workshop</option>
               </Select>
 

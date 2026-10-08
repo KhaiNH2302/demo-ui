@@ -148,7 +148,7 @@ export const ClubOpportunityFormPage: React.FC = () => {
     onSuccess: (res: any, status) => {
       queryClient.invalidateQueries({ queryKey: ['clubs', 'opportunities'] });
       toast.success(
-        status === 'Draft' ? 'Đã lưu bản nháp cơ hội' : 'Đã đăng công khai cơ hội CLB'
+        status === 'Draft' ? 'Đã lưu bản nháp hoạt động CLB' : 'Đã đăng công khai hoạt động CLB'
       );
       navigate(`/clubs/manage/${res.id || oppId}`);
     },
@@ -173,7 +173,7 @@ export const ClubOpportunityFormPage: React.FC = () => {
 
       <div>
         <h1 className="text-page-title text-neutral-900">
-          {isEdit ? 'Chỉnh sửa cơ hội Câu lạc bộ' : 'Đăng cơ hội Câu lạc bộ mới'}
+          {isEdit ? 'Chỉnh sửa hoạt động Câu lạc bộ' : 'Đăng hoạt động Câu lạc bộ mới'}
         </h1>
         <p className="text-meta text-neutral-500 mt-1">
           Mở kênh tiếp nhận đăng ký sự kiện, tuyển thành viên hoặc cộng tác viên cho CLB bạn đại diện.
@@ -228,7 +228,7 @@ export const ClubOpportunityFormPage: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-neutral-800 mb-1">
-                Loại cơ hội <span className="text-tier-danger-text">*</span>
+                Loại hoạt động <span className="text-tier-danger-text">*</span>
               </label>
               <Select
                 disabled={hasResponses}
@@ -244,7 +244,7 @@ export const ClubOpportunityFormPage: React.FC = () => {
 
           <div>
             <label className="block text-sm font-medium text-neutral-800 mb-1">
-              Tiêu đề cơ hội <span className="text-tier-danger-text">*</span>
+              Tiêu đề hoạt động <span className="text-tier-danger-text">*</span>
             </label>
             <Input
               value={title}
@@ -499,7 +499,7 @@ export const ClubOpportunityFormPage: React.FC = () => {
           <div className="space-y-4 pt-3 border-t border-neutral-100">
             <div>
               <label className="block text-sm font-medium text-neutral-800 mb-1.5">
-                Ảnh bìa cơ hội (16:9 · tuỳ chọn)
+                Ảnh bìa hoạt động (16:9 · tuỳ chọn)
               </label>
               <CoverImagePicker
                 value={coverImageUrl}
@@ -598,7 +598,7 @@ export const ClubOpportunityFormPage: React.FC = () => {
                 isLoading={saveMutation.isPending}
                 onClick={() => saveMutation.mutate('Published')}
               >
-                {isEdit ? 'Lưu & Cập nhật bài đăng' : 'Đăng công khai cơ hội'}
+                {isEdit ? 'Lưu & Cập nhật bài đăng' : 'Đăng công khai hoạt động'}
               </Button>
             </div>
           </div>

@@ -67,7 +67,7 @@ export const RequestsPage: React.FC = () => {
   const categories = [
     { key: 'all', label: 'Tất cả loại yêu cầu' },
     { key: 'club', label: 'Câu lạc bộ' },
-    { key: 'program', label: 'Tình nguyện & Workshop' },
+    { key: 'program', label: 'Hoạt động' },
     { key: 'social', label: 'Theo dõi & Kết nối' },
     { key: 'swap', label: 'Đổi lớp' },
     { key: 'group', label: 'Nhóm kết nối' },

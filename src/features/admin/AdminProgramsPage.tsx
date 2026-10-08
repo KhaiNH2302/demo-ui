@@ -105,7 +105,11 @@ export const AdminProgramsPage: React.FC = () => {
                     <CardHeader className="space-y-2 pb-3">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <Badge tier={prog.type === 'Volunteer' ? 'success' : 'brand'} size="sm">
-                          {prog.type === 'Volunteer' ? 'Tình nguyện' : 'Workshop'}
+                          {prog.type === 'Event'
+                            ? 'Sự kiện'
+                            : prog.type === 'Volunteer'
+                            ? 'Tình nguyện'
+                            : 'Workshop'}
                         </Badge>
                         <StatusBadge status={prog.status} group="programChannel" />
                       </div>

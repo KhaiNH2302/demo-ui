@@ -10,13 +10,11 @@ import {
 } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { useToast } from '@/components/ui/Toast';
 import {
   Calendar,
   Clock,
   MapPin,
   Users,
-  Download,
   ExternalLink,
   CheckCircle2,
   Building2,
@@ -27,7 +25,7 @@ import { formatDateTime } from '@/lib/format';
 export interface CalendarEventItem {
   id: string;
   sourceType: 'club' | 'program';
-  programType?: 'Volunteer' | 'Workshop';
+  programType?: 'Event' | 'Volunteer' | 'Workshop';
   sourceLabel: string;
   clubId?: string;
   clubName?: string;
@@ -59,24 +57,7 @@ export const EventDetailDialog: React.FC<EventDetailDialogProps> = ({
   open,
   onOpenChange,
 }) => {
-  const { toast } = useToast();
-
   if (!event) return null;
-
-  const handleDownloadIcs = () => {
-    const icsContent = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//SCS FPT//Event//VI\nBEGIN:VEVENT\nSUMMARY:${event.title}\nDESCRIPTION:${event.description.replace(/\n/g, '\\n')}\nLOCATION:${event.location}\nSTATUS:CONFIRMED\nEND:VEVENT\nEND:VCALENDAR`;
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = window.URL.createObjectURL(blob);
-    link.setAttribute('download', `${event.id}.ics`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast({
-      title: 'Đã tải tệp lịch .ics',
-      description: 'Mở tệp để đồng bộ vào Google Calendar hoặc Apple Calendar.',
-    });
-  };
 
   const isVolunteer = event.programType === 'Volunteer';
   const isWorkshop = event.programType === 'Workshop';
@@ -191,16 +172,6 @@ export const EventDetailDialog: React.FC<EventDetailDialogProps> = ({
 
         {/* Footer actions */}
         <DialogFooter className="p-4 border-t border-neutral-200 bg-neutral-50/50 flex flex-wrap items-center justify-between gap-2 shrink-0">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleDownloadIcs}
-            leftIcon={<Download size={14} />}
-          >
-            Lưu .ics
-          </Button>
-
           <div className="flex items-center gap-2">
             <Link to={event.detailUrl}>
               <Button

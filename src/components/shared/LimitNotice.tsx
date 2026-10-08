@@ -8,7 +8,7 @@ import { toast } from '@/components/ui/Toast';
 export interface LimitNoticeProps {
   remaining?: number;
   count?: number;
-  noun: 'bài viết' | 'chương trình' | 'cơ hội' | 'bình luận';
+  noun: 'bài viết' | 'chương trình' | 'cơ hội' | 'hoạt động' | 'bình luận';
   alwaysShow?: boolean;
 }
 

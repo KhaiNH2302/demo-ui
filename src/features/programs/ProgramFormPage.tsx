@@ -12,6 +12,7 @@ import { CoverImagePicker } from '@/components/shared/CoverImagePicker';
 import { ImageUploader } from '@/components/shared/ImageUploader';
 import { apiClient } from '@/lib/apiClient';
 import { toast } from '@/components/ui/Toast';
+import { useAuthStore } from '@/store/authStore';
 import type {
   FormQuestion,
   MediaImageItem,
@@ -33,6 +34,7 @@ export const ProgramFormPage: React.FC = () => {
   const isEdit = Boolean(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { representedClubs } = useAuthStore();
 
   const initialStep = Math.min(Math.max(Number(searchParams.get('step')) || 1, 1), 4);
   const [step, setStep] = useState(initialStep);
@@ -43,19 +45,21 @@ export const ProgramFormPage: React.FC = () => {
       setStep(requestedStep);
     }
   }, [searchParams]);
-  const [type, setType] = useState<ProgramType>('Volunteer');
+  const [type, setType] = useState<ProgramType>('Event');
+  const [isClubEvent, setIsClubEvent] = useState(false);
+  const [clubId, setClubId] = useState('');
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [description, setDescription] = useState('');
   const [roleNote, setRoleNote] = useState('Trưởng nhóm điều phối');
-  const [tagsInput, setTagsInput] = useState('Tình nguyện, Cộng đồng');
+  const [tagsInput, setTagsInput] = useState('Sự kiện, Sinh viên');
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [gallery, setGallery] = useState<MediaImageItem[]>([]);
 
   const [startAt, setStartAt] = useState('2026-10-18T08:00');
   const [endAt, setEndAt] = useState('2026-10-18T16:30');
   const [mode, setMode] = useState<'Offline' | 'Online' | 'Hybrid'>('Offline');
-  const [locationOrLink, setLocationOrLink] = useState('Khuôn viên ĐH FPT Hòa Lạc');
+  const [locationOrLink, setLocationOrLink] = useState('Hội trường Gamma, ĐH FPT Hà Nội');
   const [gatheringPoint, setGatheringPoint] = useState('Sảnh Tòa Alpha lúc 07:45');
   const [beneficiaryAndGoal, setBeneficiaryAndGoal] = useState('');
   const [safetyNotes, setSafetyNotes] = useState(
@@ -104,6 +108,8 @@ export const ProgramFormPage: React.FC = () => {
   useEffect(() => {
     if (existingProg) {
       setType(existingProg.type);
+      setIsClubEvent(Boolean((existingProg as ProgramChannel & { isClubEvent?: boolean }).isClubEvent));
+      setClubId((existingProg as ProgramChannel & { clubId?: string }).clubId || '');
       setTitle(existingProg.title);
       setSummary(existingProg.summary);
       setDescription(existingProg.description);
@@ -134,6 +140,8 @@ export const ProgramFormPage: React.FC = () => {
     mutationFn: (status: 'Draft' | 'PendingReview') => {
       const payload = {
         type,
+        isClubEvent: type === 'Event' ? isClubEvent : false,
+        clubId: type === 'Event' && isClubEvent ? clubId : undefined,
         title,
         summary,
         description,
@@ -262,6 +270,7 @@ export const ProgramFormPage: React.FC = () => {
                 value={type}
                 onChange={(e) => setType(e.target.value as ProgramType)}
               >
+                <option value="Event">Sự kiện</option>
                 <option value="Volunteer">Hoạt động Tình nguyện</option>
                 <option value="Workshop">Workshop chia sẻ kỹ năng / học thuật</option>
               </Select>
@@ -276,16 +285,48 @@ export const ProgramFormPage: React.FC = () => {
                 placeholder="VD: Trưởng nhóm dự án Chủ Nhật Xanh"
               />
             </div>
+            {type === 'Event' && (
+              <div className="md:col-span-2 rounded-lg border border-brand-100 bg-brand-50/40 px-3.5 py-2.5">
+                <div className="flex items-center justify-between gap-4">
+                  <label className="flex items-center gap-2.5 cursor-pointer min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isClubEvent}
+                      onChange={(e) => {
+                        setIsClubEvent(e.target.checked);
+                        if (e.target.checked && !clubId) setClubId(representedClubs[0]?.clubId || '');
+                      }}
+                      className="rounded border-neutral-300 text-brand-600 focus:ring-brand-500"
+                    />
+                    <span className="text-sm font-semibold text-neutral-900">Đây là sự kiện CLB</span>
+                  </label>
+                  <span className="hidden sm:block text-xs text-neutral-500 text-right">Sự kiện do CLB đứng tên tổ chức</span>
+                </div>
+                {isClubEvent && (
+                  <div className="mt-2.5">
+                    <label className="block text-xs font-medium text-neutral-700 mb-1">CLB đại diện</label>
+                    <Select value={clubId} onChange={(e) => setClubId(e.target.value)}>
+                      {representedClubs.length > 0 ? representedClubs.map((club) => (
+                        <option key={club.clubId} value={club.clubId}>{club.name}</option>
+                      )) : <option value="">Chưa có CLB được xác minh</option>}
+                    </Select>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-800 mb-1">
-              Tên kênh chương trình <span className="text-tier-danger-text">*</span>
+                  <label className="block text-sm font-medium text-neutral-800 mb-1">
+                    {type === 'Event' ? 'Tên sự kiện' : 'Tên kênh chương trình'}{' '}
+                    <span className="text-tier-danger-text">*</span>
             </label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="VD: Chiến dịch Thu gom pin cũ & Đổi cây xanh tại Hòa Lạc"
+              placeholder={type === 'Event'
+                ? 'VD: Ngày hội công nghệ sinh viên 2026'
+                : 'VD: Chiến dịch Thu gom pin cũ & Đổi cây xanh tại Hòa Lạc'}
             />
           </div>
 
@@ -297,7 +338,9 @@ export const ProgramFormPage: React.FC = () => {
               rows={2}
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
-              placeholder="Tóm tắt mục tiêu và ý nghĩa chương trình trong 1–2 câu..."
+              placeholder={type === 'Event'
+                ? 'Tóm tắt nội dung và đối tượng tham gia sự kiện trong 1–2 câu...'
+                : 'Tóm tắt mục tiêu và ý nghĩa chương trình trong 1–2 câu...'}
             />
           </div>
 
@@ -309,7 +352,9 @@ export const ProgramFormPage: React.FC = () => {
               rows={5}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Trình bày lịch trình, nhiệm vụ cụ thể và giá trị mang lại cho cộng đồng..."
+              placeholder={type === 'Event'
+                ? 'Trình bày nội dung, lịch trình và quyền lợi người tham gia...'
+                : 'Trình bày lịch trình, nhiệm vụ cụ thể và giá trị mang lại cho cộng đồng...'}
             />
           </div>
 
@@ -457,7 +502,7 @@ export const ProgramFormPage: React.FC = () => {
                 ))}
               </div>
             </>
-          ) : (
+          ) : type === 'Workshop' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-800 mb-1">
@@ -480,7 +525,7 @@ export const ProgramFormPage: React.FC = () => {
                 />
               </div>
             </div>
-          )}
+          ) : null}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
             <div>
