@@ -29,12 +29,17 @@ import {
   DialogFooter,
 } from '@/components/ui/Dialog';
 import { toast } from '@/components/ui/Toast';
+import { SearchInput } from '@/components/shared/SearchInput';
+import { Pagination } from '@/components/ui/Pagination';
 import type { ProgramChannel } from '@/types/entities';
 
 export const AdminProgramsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<'PendingReview' | 'Published' | 'Rejected' | 'all'>('PendingReview');
   const [selectedProgram, setSelectedProgram] = useState<ProgramChannel | null>(null);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
   const [reasonTarget, setReasonTarget] = useState<{
     id: string;
     status: 'Rejected' | 'Cancelled';
@@ -45,6 +50,8 @@ export const AdminProgramsPage: React.FC = () => {
     queryKey: ['admin', 'programs', tab],
     queryFn: () => apiClient.get('/admin/programs', { params: { status: tab } }),
   });
+  const filteredPrograms = (programsQuery.data || []).filter((program) => `${program.title} ${program.summary} ${program.organizer.fullName} ${program.type}`.toLowerCase().includes(search.toLowerCase()));
+  const pagedPrograms = filteredPrograms.slice((page - 1) * pageSize, page * pageSize);
 
   const reviewMutation = useMutation({
     mutationFn: ({
@@ -82,7 +89,7 @@ export const AdminProgramsPage: React.FC = () => {
         ]}
       />
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full space-y-6">
+      <Tabs value={tab} onValueChange={(v) => { setTab(v as any); setPage(1); }} className="w-full space-y-6">
         <TabsList>
           <TabsTrigger value="PendingReview">Chờ duyệt</TabsTrigger>
           <TabsTrigger value="Published">Đang mở công khai</TabsTrigger>
@@ -91,8 +98,9 @@ export const AdminProgramsPage: React.FC = () => {
         </TabsList>
 
         <TabsContent value={tab} className="mt-4">
+          <div className="mb-4"><SearchInput placeholder="Tìm tiêu đề, người tổ chức, loại hoạt động..." value={search} onChange={(value) => { setSearch(value); setPage(1); }} /></div>
           <QueryBoundary queries={[programsQuery]}>
-            {programsQuery.data && programsQuery.data.length === 0 ? (
+            {filteredPrograms.length === 0 ? (
               <EmptyState
                 icon={HeartHandshake}
                 title="Không có kênh chương trình nào"
@@ -100,7 +108,7 @@ export const AdminProgramsPage: React.FC = () => {
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {programsQuery.data?.map((prog) => (
+                {pagedPrograms.map((prog) => (
                   <Card key={prog.id} className="flex flex-col justify-between">
                     <CardHeader className="space-y-2 pb-3">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -224,6 +232,7 @@ export const AdminProgramsPage: React.FC = () => {
                     </CardFooter>
                   </Card>
                 ))}
+                <div className="md:col-span-2"><Pagination page={page} pageSize={pageSize} total={filteredPrograms.length} onChange={setPage} /></div>
               </div>
             )}
           </QueryBoundary>

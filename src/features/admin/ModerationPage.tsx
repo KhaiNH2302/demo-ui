@@ -17,6 +17,8 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ReasonDialog } from '@/components/shared/ReasonDialog';
 import { FilterSelect } from '@/components/shared/FilterSelect';
+import { SearchInput } from '@/components/shared/SearchInput';
+import { Pagination } from '@/components/ui/Pagination';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -51,6 +53,9 @@ export const ModerationPage: React.FC = () => {
   const [targetFilter, setTargetFilter] = useState<string>('all');
   const [selectedPost, setSelectedPost] = useState<KnowledgePost | null>(null);
   const [rejectPostId, setRejectPostId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
 
   const [reportAction, setReportAction] = useState<{
     id: string;
@@ -69,6 +74,8 @@ export const ModerationPage: React.FC = () => {
         params: { targetType: targetFilter },
       }),
   });
+  const filteredReports = (reportsQuery.data || []).filter((report) => `${report.targetTitle || report.postTitle || ''} ${report.reason} ${report.targetAuthorName || ''}`.toLowerCase().includes(search.toLowerCase()));
+  const filteredPosts = (postsQuery.data || []).filter((post) => `${post.title} ${post.subjectCode || post.subject || ''}`.toLowerCase().includes(search.toLowerCase()));
 
   const reviewPostMutation = useMutation({
     mutationFn: ({
@@ -133,7 +140,7 @@ export const ModerationPage: React.FC = () => {
         ]}
       />
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full space-y-6">
+      <Tabs value={tab} onValueChange={(v) => { setTab(v as any); setPage(1); }} className="w-full space-y-6">
         <TabsList>
           <TabsTrigger value="reports">
             Báo cáo vi phạm ({reportsQuery.data?.length || 0})
@@ -142,6 +149,7 @@ export const ModerationPage: React.FC = () => {
             Bài chờ duyệt / Tạm ẩn ({postsQuery.data?.length || 0})
           </TabsTrigger>
         </TabsList>
+        <SearchInput placeholder="Tìm tiêu đề, tác giả, lý do báo cáo..." value={search} onChange={(value) => { setSearch(value); setPage(1); }} />
 
         {/* TAB 1: GROUPED VIOLATION REPORTS (A3) */}
         <TabsContent value="reports" className="space-y-4 mt-4">
@@ -149,7 +157,7 @@ export const ModerationPage: React.FC = () => {
             <FilterSelect
               label="Đối tượng"
               value={targetFilter}
-              onChange={setTargetFilter}
+              onChange={(value) => { setTargetFilter(value); setPage(1); }}
               options={targetFilters.map((f) => ({
                 value: f.key,
                 label: f.label,
@@ -158,14 +166,14 @@ export const ModerationPage: React.FC = () => {
           </div>
 
           <QueryBoundary queries={[reportsQuery]}>
-            {reportsQuery.data && reportsQuery.data.length === 0 ? (
+            {filteredReports.length === 0 ? (
               <EmptyState
                 title="Không có báo cáo vi phạm nào"
                 description="Hệ thống hiện không có báo cáo vi phạm nào đang chờ xử lý."
               />
             ) : (
               <div className="space-y-4">
-                {reportsQuery.data?.map((r) => {
+                {filteredReports.slice((page - 1) * pageSize, page * pageSize).map((r) => {
                   const tType = (r.targetType || 'post') as ReportTargetType;
                   return (
                     <Card
@@ -255,6 +263,7 @@ export const ModerationPage: React.FC = () => {
                     </Card>
                   );
                 })}
+                <Pagination page={page} pageSize={pageSize} total={filteredReports.length} onChange={setPage} />
               </div>
             )}
           </QueryBoundary>
@@ -263,14 +272,14 @@ export const ModerationPage: React.FC = () => {
         {/* TAB 2: PENDING & TEMPORARILY HIDDEN POSTS */}
         <TabsContent value="posts" className="mt-4">
           <QueryBoundary queries={[postsQuery]}>
-            {postsQuery.data && postsQuery.data.length === 0 ? (
+            {filteredPosts.length === 0 ? (
               <EmptyState
                 title="Không có bài viết nào chờ duyệt"
                 description="Tất cả các bài đăng đã được kiểm duyệt hoàn tất."
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {postsQuery.data?.map((p) => (
+                {filteredPosts.slice((page - 1) * pageSize, page * pageSize).map((p) => (
                   <Card key={p.id} className="flex flex-col justify-between">
                     <CardHeader className="p-4 pb-2 space-y-2">
                       <div className="flex items-center justify-between gap-2">
@@ -312,6 +321,7 @@ export const ModerationPage: React.FC = () => {
                     </CardFooter>
                   </Card>
                 ))}
+                <div className="md:col-span-2"><Pagination page={page} pageSize={pageSize} total={filteredPosts.length} onChange={setPage} /></div>
               </div>
             )}
           </QueryBoundary>

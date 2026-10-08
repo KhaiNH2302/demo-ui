@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Select } from '@/components/ui/Select';
+import { Pagination } from '@/components/ui/Pagination';
 import { toast } from '@/components/ui/Toast';
 import { History, Download, Shield } from 'lucide-react';
 import type { AuditLog } from '@/types/entities';
@@ -16,6 +17,8 @@ import type { AuditLog } from '@/types/entities';
 export const AuditLogsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [targetTypeFilter, setTargetTypeFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
 
   const logsQuery = useQuery({
     queryKey: ['admin', 'audit-logs'],
@@ -33,6 +36,7 @@ export const AuditLogsPage: React.FC = () => {
       return false;
     return true;
   });
+  const pagedLogs = filteredLogs.slice((page - 1) * pageSize, page * pageSize);
 
   const handleExportCSV = () => {
     const csvContent =
@@ -77,13 +81,13 @@ export const AuditLogsPage: React.FC = () => {
           <SearchInput
             placeholder="Tìm kiếm theo hành động, lý do..."
             value={search}
-            onChange={setSearch}
+            onChange={(value) => { setSearch(value); setPage(1); }}
           />
         </div>
         <div className="w-full sm:w-56">
           <Select
             value={targetTypeFilter}
-            onChange={(e) => setTargetTypeFilter(e.target.value)}
+            onChange={(e) => { setTargetTypeFilter(e.target.value); setPage(1); }}
             options={[
               { label: 'Tất cả đối tượng', value: 'all' },
               { label: 'Người dùng (User)', value: 'User' },
@@ -109,7 +113,7 @@ export const AuditLogsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)]">
-                {filteredLogs.map((log) => (
+                {pagedLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-[var(--surface-muted)]/50">
                     <td className="px-6 py-4 text-xs font-mono text-[var(--text-muted)] whitespace-nowrap">
                       {new Date(log.createdAt).toLocaleString('vi-VN')}
@@ -133,6 +137,7 @@ export const AuditLogsPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+          <div className="p-4"><Pagination page={page} pageSize={pageSize} total={filteredLogs.length} onChange={setPage} /></div>
         </Card>
       </QueryBoundary>
     </div>

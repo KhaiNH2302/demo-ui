@@ -20,12 +20,17 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { toast } from '@/components/ui/Toast';
+import { SearchInput } from '@/components/shared/SearchInput';
+import { Pagination } from '@/components/ui/Pagination';
 import type { Club, ClubRepresentativeRequest } from '@/types/entities';
 
 export const AdminClubsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<'requests' | 'clubs'>('requests');
   const [rejectReqId, setRejectReqId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
 
   const repRequestsQuery = useQuery<ClubRepresentativeRequest[]>({
     queryKey: ['admin', 'club-rep-requests'],
@@ -77,6 +82,8 @@ export const AdminClubsPage: React.FC = () => {
   });
 
   const pendingCount = (repRequestsQuery.data || []).filter((r) => r.status === 'Pending').length;
+  const filteredRequests = (repRequestsQuery.data || []).filter((req) => `${req.clubName} ${req.userName} ${req.studentCode}`.toLowerCase().includes(search.toLowerCase()));
+  const filteredClubs = (clubsQuery.data || []).filter((club) => `${club.name} ${club.code} ${club.category}`.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="space-y-6">
@@ -89,7 +96,7 @@ export const AdminClubsPage: React.FC = () => {
         ]}
       />
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full space-y-6">
+      <Tabs value={tab} onValueChange={(v) => { setTab(v as any); setPage(1); }} className="w-full space-y-6">
         <TabsList>
           <TabsTrigger value="requests">
             Yêu cầu đại diện chờ xác minh ({pendingCount})
@@ -98,11 +105,12 @@ export const AdminClubsPage: React.FC = () => {
             Danh sách CLB ({clubsQuery.data?.length || 0})
           </TabsTrigger>
         </TabsList>
+        <SearchInput placeholder={tab === 'requests' ? 'Tìm CLB, người yêu cầu, MSSV...' : 'Tìm tên, mã hoặc loại CLB...'} value={search} onChange={(value) => { setSearch(value); setPage(1); }} />
 
         {/* Tab 1: Representative Verification Requests */}
         <TabsContent value="requests" className="mt-4">
           <QueryBoundary queries={[repRequestsQuery]}>
-            {(repRequestsQuery.data || []).length === 0 ? (
+            {filteredRequests.length === 0 ? (
               <EmptyState
                 icon={UserCheck}
                 title="Không có yêu cầu đại diện nào"
@@ -110,7 +118,7 @@ export const AdminClubsPage: React.FC = () => {
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {repRequestsQuery.data?.map((req) => (
+                {filteredRequests.slice((page - 1) * pageSize, page * pageSize).map((req) => (
                   <Card key={req.id} className="flex flex-col justify-between">
                     <CardHeader className="space-y-2 pb-3">
                       <div className="flex items-center justify-between gap-2">
@@ -188,6 +196,7 @@ export const AdminClubsPage: React.FC = () => {
                     )}
                   </Card>
                 ))}
+                <div className="md:col-span-2"><Pagination page={page} pageSize={pageSize} total={filteredRequests.length} onChange={setPage} /></div>
               </div>
             )}
           </QueryBoundary>
@@ -197,7 +206,7 @@ export const AdminClubsPage: React.FC = () => {
         <TabsContent value="clubs" className="mt-4">
           <QueryBoundary queries={[clubsQuery]}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {clubsQuery.data?.map((club) => (
+              {filteredClubs.slice((page - 1) * pageSize, page * pageSize).map((club) => (
                 <Card key={club.id} className="flex flex-col justify-between">
                   <CardHeader className="space-y-2 pb-3">
                     <div className="flex items-center justify-between gap-2">
@@ -275,6 +284,7 @@ export const AdminClubsPage: React.FC = () => {
                   </CardFooter>
                 </Card>
               ))}
+              <div className="md:col-span-2"><Pagination page={page} pageSize={pageSize} total={filteredClubs.length} onChange={setPage} /></div>
             </div>
           </QueryBoundary>
         </TabsContent>

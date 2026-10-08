@@ -400,11 +400,21 @@ export const adminHandlers = [
   http.put('/api/v1/admin/master-data/course-offerings', async ({ request }) => {
     await mockDelay();
     const body = (await request.json()) as any;
+    seedCourseOfferings.splice(0, seedCourseOfferings.length, ...(Array.isArray(body) ? body : body.data || []));
     return HttpResponse.json({ data: body });
   }),
 
   http.get('/api/v1/admin/master-data/tags', async () => {
     await mockDelay();
+    return HttpResponse.json({ data: seedTags });
+  }),
+
+  http.put('/api/v1/admin/master-data/tags', async ({ request }) => {
+    await mockDelay();
+    const body = (await request.json()) as { tags?: string[] };
+    if (Array.isArray(body.tags)) {
+      seedTags.splice(0, seedTags.length, ...body.tags);
+    }
     return HttpResponse.json({ data: seedTags });
   }),
 

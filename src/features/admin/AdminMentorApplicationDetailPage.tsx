@@ -228,19 +228,32 @@ export const AdminMentorApplicationDetailPage: React.FC = () => {
             </div>
             <div className="space-y-2 text-xs">
               {application.evidence?.cvUrl && (
-                <a
-                  href={application.evidence.cvUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="p-3 rounded-xl bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 flex items-center justify-between transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <FileText size={16} className="text-brand-600" />
-                    <span className="font-semibold text-neutral-900">Xem tệp CV ứng viên</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-neutral-900">Preview CV ứng viên</span>
+                    <a href={application.evidence.cvUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-brand-600 hover:text-brand-700 font-semibold">
+                      Mở riêng <ExternalLink size={13} />
+                    </a>
                   </div>
-                  <ExternalLink size={14} className="text-neutral-400" />
-                </a>
+                  <div className="h-72 rounded-xl border border-neutral-200 bg-neutral-100 overflow-hidden">
+                    {application.evidence.cvUrl.match(/\.(png|jpe?g|webp|gif)(\?|$)/i) ? (
+                      <img src={application.evidence.cvUrl} alt="CV ứng viên" className="w-full h-full object-contain" />
+                    ) : (
+                      <iframe src={application.evidence.cvUrl} title="Preview CV ứng viên" className="w-full h-full" />
+                    )}
+                  </div>
+                </div>
               )}
+              {(application.evidence?.portfolioUrls || []).map((url, index) => (
+                <a key={url} href={url} target="_blank" rel="noreferrer" className="p-3 rounded-xl bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 flex items-center justify-between transition-colors">
+                  <span className="font-semibold text-neutral-900">Portfolio / minh chứng {index + 1}</span><ExternalLink size={14} className="text-neutral-400" />
+                </a>
+              ))}
+              {(application.evidence?.otherFiles || []).map((file) => (
+                <a key={file.url} href={file.url} target="_blank" rel="noreferrer" className="p-3 rounded-xl bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 flex items-center justify-between transition-colors">
+                  <span className="font-semibold text-neutral-900">{file.name}</span><ExternalLink size={14} className="text-neutral-400" />
+                </a>
+              ))}
             </div>
           </div>
         </div>

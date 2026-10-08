@@ -17,19 +17,22 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { Pagination } from '@/components/ui/Pagination';
 import type { MentorApplication } from '@/types/entities';
 
 export const AdminMentorApplicationsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('pending');
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
   const navigate = useNavigate();
 
-  const { data, isLoading } = useQuery<{ data: MentorApplication[]; meta: { total: number } }>({
+  const { data, isLoading } = useQuery<MentorApplication[]>({
     queryKey: ['admin', 'mentor-applications', activeTab],
     queryFn: () => apiClient.get('/admin/mentor-applications', { params: { status: activeTab } }),
   });
 
-  const applications = data?.data || [];
+  const applications = data || [];
 
   const filteredApps = applications.filter(
     (app) =>
@@ -37,6 +40,7 @@ export const AdminMentorApplicationsPage: React.FC = () => {
       (app.education?.major && app.education.major.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (app.personal?.position && app.personal.position.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+  const pagedApps = filteredApps.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div className="space-y-6">
@@ -46,7 +50,7 @@ export const AdminMentorApplicationsPage: React.FC = () => {
       />
 
       {/* Main Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
+      <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setPage(1); }} className="w-full space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 pb-3">
           <TabsList className="bg-neutral-100 p-1 rounded-xl">
             <TabsTrigger value="pending" className="rounded-lg text-xs font-semibold">
@@ -71,7 +75,7 @@ export const AdminMentorApplicationsPage: React.FC = () => {
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
               placeholder="Tìm theo ngành, MSSV, tên..."
               className="w-full h-9 pl-9 pr-3 rounded-lg border border-neutral-200 bg-surface text-xs focus:ring-2 focus:ring-brand-500/20"
             />
@@ -88,7 +92,7 @@ export const AdminMentorApplicationsPage: React.FC = () => {
             />
           ) : (
             <div className="bg-surface rounded-2xl border border-neutral-200 overflow-hidden shadow-xs divide-y divide-neutral-100">
-              {filteredApps.map((app) => (
+              {pagedApps.map((app) => (
                 <div
                   key={app.id}
                   className="p-4 sm:p-5 hover:bg-neutral-50/70 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
@@ -146,6 +150,9 @@ export const AdminMentorApplicationsPage: React.FC = () => {
                   </div>
                 </div>
               ))}
+              <div className="bg-neutral-50/70 px-4 py-3 sm:px-5 [&>div]:border-t-0 [&>div]:pt-0">
+                <Pagination page={page} pageSize={pageSize} total={filteredApps.length} onChange={setPage} />
+              </div>
             </div>
           )}
         </TabsContent>

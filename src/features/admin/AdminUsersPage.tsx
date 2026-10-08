@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Select } from '@/components/ui/Select';
+import { Pagination } from '@/components/ui/Pagination';
 import { Users, Eye, Lock, Shield } from 'lucide-react';
 import type { User } from '@/types/entities';
 
@@ -20,6 +21,8 @@ export const AdminUsersPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   const usersQuery = useQuery({
     queryKey: ['admin', 'users', { search, roleFilter, statusFilter }],
@@ -49,13 +52,13 @@ export const AdminUsersPage: React.FC = () => {
           <SearchInput
             placeholder="Tìm kiếm theo tên, email..."
             value={search}
-            onChange={setSearch}
+            onChange={(value) => { setSearch(value); setPage(1); }}
           />
         </div>
         <div className="w-full sm:w-48">
           <Select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
+            onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
             options={[
               { label: 'Tất cả vai trò', value: 'all' },
               { label: 'Sinh viên (Student)', value: 'student' },
@@ -68,7 +71,7 @@ export const AdminUsersPage: React.FC = () => {
         <div className="w-full sm:w-48">
           <Select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
             options={[
               { label: 'Tất cả trạng thái', value: 'all' },
               { label: 'Đang hoạt động', value: 'active' },
@@ -93,7 +96,7 @@ export const AdminUsersPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)]">
-                {usersQuery.data?.map((u) => (
+                {(usersQuery.data || []).slice((page - 1) * pageSize, page * pageSize).map((u) => (
                   <tr key={u.id} className="hover:bg-[var(--surface-muted)]/50">
                     <td className="px-6 py-4">
                       <UserMiniCard userId={u.id} showMajor />
@@ -127,6 +130,7 @@ export const AdminUsersPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+          <div className="p-4"><Pagination page={page} pageSize={pageSize} total={usersQuery.data?.length || 0} onChange={setPage} /></div>
         </Card>
       </QueryBoundary>
     </div>

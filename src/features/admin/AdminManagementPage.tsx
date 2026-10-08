@@ -14,6 +14,8 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
 import { toast } from '@/components/ui/Toast';
+import { SearchInput } from '@/components/shared/SearchInput';
+import { Pagination } from '@/components/ui/Pagination';
 import { ShieldCheck, Plus, Trash2, ShieldAlert, Pencil, Search } from 'lucide-react';
 import type { User } from '@/types/entities';
 
@@ -44,6 +46,9 @@ export const AdminManagementPage: React.FC = () => {
     permissions: managerPermissionOptions.map((item) => item.key),
   });
   const [revokeUserId, setRevokeUserId] = useState<string | null>(null);
+  const [adminSearch, setAdminSearch] = useState('');
+  const [adminPage, setAdminPage] = useState(1);
+  const adminPageSize = 10;
 
   const adminsQuery = useQuery({
     queryKey: ['admin', 'admins'],
@@ -56,6 +61,8 @@ export const AdminManagementPage: React.FC = () => {
     enabled: isAddOpen && userSearch.trim().length >= 2,
   });
   const hasSuperAdmin = Boolean(adminsQuery.data?.some((admin) => admin.roles.includes('super_admin')));
+  const filteredAdmins = (adminsQuery.data || []).filter((admin) => `${admin.fullName} ${admin.email} ${admin.id} ${admin.roles.join(' ')}`.toLowerCase().includes(adminSearch.toLowerCase()));
+  const pagedAdmins = filteredAdmins.slice((adminPage - 1) * adminPageSize, adminPage * adminPageSize);
 
   const addAdminMutation = useMutation({
     mutationFn: () => apiClient.post('/admin/admins', {
@@ -140,6 +147,7 @@ export const AdminManagementPage: React.FC = () => {
 
       <QueryBoundary queries={[adminsQuery]}>
         <Card>
+          <div className="p-4 border-b border-[var(--border-subtle)]"><SearchInput placeholder="Tìm quản trị viên theo tên, email, vai trò..." value={adminSearch} onChange={(value) => { setAdminSearch(value); setAdminPage(1); }} /></div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-[var(--surface-muted)] text-[var(--text-muted)] text-xs uppercase border-b border-[var(--border-subtle)]">
@@ -151,7 +159,7 @@ export const AdminManagementPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)]">
-                {adminsQuery.data?.map((admin) => (
+                {pagedAdmins.map((admin) => (
                   <tr key={admin.id} className="hover:bg-[var(--surface-muted)]/50">
                     <td className="px-6 py-4">
                       <UserMiniCard userId={admin.id} />
@@ -204,6 +212,7 @@ export const AdminManagementPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+          <div className="p-4"><Pagination page={adminPage} pageSize={adminPageSize} total={filteredAdmins.length} onChange={setAdminPage} /></div>
         </Card>
       </QueryBoundary>
 

@@ -84,9 +84,9 @@ export const seedMentorApplications: MentorApplication[] = [
       sessionMinutes: 45,
     },
     evidence: {
-      cvUrl: 'https://example.com/cv-nguyen-van-a.pdf',
+      cvUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       portfolioUrls: ['https://github.com/nguyenvana', 'https://nguyenvana.dev'],
-      otherFiles: [{ name: 'Bang_Diem_Tam_Thoi.pdf', url: 'https://example.com/transcript.pdf' }],
+      otherFiles: [{ name: 'Bang_Diem_Tam_Thoi.pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' }],
     },
     agreed: true,
     reviewerId: 'usr_admin_05',
@@ -164,7 +164,7 @@ export const seedMentorApplications: MentorApplication[] = [
       sessionMinutes: 60,
     },
     evidence: {
-      cvUrl: 'https://example.com/cv-tran-quoc-bao.pdf',
+      cvUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       portfolioUrls: ['https://scholar.google.com/citations?user=xyz'],
       otherFiles: [],
     },
@@ -239,7 +239,7 @@ export const seedMentorApplications: MentorApplication[] = [
       sessionMinutes: 45,
     },
     evidence: {
-      cvUrl: 'https://example.com/cv-mentor-02.pdf',
+      cvUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       portfolioUrls: ['https://linkedin.com/in/mentor02'],
       otherFiles: [],
     },

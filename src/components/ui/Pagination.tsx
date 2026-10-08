@@ -20,8 +20,6 @@ export const Pagination: React.FC<PaginationProps> = ({
   loading = false,
 }) => {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  if (total <= pageSize && page <= 1) return null;
-
   if (variant === 'load-more') {
     const shown = Math.min(total, page * pageSize);
     const remaining = Math.max(0, total - shown);
@@ -42,12 +40,12 @@ export const Pagination: React.FC<PaginationProps> = ({
   }
 
   return (
-    <div className="flex items-center justify-between border-t border-neutral-200 pt-4 text-sm text-neutral-600">
-      <span>
+    <div className="flex flex-col gap-3 border-t border-neutral-200 pt-4 text-sm text-neutral-600 sm:flex-row sm:items-center sm:justify-between">
+      <span className="whitespace-nowrap">
         Trang <strong className="font-medium text-neutral-900">{page}</strong> / {totalPages} · Tổng{' '}
         <strong className="font-medium text-neutral-900">{total}</strong> mục
       </span>
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
         <Button
           variant="secondary"
           size="sm"
@@ -57,6 +55,18 @@ export const Pagination: React.FC<PaginationProps> = ({
         >
           Trước
         </Button>
+        {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+          <Button
+            key={pageNumber}
+            variant={pageNumber === page ? 'primary' : 'secondary'}
+            size="sm"
+            disabled={loading}
+            onClick={() => onChange(pageNumber)}
+            className="min-w-9"
+          >
+            {pageNumber}
+          </Button>
+        ))}
         <Button
           variant="secondary"
           size="sm"
