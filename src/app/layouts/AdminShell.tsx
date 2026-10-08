@@ -37,7 +37,8 @@ export const AdminShell: React.FC = () => {
   const { resolvedTheme, toggleTheme } = useThemeStore();
 
   // Manager (quản lý nghiệp vụ) chỉ thấy các mục nghiệp vụ; System Admin thấy thêm các mục hệ thống
-  const managerPermissions = user?.adminPermissions || [];
+  // Các phiên demo Manager được lưu từ trước khi có adminPermissions vẫn phải vào được Dashboard.
+  const managerPermissions = user?.adminPermissions?.length ? user.adminPermissions : ['dashboard'];
   const navItems = [
     { to: '/admin', label: 'Tổng quan', icon: LayoutDashboard, end: true, permission: 'dashboard' },
     { to: '/admin/users', label: 'Quản lý người dùng', icon: Users, systemOnly: true, permission: 'users' },
