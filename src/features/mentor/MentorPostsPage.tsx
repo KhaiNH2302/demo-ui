@@ -1,19 +1,12 @@
-import React, { useState } from 'react';
-import { Heart, MessageSquare, Send, Share2, Sparkles } from 'lucide-react';
-import { PageHeader } from '@/components/shared/PageHeader';
-import { Card, CardContent } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Textarea } from '@/components/ui/Textarea';
-import { Chip } from '@/components/ui/Chip';
+import React from 'react';
+import { MentoringFeedPage } from '@/features/mentoring/MentoringFeedPage';
 
-const POSTS = [
-  { title: 'Lớp ôn luyện Practical CSD201 & Thuật toán Cây/Đồ thị', content: 'Chào các bạn sinh viên, lớp học 4 buổi chuyên sâu về kỹ thuật giải Practical CSD201. Nội dung chính: nắm chắc phần duyệt cây, kỹ thuật xoay AVL và template Dijkstra/BFS.', tags: ['#CSD201', '#Algorithms', '#FPTU', '#PracticalExam'], likes: 42, comments: 15 },
-  { title: 'Checklist siêu chi tiết ôn đồ án SWP391: Tránh bị trượt vòng Review kiến trúc', content: 'Các lỗi phổ biến nhất của các nhóm SWP391 tuần 4–5: ERD thiếu chuẩn hóa, trùng lặp foreign key và chưa có API endpoint trong frontend code.', tags: ['#SWP391', '#Architecture', '#CleanCode', '#Security'], likes: 68, comments: 22 },
-];
+/**
+ * Mentor dùng cùng Mentoring Feed với Student.
+ * Trong Mentor Center, composer luôn tự gán loại bài Offer Mentoring.
+ */
+export const MentorPostsPage: React.FC = () => (
+  <MentoringFeedPage embedded roleOverride="mentor" />
+);
 
-export const MentorPostsPage: React.FC = () => {
-  const [title, setTitle] = useState(''); const [content, setContent] = useState('');
-  return <div className="space-y-5"><PageHeader title="Mentor Center" description="Quản lý bài chia sẻ học thuật và các khóa học / workshop bạn đang phụ trách" breadcrumbs={[{ label: 'Trang chủ', href: '/' }, { label: 'Mentor Center' }]} /><div className="flex gap-6 border-b border-neutral-200 text-sm"><button type="button" className="border-b-2 border-brand-600 px-1 pb-3 font-semibold text-brand-700">Bài chia sẻ (2)</button><button type="button" className="px-1 pb-3 text-neutral-500">Khóa học & Lớp ôn thi (2)</button></div><Card><CardContent className="space-y-3 p-4"><h2 className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="h-4 w-4 text-brand-600" /> Viết bài chia sẻ kinh nghiệm mới</h2><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tiêu đề bài chia sẻ (ví dụ: Kinh nghiệm ôn thi Practical CSD201 đạt 9+...)" /><Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={3} placeholder="Nội dung chia sẻ: lời khuyên, checklist chuẩn bị đồ án, lưu ý làm bài thi thực hành..." /><div className="flex gap-2"><select className="h-10 flex-1 rounded-lg border border-neutral-200 bg-white px-3 text-sm"><option>Kỹ thuật phần mềm</option></select><Input className="flex-1" placeholder="Tags cách nhau bởi dấu phẩy (CSD201, SWP391...)" /></div><div className="flex justify-end"><Button><Send className="mr-1.5 h-4 w-4" /> Đăng bài chia sẻ</Button></div></CardContent></Card><div className="space-y-4">{POSTS.map((post) => <Card key={post.title}><CardContent className="space-y-3 p-5"><div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&auto=format&fit=crop&q=80" alt="Lê Thị Bình" className="h-9 w-9 rounded-full object-cover" /><div><p className="text-sm font-semibold">Lê Thị Bình <span className="ml-1 rounded-full border border-brand-200 px-1.5 py-0.5 text-[10px] text-brand-700">Mentor</span></p><p className="text-xs text-neutral-500">Kỹ thuật phần mềm (SE) · Mới đăng</p></div></div><span className="rounded-full bg-neutral-100 px-2 py-1 text-[10px] text-neutral-600">Bài chia sẻ</span></div><h3 className="text-base font-bold text-neutral-900">{post.title}</h3><p className="text-sm leading-relaxed text-neutral-600">{post.content}</p><div className="flex flex-wrap gap-1.5">{post.tags.map((tag) => <Chip key={tag} size="sm">{tag}</Chip>)}</div><div className="flex items-center justify-between border-t border-neutral-100 pt-3 text-xs text-neutral-400"><span><Heart className="mr-1 inline h-4 w-4 text-rose-500" /> {post.likes} thích <MessageSquare className="ml-4 mr-1 inline h-4 w-4" /> {post.comments} bình luận</span><Share2 className="h-4 w-4" /></div></CardContent></Card>)}</div></div>;
-};
 export default MentorPostsPage;

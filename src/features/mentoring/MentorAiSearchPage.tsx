@@ -66,7 +66,6 @@ export const MentorAiSearchPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [subject, setSubject] = useState('');
-  const [availability, setAvailability] = useState('');
   const [content, setContent] = useState('');
   const [modes, setModes] = useState<SupportMode[]>(['online']);
   const [requirements, setRequirements] = useState('');
@@ -81,7 +80,6 @@ export const MentorAiSearchPage: React.FC = () => {
     mutationFn: () =>
       apiClient.post<AiMentorMatch[]>('/mentoring/ai-search', {
         subject,
-        availability,
         content,
         modes,
         requirements,
@@ -132,7 +130,7 @@ export const MentorAiSearchPage: React.FC = () => {
     <div className="space-y-6 max-w-4xl mx-auto">
       <PageHeader
         title="Tìm Mentor thông minh bằng AI"
-        description="Nhập nhu cầu học tập và tiêu chuẩn mong muốn để AI phân tích và kết nối bạn với Mentor phù hợp nhất"
+        description="Nhập mục tiêu, kỹ năng và hình thức mong muốn để AI xếp hạng Mentor; bạn vẫn là người quyết định cuối cùng."
         breadcrumbs={[
           { label: 'Trang chủ', href: '/' },
           { label: 'Mentoring', href: '/mentoring' },
@@ -160,17 +158,13 @@ export const MentorAiSearchPage: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
-            <FormField label="Môn học / Lĩnh vực cần trợ giúp" required>
+            <FormField label="Môn học / Kỹ năng cần trợ giúp" required>
               <Input
                 placeholder="Ví dụ: CSD201, PRJ301, Machine Learning..."
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 required
               />
-            </FormField>
-
-            <FormField label="Khung giờ rảnh mong muốn">
-              <Input placeholder="Ví dụ: Tối Thứ 3, Chiều Thứ 7, cuối tuần..." value={availability} onChange={(e) => setAvailability(e.target.value)} />
             </FormField>
 
             <FormField label="Nội dung chi tiết cần được hỗ trợ" required>
@@ -264,7 +258,6 @@ export const MentorAiSearchPage: React.FC = () => {
               variant="outline"
               onClick={() => {
                 setSubject('');
-                setAvailability('');
                 setContent('');
                 setRequirements('');
                 setModes(['online']);

@@ -84,8 +84,8 @@ export const ProgramsExplorePage: React.FC = () => {
       <PageHeader
         variant="band"
         icon={HeartHandshake}
-        title="Tình nguyện & Workshop"
-        description="Khám phá tình nguyện và workshop do Event Manager tổ chức. Student có thể gửi ý tưởng và theo dõi kết quả đề xuất."
+        title="Hoạt động"
+        description="Các chiến dịch tình nguyện vì cộng đồng và buổi chia sẻ kỹ năng do chính sinh viên trong trường khởi xướng, đã được Admin xác minh."
         actions={
           <div className="flex gap-2">{!isGuest && <Link to={isManager ? '/programs/new' : '/programs/proposals'}><Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>{isManager ? 'Tạo chương trình' : 'Đề xuất của tôi'}</Button></Link>}{isManager && <Link to="/programs/proposals/review"><Button variant="secondary">Xét duyệt đề xuất</Button></Link>}</div>
         }

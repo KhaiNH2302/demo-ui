@@ -31,8 +31,7 @@ export const MyMentoringRequestsPage: React.FC = () => {
   });
   const { accept, reject } = useMentorRequestActions({ onRejected: () => setRejectId(null) });
 
-  // UI demo starts with the empty state; a real response can be enabled when the API is connected.
-  const requests: MentoringRequest[] = [];
+  const requests = requestsQuery.data || [];
   const items = requests.filter((request) => {
     if (tab === 'pending') return request.status === 'PENDING_MENTOR_RESPONSE';
     if (tab === 'accepted') return request.status === 'ACCEPTED';
@@ -46,12 +45,13 @@ export const MyMentoringRequestsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Yêu cầu Mentoring của tôi"
-        description="Theo dõi tình trạng phản hồi và mở kênh trao đổi khi Mentor chấp nhận hỗ trợ"
+        title="Yêu cầu Mentoring"
+        description="Theo dõi yêu cầu đã gửi và phản hồi các yêu cầu gửi tới bài Need Mentor của bạn."
         breadcrumbs={[{ label: 'Trang chủ', href: '/' }, { label: 'Mentoring', href: '/mentoring' }, { label: 'Yêu cầu' }]}
         actions={
           <div className="flex gap-2">
-            <Button onClick={() => navigate('/mentoring/ai')}><Plus className="mr-1.5 h-4 w-4" /> Gửi yêu cầu mới</Button>
+            <Button variant="outline" onClick={() => navigate('/mentoring')}>Mở Mentoring Feed</Button>
+            <Button onClick={() => navigate('/mentoring')}><Plus className="mr-1.5 h-4 w-4" /> Tạo kết nối mới</Button>
           </div>
         }
       />
@@ -59,9 +59,9 @@ export const MyMentoringRequestsPage: React.FC = () => {
       <Tabs value={tab} onValueChange={(value) => setTab(value as RequestTab)}>
         <TabsList className="grid w-full max-w-lg grid-cols-4">
           <TabsTrigger value="all">Tất cả ({requests.length})</TabsTrigger>
-          <TabsTrigger value="pending">Chờ duyệt ({requests.filter((request) => request.status === 'PENDING_MENTOR_RESPONSE').length})</TabsTrigger>
-          <TabsTrigger value="accepted">Đã nhận ({requests.filter((request) => request.status === 'ACCEPTED').length})</TabsTrigger>
-          <TabsTrigger value="rejected">Từ chối ({requests.filter((request) => request.status === 'REJECTED').length})</TabsTrigger>
+          <TabsTrigger value="pending">Chờ phản hồi ({requests.filter((request) => request.status === 'PENDING_MENTOR_RESPONSE').length})</TabsTrigger>
+          <TabsTrigger value="accepted">Đã chấp nhận ({requests.filter((request) => request.status === 'ACCEPTED').length})</TabsTrigger>
+          <TabsTrigger value="rejected">Đã từ chối ({requests.filter((request) => request.status === 'REJECTED').length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value={tab} className="mt-6">
@@ -69,8 +69,8 @@ export const MyMentoringRequestsPage: React.FC = () => {
             {items.length === 0 ? (
               <EmptyState
                 title="Không có yêu cầu nào"
-                description="Bạn chưa có yêu cầu hỗ trợ Mentoring nào trong danh mục này."
-                action={<Button onClick={() => navigate('/mentoring/browse')}>Tìm Mentor ngay</Button>}
+                description="Chưa có yêu cầu Mentoring trong danh mục này."
+                action={<Button onClick={() => navigate('/mentoring')}>Bắt đầu kết nối</Button>}
               />
             ) : (
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">

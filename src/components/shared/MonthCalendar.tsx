@@ -50,8 +50,9 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   };
 
   const handleToday = () => {
-    setViewDate(new Date(referenceDate));
-    setSelectedMobileDate(new Date(referenceDate));
+    const now = new Date();
+    setViewDate(now);
+    setSelectedMobileDate(now);
   };
 
   // Calendar cells generation: 7 columns x 5 or 6 rows
@@ -70,7 +71,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
       dateKey: string;
     }[] = [];
 
-    const todayStr = referenceDateKey;
+    const todayStr = new Date().toISOString().split('T')[0];
 
     // Leading days from previous month
     for (let i = firstDayWeekday - 1; i >= 0; i--) {
@@ -110,7 +111,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     }
 
     return days;
-  }, [year, month, referenceDateKey]);
+  }, [year, month]);
 
   // Group events by YYYY-MM-DD
   const eventsByDate = useMemo(() => {

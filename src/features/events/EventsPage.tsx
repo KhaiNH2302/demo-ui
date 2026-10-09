@@ -125,7 +125,6 @@ export const EventsPage: React.FC = () => {
       ) : viewMode === 'calendar' ? (
         <MonthCalendar
           events={events}
-          currentDate={new Date('2026-10-03T00:00:00')}
           onSelectEvent={(ev) => setSelectedEvent(ev)}
         />
       ) : (

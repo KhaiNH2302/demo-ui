@@ -32,8 +32,22 @@ function renderApp() {
 
 // Không để lỗi khởi động MSW (SW bị chặn, mất mạng...) làm treo cả app ở màn
 // hình trắng im lặng — vẫn render UI, chỉ log cảnh báo để dev biết mock đang tắt.
-enableMocking()
-  .catch((err) => {
+// Do not hold the first paint hostage to service-worker startup. In a fresh
+// browser profile, a blocked/stale service worker can leave `worker.start()`
+// pending indefinitely, which otherwise renders a completely blank page.
+const MOCK_START_TIMEOUT_MS = 1500;
+
+async function bootApp() {
+  const mockingReady = enableMocking().catch((err) => {
     console.warn('[MSW] Không khởi động được mock worker, API call sẽ lỗi:', err);
-  })
-  .finally(renderApp);
+  });
+
+  await Promise.race([
+    mockingReady,
+    new Promise<void>((resolve) => window.setTimeout(resolve, MOCK_START_TIMEOUT_MS)),
+  ]);
+
+  renderApp();
+}
+
+void bootApp();

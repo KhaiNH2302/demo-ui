@@ -58,7 +58,7 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       {
         key: 'mentoring',
-        label: 'Mentor',
+        label: 'Tìm Mentor',
         href: '/mentoring',
         to: '/mentoring',
         icon: GraduationCap,
@@ -101,7 +101,7 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       {
         key: 'programs',
-        label: 'Tình nguyện & Workshop',
+        label: 'Hoạt động',
         href: '/programs',
         to: '/programs',
         icon: HeartHandshake,
