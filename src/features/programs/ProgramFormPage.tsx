@@ -24,6 +24,13 @@ import type { ProgramType } from '@/types/status';
 
 const toLocalDateTime = (value: string) => { const date = new Date(value); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0,16); };
 
+const upcomingProgramDateTime = (hour: number, minute: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() + 7);
+  date.setHours(hour, minute, 0, 0);
+  return toLocalDateTime(date.toISOString());
+};
+
 interface EligibilityData {
   eligible: boolean;
   activeChannelsCount: number;
@@ -48,22 +55,22 @@ export const ProgramFormPage: React.FC = () => {
       setStep(requestedStep);
     }
   }, [searchParams]);
-  const [type, setType] = useState<ProgramType>('Workshop');
+  const [type, setType] = useState<ProgramType>('Volunteer');
   const [isClubEvent, setIsClubEvent] = useState(false);
   const [clubId, setClubId] = useState('');
-  const [title, setTitle] = useState('');
-  const [summary, setSummary] = useState('');
-  const [description, setDescription] = useState('');
+  const [title, setTitle] = useState('Chiến dịch Chủ Nhật Xanh: Thu gom pin cũ & Tái chế rác điện tử tại Hòa Lạc');
+  const [summary, setSummary] = useState('Cùng chung tay thu gom pin cũ và rác điện tử để bảo vệ môi trường học đường.');
+  const [description, setDescription] = useState('Hoạt động tình nguyện kết hợp tuyên truyền phân loại và tái chế rác điện tử trong cộng đồng sinh viên.');
   const [roleNote, setRoleNote] = useState('Trưởng nhóm điều phối');
-  const [tagsInput, setTagsInput] = useState('Sự kiện, Sinh viên');
+  const [tagsInput, setTagsInput] = useState('Tình nguyện, Môi trường, Hòa Lạc');
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [gallery, setGallery] = useState<MediaImageItem[]>([]);
 
-  const [startAt, setStartAt] = useState('2026-10-18T08:00');
-  const [endAt, setEndAt] = useState('2026-10-18T16:30');
+  const [startAt, setStartAt] = useState(() => upcomingProgramDateTime(7, 30));
+  const [endAt, setEndAt] = useState(() => upcomingProgramDateTime(16, 30));
   const [mode, setMode] = useState<'Offline' | 'Online' | 'Hybrid'>('Offline');
-  const [locationOrLink, setLocationOrLink] = useState('Hội trường Gamma, ĐH FPT Hà Nội');
-  const [gatheringPoint, setGatheringPoint] = useState('Sảnh Tòa Alpha lúc 07:45');
+  const [locationOrLink, setLocationOrLink] = useState('Sân Ký túc xá Dorm A, ĐH FPT Hòa Lạc');
+  const [gatheringPoint, setGatheringPoint] = useState('Sảnh Tòa Alpha lúc 07:15');
   const [beneficiaryAndGoal, setBeneficiaryAndGoal] = useState('');
   const [safetyNotes, setSafetyNotes] = useState(
     'Tuân thủ hướng dẫn điều phối của BTC và quy tắc an toàn chung.'
@@ -72,11 +79,19 @@ export const ProgramFormPage: React.FC = () => {
   const [slots, setSlots] = useState<ProgramSlot[]>([
     {
       id: 'slot_1',
-      name: 'Ca sáng (08:00 – 11:30)',
-      timeRange: '08:00 – 11:30',
-      quota: 20,
+      name: 'Ca sáng (07:30 – 11:30)',
+      timeRange: '07:30 – 11:30',
+      quota: 25,
       confirmedCount: 0,
-      description: 'Hỗ trợ công tác chuẩn bị và triển khai đợt sáng',
+      description: 'Thu gom pin cũ và rác điện tử tại các điểm tập kết',
+    },
+    {
+      id: 'slot_2',
+      name: 'Ca chiều (13:30 – 16:30)',
+      timeRange: '13:30 – 16:30',
+      quota: 25,
+      confirmedCount: 0,
+      description: 'Phân loại, đóng gói và bàn giao cho đơn vị tái chế',
     },
   ]);
 
@@ -85,7 +100,7 @@ export const ProgramFormPage: React.FC = () => {
   const [targetAudience, setTargetAudience] = useState('Sinh viên toàn trường');
 
   const [confirmMode, setConfirmMode] = useState<'Instant' | 'Approval'>('Instant');
-  const [quota, setQuota] = useState(40);
+  const [quota, setQuota] = useState(50);
   const [registrationDeadline, setRegistrationDeadline] = useState(toLocalDateTime(new Date(Date.now()+5*86400000).toISOString()));
   const [questions, setQuestions] = useState<FormQuestion[]>([
     {

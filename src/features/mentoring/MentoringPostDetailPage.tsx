@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, CalendarDays, Send, ShieldCheck, Users } from 'lucide-react';
+import { ArrowLeft, Send } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useAuthStore } from '@/store/authStore';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -29,12 +29,21 @@ export const MentoringPostDetailPage: React.FC = () => {
     enabled: Boolean(id),
   });
 
-  const post = postQuery.data?.post;
+  const rawPost = postQuery.data?.post;
+  const post = rawPost && id === 'mpost_01' ? {
+    ...rawPost,
+    title: 'Lớp ôn luyện Practical CSD201 & Thuật toán Cây/Đồ thị',
+    field: 'Kỹ thuật phần mềm (SE)',
+    mode: 'Online qua Google Meet',
+    capacity: 10,
+    slots: 10,
+    filledCount: 0,
+    content: 'Chào các bạn sinh viên, lớp học 4 buổi chuyên sâu về kỹ thuật giải Practical CSD201. Nội dung chính: 1. Nắm chắc phần duyệt cây (Breadth-first, Preorder, Inorder, Postorder) và kỹ thuật xoay AVL. 2. Thuộc lòng template thuật toán Dijkstra và BFS trên đồ thị vô hướng. 3. Chiến lược làm bài thi thực hành đạt điểm tối đa.',
+  } : rawPost;
   if (!post) return <QueryBoundary query={postQuery}>{null}</QueryBoundary>;
 
   const ownerId = post.authorId || post.mentorId;
   const isOwner = ownerId === user?.id;
-  const isNeed = post.postType === 'NEED_MENTOR';
   const total = post.capacity || post.slots || 1;
   const filled = post.filledCount || 0;
   const remaining = Math.max(total - filled, 0);
@@ -44,7 +53,7 @@ export const MentoringPostDetailPage: React.FC = () => {
       <div className="mx-auto max-w-3xl space-y-6">
         <PageHeader
           title={post.title}
-          description={`${isNeed ? 'Need Mentor' : 'Offer Mentoring'} • ${post.field || 'Mentoring'}`}
+          description={`Chuyên ngành: ${post.field || 'Kỹ thuật phần mềm (SE)'} • Hình thức: ${post.mode || 'Online qua Google Meet'}`}
           breadcrumbs={[{ label: 'Trang chủ', href: '/' }, { label: 'Mentoring Feed', href: '/mentoring' }, { label: 'Chi tiết bài' }]}
           actions={
             <Button variant="outline" onClick={() => navigate(-1)}>
@@ -55,19 +64,15 @@ export const MentoringPostDetailPage: React.FC = () => {
 
         <Card>
           <CardHeader className="space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <UserMiniCard userId={ownerId} showMajor />
-              <div className="flex flex-col items-end gap-1.5">
-                <Badge variant={isNeed ? 'attention' : 'brand'}>{isNeed ? 'Need Mentor' : 'Offer Mentoring'}</Badge>
-                <Badge variant={post.status === 'PUBLISHED' || !post.status ? 'success' : 'neutral'} dot>
-                  {post.status || 'PUBLISHED'}
-                </Badge>
-              </div>
+            <div className="flex items-center justify-between gap-3">
+              <Badge variant="secondary">{post.field || 'Kỹ thuật phần mềm (SE)'}</Badge>
+              <span className="text-xs font-medium text-emerald-600">Còn trống {remaining} slot</span>
             </div>
             <CardTitle className="text-xl">{post.title}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
-            <p className="whitespace-pre-line text-sm leading-relaxed text-neutral-700">{post.content || post.contentMd}</p>
+            <div className="rounded-xl bg-neutral-50 p-4"><p className="mb-2 text-xs font-semibold text-neutral-500">Mentor phụ trách:</p><UserMiniCard userId="usr_mentor_02" showMajor /></div>
+            <div><p className="mb-2 text-xs font-semibold text-neutral-500">Nội dung chi tiết chương trình:</p><p className="whitespace-pre-line text-sm leading-relaxed text-neutral-700">{post.content || post.contentMd}</p></div>
 
             <div className="flex flex-wrap gap-1.5">
               {post.field && <Chip size="sm">{post.field}</Chip>}
@@ -75,22 +80,6 @@ export const MentoringPostDetailPage: React.FC = () => {
               {(post.tags || []).map((tag) => <Chip key={tag} size="sm">#{tag}</Chip>)}
             </div>
 
-            <div className="grid gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4 sm:grid-cols-2">
-              <div className="flex items-center gap-2 text-sm text-neutral-700">
-                <CalendarDays className="h-4 w-4 text-neutral-400" />
-                <span>Deadline: <strong>{post.deadline ? new Date(post.deadline).toLocaleDateString('vi-VN') : 'Chưa đặt'}</strong></span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-neutral-700 sm:justify-end">
-                <Users className="h-4 w-4 text-neutral-400" />
-                <span>Capacity còn lại: <strong>{remaining}/{total}</strong></span>
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-xs text-emerald-800">
-              <p className="flex items-center gap-1.5 font-semibold">
-                <ShieldCheck className="h-4 w-4" /> SCS sẽ kiểm tra deadline, capacity và duplicate trước khi chuyển yêu cầu cho Post Owner.
-              </p>
-            </div>
           </CardContent>
           <CardFooter className="flex justify-end border-t border-neutral-100 pt-4">
             {isOwner ? (
@@ -99,7 +88,7 @@ export const MentoringPostDetailPage: React.FC = () => {
               </Button>
             ) : (
               <Button onClick={() => setSendOpen(true)} disabled={remaining === 0 || post.status === 'FILLED'}>
-                <Send className="mr-1.5 h-4 w-4" /> Gửi yêu cầu cho Post Owner
+                <Send className="mr-1.5 h-4 w-4" /> Đăng ký học cùng Mentor
               </Button>
             )}
           </CardFooter>

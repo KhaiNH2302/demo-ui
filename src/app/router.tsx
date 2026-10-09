@@ -1,11 +1,6 @@
 import React from 'react';
 import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
 
-const MentorDetailRedirect: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  return <Navigate to={`/users/${id}`} replace />;
-};
-
 const AdminOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <ProtectedRoute requireRoles={['admin', 'Admin']}>{children}</ProtectedRoute>
 );
@@ -87,6 +82,7 @@ const MentorBrowsePage = React.lazy(() => import('@/features/mentoring/MentorBro
 const MentoringPostDetailPage = React.lazy(() => import('@/features/mentoring/MentoringPostDetailPage'));
 const MyMentoringRequestsPage = React.lazy(() => import('@/features/mentoring/MyMentoringRequestsPage'));
 const MentoringFeedPage = React.lazy(() => import('@/features/mentoring/MentoringFeedPage'));
+const MentorDetailPage = React.lazy(() => import('@/features/mentoring/MentorDetailPage'));
 
 // FE-05: Mentoring Application Flow (MR0 - MR3)
 const MentorApplyIntroPage = React.lazy(() => import('@/features/mentor/MentorApplyIntroPage'));
@@ -214,7 +210,7 @@ export const router = createBrowserRouter([
       { path: 'mentoring/ai', element: <MentorAiSearchPage /> },
       { path: 'mentoring/browse', element: <MentorBrowsePage /> },
       { path: 'mentoring/feed', element: <MentoringFeedPage /> },
-      { path: 'mentoring/mentors/:id', element: <MentorDetailRedirect /> },
+      { path: 'mentoring/mentors/:id', element: <MentorDetailPage /> },
       { path: 'mentoring/posts/:id', element: <MentoringPostDetailPage /> },
       { path: 'mentoring/requests', element: <MyMentoringRequestsPage /> },
 
@@ -227,7 +223,7 @@ export const router = createBrowserRouter([
       {
         path: 'mentor',
         element: (
-          <ProtectedRoute allowGuest requireRoles={['mentor', 'Mentor']}>
+          <ProtectedRoute allowGuest>
             <MentorCenterShell />
           </ProtectedRoute>
         ),

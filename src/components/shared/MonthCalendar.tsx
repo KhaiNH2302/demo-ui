@@ -29,12 +29,13 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   onSelectEvent,
   className,
 }) => {
-  const [viewDate, setViewDate] = useState<Date>(new Date(currentDate));
-  const [selectedMobileDate, setSelectedMobileDate] = useState<Date | null>(new Date());
+  const referenceDateKey = localDateKey(currentDate);
+  const referenceDate = useMemo(() => new Date(`${referenceDateKey}T00:00:00`), [referenceDateKey]);
+  const [viewDate, setViewDate] = useState<Date>(new Date(referenceDate));
+  const [selectedMobileDate, setSelectedMobileDate] = useState<Date | null>(new Date(referenceDate));
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth(); // 0-indexed
-  const todayKey = localDateKey(new Date());
 
   const monthLabel = useMemo(() => {
     return `Tháng ${month + 1}, ${year}`;
@@ -49,9 +50,8 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   };
 
   const handleToday = () => {
-    const now = new Date();
-    setViewDate(now);
-    setSelectedMobileDate(now);
+    setViewDate(new Date(referenceDate));
+    setSelectedMobileDate(new Date(referenceDate));
   };
 
   // Calendar cells generation: 7 columns x 5 or 6 rows
@@ -70,7 +70,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
       dateKey: string;
     }[] = [];
 
-    const todayStr = todayKey;
+    const todayStr = referenceDateKey;
 
     // Leading days from previous month
     for (let i = firstDayWeekday - 1; i >= 0; i--) {
@@ -110,7 +110,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     }
 
     return days;
-  }, [year, month, todayKey]);
+  }, [year, month, referenceDateKey]);
 
   // Group events by YYYY-MM-DD
   const eventsByDate = useMemo(() => {
