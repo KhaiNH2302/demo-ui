@@ -101,7 +101,7 @@ export const ProgramsExplorePage: React.FC = () => {
       <PageHeader
         variant="band"
         icon={HeartHandshake}
-        title="Hoạt động"
+        title="Tình nguyện & Workshop"
         description="Các chiến dịch tình nguyện vì cộng đồng và buổi chia sẻ kỹ năng do chính sinh viên trong trường khởi xướng, đã được Admin xác minh."
         actions={
           <Link to="/programs/new">
