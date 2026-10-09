@@ -15,7 +15,7 @@ const scenarios = [
   { key: 'recruitment_closed', label: 'Đợt tuyển hết hạn (CL3)' },
   { key: 'recruitment_quota_full', label: 'Đợt tuyển hết chỉ tiêu (CL3)' },
   { key: 'forbidden', label: 'Không đủ quyền (W7, A2, A7)' },
-  { key: 'last_system_admin', label: 'Chặn xóa Admin cuối (A7)' },
+  { key: 'admin_protected', label: 'Bảo vệ Admin duy nhất (A7)' },
   { key: 'post_auto_flagged', label: 'Bài viết auto-flag (K2)' },
 ];
 

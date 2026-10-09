@@ -85,7 +85,7 @@ export default function LoginPage() {
       });
     }
     const isAdmin = loggedUser.roles.some((r) =>
-      ['super_admin', 'system_admin', 'manager', 'SuperAdmin', 'SystemAdmin', 'Manager'].includes(r),
+      ['admin', 'manager', 'Admin', 'Manager'].includes(r),
     );
 
     navigate(isAdmin ? '/admin' : '/', { replace: true });
@@ -183,12 +183,7 @@ export default function LoginPage() {
     {
       email: 'admin@fpt.edu.vn',
       name: 'Vũ Quốc Em',
-      roleLabel: 'Super Admin',
-    },
-    {
-      email: 'sysadmin@fpt.edu.vn',
-      name: 'Nguyễn Quản Trị',
-      roleLabel: 'System Admin · Quản trị hệ thống',
+      roleLabel: 'Admin · Quản trị hệ thống',
     },
     {
       email: 'manager@fpt.edu.vn',

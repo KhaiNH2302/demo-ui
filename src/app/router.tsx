@@ -6,8 +6,8 @@ const MentorDetailRedirect: React.FC = () => {
   return <Navigate to={`/users/${id}`} replace />;
 };
 
-const SystemAdminOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <ProtectedRoute requireRoles={['system_admin', 'super_admin', 'SystemAdmin', 'SuperAdmin']}>{children}</ProtectedRoute>
+const AdminOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <ProtectedRoute requireRoles={['admin', 'Admin']}>{children}</ProtectedRoute>
 );
 
 const SwapMatchRedirect: React.FC = () => {
@@ -246,24 +246,24 @@ export const router = createBrowserRouter([
   {
     path: '/admin',
     element: (
-      <ProtectedRoute requireRoles={['super_admin', 'system_admin', 'manager', 'SuperAdmin', 'SystemAdmin', 'Manager']}>
+      <ProtectedRoute requireRoles={['admin', 'manager', 'Admin', 'Manager']}>
         <AdminShell />
       </ProtectedRoute>
     ),
     children: [
       { index: true, element: <AdminDashboardPage /> },
-      // Quản lý người dùng, cấu hình, phân quyền, nhật ký: chỉ System Admin (Manager → /403)
-      { path: 'users', element: <SystemAdminOnly><AdminUsersPage /></SystemAdminOnly> },
-      { path: 'users/:id', element: <SystemAdminOnly><AdminUserDetailPage /></SystemAdminOnly> },
+      // Quản lý người dùng, cấu hình, phân quyền, nhật ký: chỉ Admin duy nhất (Manager → /403)
+      { path: 'users', element: <AdminOnly><AdminUsersPage /></AdminOnly> },
+      { path: 'users/:id', element: <AdminOnly><AdminUserDetailPage /></AdminOnly> },
       { path: 'moderation', element: <ModerationPage /> },
       { path: 'clubs', element: <AdminClubsPage /> },
       { path: 'programs', element: <AdminProgramsPage /> },
       { path: 'mentor-applications', element: <AdminMentorApplicationsPage /> },
       { path: 'mentor-applications/:id', element: <AdminMentorApplicationDetailPage /> },
       { path: 'master-data', element: <MasterDataPage /> },
-      { path: 'settings', element: <SystemAdminOnly><SystemSettingsPage /></SystemAdminOnly> },
-      { path: 'admins', element: <SystemAdminOnly><AdminManagementPage /></SystemAdminOnly> },
-      { path: 'audit-logs', element: <SystemAdminOnly><AuditLogsPage /></SystemAdminOnly> },
+      { path: 'settings', element: <AdminOnly><SystemSettingsPage /></AdminOnly> },
+      { path: 'admins', element: <AdminOnly><AdminManagementPage /></AdminOnly> },
+      { path: 'audit-logs', element: <AdminOnly><AuditLogsPage /></AdminOnly> },
     ],
   },
 

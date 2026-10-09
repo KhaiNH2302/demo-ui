@@ -31,18 +31,16 @@ export const AdminManagementPage: React.FC = () => {
   ] as const;
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const isSystemAdmin = user?.roles.includes('system_admin') || user?.roles.includes('super_admin');
+  const isAdmin = user?.roles.includes('admin') || user?.roles.includes('Admin');
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [selectedUserLabel, setSelectedUserLabel] = useState('');
   const [editingAdmin, setEditingAdmin] = useState<User | null>(null);
-  const [transferOpen, setTransferOpen] = useState(false);
-  const [transferTargetId, setTransferTargetId] = useState('');
   const [editingPermissions, setEditingPermissions] = useState<string[]>([]);
   const [addForm, setAddForm] = useState({
     userId: '',
-    role: 'manager' as 'super_admin' | 'system_admin' | 'manager',
+    role: 'manager' as const,
     permissions: managerPermissionOptions.map((item) => item.key),
   });
   const [revokeUserId, setRevokeUserId] = useState<string | null>(null);
@@ -53,14 +51,13 @@ export const AdminManagementPage: React.FC = () => {
   const adminsQuery = useQuery({
     queryKey: ['admin', 'admins'],
     queryFn: () => apiClient.get<User[]>('/admin/admins'),
-    enabled: isSystemAdmin,
+    enabled: isAdmin,
   });
   const usersQuery = useQuery({
     queryKey: ['admin', 'users', 'permission-search', userSearch],
     queryFn: () => apiClient.get<User[]>('/admin/users', { params: { search: userSearch } }),
     enabled: isAddOpen && userSearch.trim().length >= 2,
   });
-  const hasSuperAdmin = Boolean(adminsQuery.data?.some((admin) => admin.roles.includes('super_admin')));
   const filteredAdmins = (adminsQuery.data || []).filter((admin) => `${admin.fullName} ${admin.email} ${admin.id} ${admin.roles.join(' ')}`.toLowerCase().includes(adminSearch.toLowerCase()));
   const pagedAdmins = filteredAdmins.slice((adminPage - 1) * adminPageSize, adminPage * adminPageSize);
 
@@ -92,17 +89,6 @@ export const AdminManagementPage: React.FC = () => {
     onError: () => toast.error('Không thể cập nhật quyền Manager.'),
   });
 
-  const transferSuperAdminMutation = useMutation({
-    mutationFn: () => apiClient.put(`/admin/admins/${user?.id}/transfer`, { targetUserId: transferTargetId }),
-    onSuccess: () => {
-      toast.success('Đã nhượng quyền Super Admin thành công.');
-      setTransferOpen(false);
-      setTransferTargetId('');
-      queryClient.invalidateQueries({ queryKey: ['admin', 'admins'] });
-    },
-    onError: () => toast.error('Không thể nhượng quyền Super Admin.'),
-  });
-
   const revokeMutation = useMutation({
     mutationFn: (targetId: string) => apiClient.delete(`/admin/admins/${targetId}`),
     onSuccess: () => {
@@ -117,13 +103,13 @@ export const AdminManagementPage: React.FC = () => {
     },
   });
 
-  if (!isSystemAdmin) {
+  if (!isAdmin) {
     return (
       <div className="max-w-md mx-auto my-12 p-6 bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded-xl text-center space-y-4">
         <ShieldAlert className="w-12 h-12 text-[var(--status-danger-fg)] mx-auto" />
         <h2 className="text-lg font-bold">Không có quyền truy cập</h2>
         <p className="text-sm text-[var(--text-muted)]">
-          Trang phân quyền Quản trị viên chỉ dành riêng cho Quản trị viên Hệ thống (System Admin).
+          Trang phân quyền chỉ dành cho Admin của hệ thống.
         </p>
       </div>
     );
@@ -133,7 +119,7 @@ export const AdminManagementPage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Phân quyền Quản trị viên"
-        description="Quản lý danh sách tài khoản được cấp quyền Quản trị hệ thống và Quản trị trường"
+        description="Admin duy nhất quản lý các Manager và phạm vi chức năng được phép truy cập"
         breadcrumbs={[
           { label: 'Admin Portal', href: '/admin' },
           { label: 'Phân quyền' },
@@ -165,11 +151,9 @@ export const AdminManagementPage: React.FC = () => {
                       <UserMiniCard userId={admin.id} />
                     </td>
                     <td className="px-6 py-4">
-                      {admin.roles.includes('super_admin') ? (
-                        <Badge variant="primary" className="font-semibold">Super Admin</Badge>
-                      ) : admin.roles.includes('system_admin') ? (
+                      {admin.roles.includes('admin') ? (
                         <Badge variant="primary" className="font-semibold">
-                          <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Toàn hệ thống (System)
+                          <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Admin toàn hệ thống
                         </Badge>
                       ) : (
                         <Badge variant="secondary">
@@ -181,11 +165,6 @@ export const AdminManagementPage: React.FC = () => {
                       {admin.school || 'Tất cả cơ sở'}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {admin.roles.includes('super_admin') && admin.id === user?.id && (
-                        <Button variant="ghost" size="sm" onClick={() => setTransferOpen(true)}>
-                          <Pencil className="w-4 h-4 mr-1" /> Nhượng quyền
-                        </Button>
-                      )}
                       {admin.roles.includes('manager') && (
                         <Button
                           variant="ghost"
@@ -198,14 +177,16 @@ export const AdminManagementPage: React.FC = () => {
                           <Pencil className="w-4 h-4 mr-1" /> Chỉnh quyền
                         </Button>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-[var(--status-danger-fg)]"
-                        onClick={() => setRevokeUserId(admin.id)}
-                      >
-                        <Trash2 className="w-4 h-4 mr-1" /> Thu hồi quyền
-                      </Button>
+                      {admin.roles.includes('manager') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-[var(--status-danger-fg)]"
+                          onClick={() => setRevokeUserId(admin.id)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" /> Thu hồi quyền
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -269,11 +250,7 @@ export const AdminManagementPage: React.FC = () => {
               <Select
                 value={addForm.role}
                 onChange={(e) => setAddForm({ ...addForm, role: e.target.value as any })}
-                options={[
-                  { label: 'Quản lý nghiệp vụ (Manager)', value: 'manager' },
-                  ...(!hasSuperAdmin ? [{ label: 'Super Admin', value: 'super_admin' }] : []),
-                  { label: 'Quản trị viên Hệ thống (System Admin)', value: 'system_admin' },
-                ]}
+                options={[{ label: 'Quản lý nghiệp vụ (Manager)', value: 'manager' }]}
               />
             </FormField>
             {addForm.role === 'manager' && (
@@ -339,37 +316,6 @@ export const AdminManagementPage: React.FC = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingAdmin(null)}>Hủy</Button>
             <Button onClick={() => updatePermissionsMutation.mutate()} loading={updatePermissionsMutation.isPending}>Lưu quyền</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nhượng quyền Super Admin</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-[var(--text-muted)]">
-              Bạn sẽ chuyển quyền Super Admin cho tài khoản mới. Tài khoản hiện tại sẽ trở thành System Admin.
-            </p>
-            <FormField label="User ID người nhận" required>
-              <Input
-                placeholder="Ví dụ: usr_admin_05"
-                value={transferTargetId}
-                onChange={(e) => setTransferTargetId(e.target.value.trim())}
-              />
-            </FormField>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTransferOpen(false)}>Hủy</Button>
-            <Button
-              variant="primary"
-              disabled={!transferTargetId || transferTargetId === user?.id}
-              loading={transferSuperAdminMutation.isPending}
-              onClick={() => transferSuperAdminMutation.mutate()}
-            >
-              Xác nhận nhượng quyền
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

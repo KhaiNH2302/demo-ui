@@ -32,11 +32,10 @@ export const AdminShell: React.FC = () => {
   const hasRole = useAuthStore((state) => state.hasRole);
   const navigate = useNavigate();
 
-  const isSuperAdmin = hasRole('super_admin') || hasRole('SuperAdmin');
-  const isSystemAdmin = isSuperAdmin || hasRole('system_admin') || hasRole('SystemAdmin');
+  const isAdmin = hasRole('admin') || hasRole('Admin');
   const { resolvedTheme, toggleTheme } = useThemeStore();
 
-  // Manager (quản lý nghiệp vụ) chỉ thấy các mục nghiệp vụ; System Admin thấy thêm các mục hệ thống
+  // Manager chỉ thấy module được cấp; Admin duy nhất thấy toàn bộ cổng quản trị.
   // Các phiên demo Manager được lưu từ trước khi có adminPermissions vẫn phải vào được Dashboard.
   const managerPermissions = user?.adminPermissions?.length ? user.adminPermissions : ['dashboard'];
   const navItems = [
@@ -50,8 +49,8 @@ export const AdminShell: React.FC = () => {
     { to: '/admin/settings', label: 'Cấu hình hệ thống', icon: Sliders, systemOnly: true, permission: 'settings' },
     { to: '/admin/admins', label: 'Phân quyền quản trị', icon: UserCheck, systemOnly: true, permission: 'admins' },
     { to: '/admin/audit-logs', label: 'Nhật ký kiểm toán', icon: FileText, systemOnly: true, permission: 'reports' },
-  ].filter((item) => isSystemAdmin || (!item.systemOnly && managerPermissions.includes(item.permission)));
-  const roleLabel = isSuperAdmin ? 'Super Admin' : isSystemAdmin ? 'System Admin' : 'Manager';
+  ].filter((item) => isAdmin || (!item.systemOnly && managerPermissions.includes(item.permission)));
+  const roleLabel = isAdmin ? 'Admin' : 'Manager';
 
   return (
     <div className="min-h-screen bg-neutral-100 flex flex-col antialiased">

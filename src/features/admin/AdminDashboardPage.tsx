@@ -30,7 +30,7 @@ interface DashboardResponse {
 
 export const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const isSystemAdmin = useAuthStore((s) => s.hasRole('super_admin') || s.hasRole('system_admin'));
+  const isAdmin = useAuthStore((s) => s.hasRole('admin'));
 
   const dashboardQuery = useQuery({
     queryKey: ['admin', 'dashboard'],
@@ -159,7 +159,7 @@ export const AdminDashboardPage: React.FC = () => {
                     <ArrowRight className="w-4 h-4 text-neutral-400" />
                   </div>
 
-                  {isSystemAdmin && (
+                  {isAdmin && (
                   <div
                     className="p-3 border border-neutral-200 rounded-lg flex items-center justify-between hover:bg-neutral-50 cursor-pointer transition-colors"
                     onClick={() => navigate('/admin/users')}

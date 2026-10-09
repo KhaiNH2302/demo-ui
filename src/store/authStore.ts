@@ -148,7 +148,7 @@ export const useAuthStore = create<AuthState>()(
         if (!user) return false;
         if (
           user.roles.some((r) =>
-            ['super_admin', 'system_admin', 'manager', 'admin', 'SuperAdmin', 'SystemAdmin', 'Manager', 'Admin'].includes(r)
+            ['manager', 'admin', 'Manager', 'Admin'].includes(r)
           )
         ) {
           return true;
@@ -159,7 +159,7 @@ export const useAuthStore = create<AuthState>()(
         const user = get().user;
         if (!user) return false;
         return user.roles.some((r) =>
-            ['super_admin', 'system_admin', 'manager', 'admin', 'SuperAdmin', 'SystemAdmin', 'Manager', 'Admin'].includes(r)
+            ['manager', 'admin', 'Manager', 'Admin'].includes(r)
         );
       },
       setRepresentedClubs: (representedClubs) => set({ representedClubs }),
@@ -175,6 +175,20 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'scs_auth_session',
+      version: 2,
+      migrate: (persistedState: unknown) => {
+        const state = persistedState as AuthState;
+        if (!state?.user) return state;
+
+        const legacyAdminRoles = ['super_admin', 'system_admin', 'SuperAdmin', 'SystemAdmin'];
+        const roles = state.user.roles.filter((role) => !legacyAdminRoles.includes(role));
+        if (state.user.id === 'usr_admin_05' && !roles.includes('admin')) roles.push('admin');
+
+        return {
+          ...state,
+          user: { ...state.user, roles },
+        };
+      },
     }
   )
 );

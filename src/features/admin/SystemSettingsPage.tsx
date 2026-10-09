@@ -33,8 +33,7 @@ interface LocalSettings {
 export const SystemSettingsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const isSystemAdmin =
-    user?.roles.includes('super_admin') || user?.roles.includes('system_admin') || user?.roles.includes('SuperAdmin') || user?.roles.includes('SystemAdmin');
+  const isAdmin = user?.roles.includes('admin') || user?.roles.includes('Admin');
 
   const settingsQuery = useQuery({
     queryKey: ['admin', 'settings'],
@@ -131,7 +130,7 @@ export const SystemSettingsPage: React.FC = () => {
                           autoHideReportThreshold: Number(e.target.value) || 5,
                         })
                       }
-                      disabled={!isSystemAdmin}
+                      disabled={!isAdmin}
                     />
                     <p className="text-xs text-neutral-500">
                       Nội dung nhận đủ số lượt báo cáo này sẽ chuyển sang trạng thái{' '}
@@ -154,7 +153,7 @@ export const SystemSettingsPage: React.FC = () => {
                           maxActiveProgramChannelsPerStudent: Number(e.target.value) || 2,
                         })
                       }
-                      disabled={!isSystemAdmin}
+                      disabled={!isAdmin}
                     />
                     <p className="text-xs text-neutral-500">
                       Số kênh tối đa ở trạng thái Chờ duyệt hoặc Đang mở mà một sinh viên được phép đứng tên cùng lúc.
@@ -179,7 +178,7 @@ export const SystemSettingsPage: React.FC = () => {
                   />
                 </div>
               </CardContent>
-              {isSystemAdmin && (
+              {isAdmin && (
                 <CardFooter className="border-t border-neutral-100 pt-4 flex justify-end">
                   <Button
                     onClick={() => updateSettingsMutation.mutate(settings)}
@@ -218,7 +217,7 @@ export const SystemSettingsPage: React.FC = () => {
                         aiFeatures: { ...settings.aiFeatures, swapMatching: c },
                       })
                     }
-                    disabled={!isSystemAdmin}
+                    disabled={!isAdmin}
                   />
                 </div>
 
@@ -239,7 +238,7 @@ export const SystemSettingsPage: React.FC = () => {
                         aiFeatures: { ...settings.aiFeatures, groupMatching: c },
                       })
                     }
-                    disabled={!isSystemAdmin}
+                    disabled={!isAdmin}
                   />
                 </div>
 
@@ -260,11 +259,11 @@ export const SystemSettingsPage: React.FC = () => {
                         aiFeatures: { ...settings.aiFeatures, mentoringMatching: c },
                       })
                     }
-                    disabled={!isSystemAdmin}
+                    disabled={!isAdmin}
                   />
                 </div>
               </CardContent>
-              {isSystemAdmin && (
+              {isAdmin && (
                 <CardFooter className="border-t border-neutral-100 pt-4 flex justify-end">
                   <Button
                     onClick={() => updateSettingsMutation.mutate(settings)}
@@ -303,7 +302,7 @@ export const SystemSettingsPage: React.FC = () => {
                         notifications: { ...settings.notifications, emailDigest: c },
                       })
                     }
-                    disabled={!isSystemAdmin}
+                    disabled={!isAdmin}
                   />
                 </div>
 
@@ -324,11 +323,11 @@ export const SystemSettingsPage: React.FC = () => {
                         notifications: { ...settings.notifications, realtimePush: c },
                       })
                     }
-                    disabled={!isSystemAdmin}
+                    disabled={!isAdmin}
                   />
                 </div>
               </CardContent>
-              {isSystemAdmin && (
+              {isAdmin && (
                 <CardFooter className="border-t border-neutral-100 pt-4 flex justify-end">
                   <Button
                     onClick={() => updateSettingsMutation.mutate(settings)}

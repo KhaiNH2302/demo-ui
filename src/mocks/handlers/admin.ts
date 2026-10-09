@@ -435,7 +435,7 @@ export const adminHandlers = [
   http.get('/api/v1/admin/admins', async () => {
     await mockDelay();
     const admins = seedUsers.filter(
-      (u) => u.roles.includes('super_admin') || u.roles.includes('system_admin') || u.roles.includes('manager')
+      (u) => u.roles.includes('admin') || u.roles.includes('manager')
     );
     const safe = admins.map(({ password: _, ...u }) => u);
     return HttpResponse.json({ data: safe });
@@ -445,12 +445,9 @@ export const adminHandlers = [
     await mockDelay();
     const body = (await request.json()) as {
       userId: string;
-      role: 'super_admin' | 'system_admin' | 'manager';
+      role: 'manager';
       adminPermissions?: string[];
     };
-    if (body.role === 'super_admin' && seedUsers.some((u) => u.roles.includes('super_admin'))) {
-      return HttpResponse.json({ error: { code: 'SUPER_ADMIN_EXISTS', message: 'Hệ thống chỉ có một Super Admin.' } }, { status: 409 });
-    }
     const user = seedUsers.find((u) => u.id === body.userId);
     if (user && !user.roles.includes(body.role)) {
       user.roles.push(body.role);
@@ -470,40 +467,16 @@ export const adminHandlers = [
     return HttpResponse.json({ data: safeUser });
   }),
 
-  http.put('/api/v1/admin/admins/:id/transfer', async ({ params, request }) => {
-    await mockDelay();
-    const body = (await request.json()) as { targetUserId?: string };
-    const current = seedUsers.find((u) => u.id === params.id);
-    const target = seedUsers.find((u) => u.id === body.targetUserId);
-    if (!current?.roles.includes('super_admin') || !target) {
-      return HttpResponse.json({ error: { code: 'INVALID_TRANSFER', message: 'Tài khoản nhượng quyền không hợp lệ.' } }, { status: 400 });
-    }
-    current.roles = current.roles.filter((role) => role !== 'super_admin');
-    if (!current.roles.includes('system_admin')) current.roles.push('system_admin');
-    target.roles = target.roles.filter((role) => role !== 'manager' && role !== 'system_admin');
-    if (!target.roles.includes('super_admin')) target.roles.push('super_admin');
-    const { password: _currentPassword, ...safeCurrent } = current;
-    return HttpResponse.json({ data: safeCurrent });
-  }),
-
   http.delete('/api/v1/admin/admins/:id', async ({ params }) => {
     await mockDelay();
-    const systemAdmins = seedUsers.filter((u) => u.roles.includes('system_admin'));
     const targetUser = seedUsers.find((u) => u.id === params.id);
 
-    if (targetUser?.roles.includes('super_admin')) {
-      return HttpResponse.json({ error: { code: 'SUPER_ADMIN_PROTECTED', message: 'Không thể thu hồi Super Admin duy nhất.' } }, { status: 409 });
-    }
-
-    if (
-      isScenarioActive('last_system_admin') ||
-      (targetUser?.roles.includes('system_admin') && systemAdmins.length <= 1)
-    ) {
+    if (targetUser?.roles.includes('admin') || isScenarioActive('admin_protected')) {
       return HttpResponse.json(
         {
           error: {
-            code: 'LAST_SYSTEM_ADMIN',
-            message: 'Không thể thu hồi quyền của Quản trị viên Hệ thống cuối cùng!',
+            code: 'ADMIN_PROTECTED',
+            message: 'Admin duy nhất của hệ thống không thể bị thu hồi quyền.',
           },
         },
         { status: 409 }
@@ -512,7 +485,7 @@ export const adminHandlers = [
 
     if (targetUser) {
       targetUser.roles = targetUser.roles.filter(
-        (r) => r !== 'system_admin' && r !== 'manager'
+        (r) => r !== 'manager'
       );
     }
 

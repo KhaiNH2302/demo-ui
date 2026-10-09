@@ -141,7 +141,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   // =========================================================================
   const isMentor = user?.roles?.some((r) => r.toLowerCase() === 'mentor');
   const isAdmin = user?.roles?.some((r) =>
-    ['system_admin', 'manager', 'admin'].includes(r.toLowerCase()),
+    ['manager', 'admin'].includes(r.toLowerCase()),
   );
   const unreadMessagesCount =
     (counters?.unreadMessages || 0) + (counters?.pendingMessageRequests || 0);
