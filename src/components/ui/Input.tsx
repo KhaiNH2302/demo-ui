@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/cn';
+import { useFieldAccessibility } from './FieldContext';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: boolean;
@@ -12,6 +13,7 @@ const WRAPPER_CLASS_RE =
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type = 'text', error, leftIcon, rightIcon, disabled, ...props }, ref) => {
+    const fieldProps = useFieldAccessibility(props, error);
     const tokens = (className || '').split(/\s+/).filter(Boolean);
     const wrapperClasses = tokens.filter((t) => WRAPPER_CLASS_RE.test(t)).join(' ');
     const inputClasses = tokens.filter((t) => !WRAPPER_CLASS_RE.test(t)).join(' ');
@@ -27,7 +29,6 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           type={type}
           ref={ref}
           disabled={disabled}
-          aria-invalid={error}
           className={cn(
             'flex h-10 w-full rounded-sm border border-neutral-300 dark:border-neutral-700 bg-surface px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:border-brand-500 disabled:cursor-not-allowed disabled:bg-neutral-100 dark:disabled:bg-neutral-800 disabled:opacity-75 transition-colors',
             leftIcon && 'pl-9',
@@ -36,6 +37,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             inputClasses
           )}
           {...props}
+          {...fieldProps}
         />
         {rightIcon && (
           <div className="absolute right-3 z-10 flex items-center text-neutral-400">

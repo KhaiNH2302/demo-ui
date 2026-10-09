@@ -10,7 +10,8 @@ export const queryKeys = {
     summary: ['dashboard', 'summary'] as const,
   },
   notifications: {
-    list: (params?: { read?: boolean; source?: string }) => ['notifications', 'list', params] as const,
+    list: (params?: { read?: boolean; source?: string }) =>
+      params === undefined ? ['notifications', 'list'] as const : ['notifications', 'list', params] as const,
     unreadCount: ['notifications', 'unreadCount'] as const,
   },
   chat: {
@@ -23,7 +24,7 @@ export const queryKeys = {
     detail: (id: string) => ['swap', 'detail', id] as const,
     matches: (id: string, mode: 'direct' | 'ai') => ['swap', 'matches', id, mode] as const,
     connections: (params?: { direction?: 'incoming' | 'outgoing'; requestId?: string }) =>
-      ['swap', 'connections', params] as const,
+      params === undefined ? ['swap', 'connections'] as const : ['swap', 'connections', params] as const,
   },
   knowledge: {
     feed: (filters?: Record<string, unknown>) => ['knowledge', 'feed', filters] as const,

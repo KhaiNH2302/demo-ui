@@ -3,6 +3,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useLoginGateStore } from '@/lib/viewer';
 import { getGuestAccess } from '@/lib/access';
 import { suppressErrorToasts } from '@/components/ui/Toast';
+import { isDemoMode } from '@/lib/demoMode';
 
 export interface ApiError {
   status: number;
@@ -46,7 +47,7 @@ rawClient.interceptors.request.use((config) => {
   }
 
   // Trang cá nhân đang hiển thị dạng làm mờ cho khách → mock trả dữ liệu mẫu.
-  if (typeof window !== 'undefined' && getGuestAccess(window.location.pathname) === 'member') {
+  if (isDemoMode && typeof window !== 'undefined' && getGuestAccess(window.location.pathname) === 'member') {
     config.headers['X-Demo-Sample'] = '1';
   }
   return config;

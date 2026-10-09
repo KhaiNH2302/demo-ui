@@ -11,6 +11,7 @@ import {
 import * as HoverCard from '@radix-ui/react-hover-card';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
+import { localDateKey, localEventTime } from '@/lib/calendarDate';
 import type { CalendarEventItem } from './EventDetailDialog';
 
 export interface MonthCalendarProps {
@@ -33,6 +34,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth(); // 0-indexed
+  const todayKey = localDateKey(new Date());
 
   const monthLabel = useMemo(() => {
     return `Tháng ${month + 1}, ${year}`;
@@ -68,12 +70,12 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
       dateKey: string;
     }[] = [];
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = todayKey;
 
     // Leading days from previous month
     for (let i = firstDayWeekday - 1; i >= 0; i--) {
       const d = new Date(year, month, -i);
-      const key = d.toISOString().split('T')[0];
+      const key = localDateKey(d);
       days.push({
         date: d,
         isCurrentMonth: false,
@@ -85,7 +87,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     // Days in current month
     for (let day = 1; day <= totalDaysInMonth; day++) {
       const d = new Date(year, month, day);
-      const key = d.toISOString().split('T')[0];
+      const key = localDateKey(d);
       days.push({
         date: d,
         isCurrentMonth: true,
@@ -98,7 +100,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     const remaining = 42 - days.length;
     for (let i = 1; i <= remaining; i++) {
       const d = new Date(year, month + 1, i);
-      const key = d.toISOString().split('T')[0];
+      const key = localDateKey(d);
       days.push({
         date: d,
         isCurrentMonth: false,
@@ -108,14 +110,15 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     }
 
     return days;
-  }, [year, month]);
+  }, [year, month, todayKey]);
 
   // Group events by YYYY-MM-DD
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEventItem[]>();
     for (const ev of events) {
       if (!ev.startAt) continue;
-      const key = ev.startAt.split('T')[0];
+      const key = localDateKey(ev.startAt);
+      if (!key) continue;
       if (!map.has(key)) {
         map.set(key, []);
       }
@@ -124,7 +127,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     return map;
   }, [events]);
 
-  const selectedMobileKey = selectedMobileDate?.toISOString().split('T')[0];
+  const selectedMobileKey = selectedMobileDate ? localDateKey(selectedMobileDate) : '';
   const selectedMobileEvents = selectedMobileKey ? eventsByDate.get(selectedMobileKey) || [] : [];
 
   const getPillStyle = (ev: CalendarEventItem) => {
@@ -254,7 +257,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                 {/* Desktop Pills (>= 640px) */}
                 <div className="hidden sm:flex flex-col gap-1 flex-1 overflow-hidden">
                   {dayEvents.slice(0, 3).map((ev) => {
-                    const timeStr = ev.startAt ? ev.startAt.split('T')[1]?.slice(0, 5) : '';
+                    const timeStr = localEventTime(ev.startAt);
                     return (
                       <HoverCard.Root key={ev.id} openDelay={200} closeDelay={150}>
                         <HoverCard.Trigger asChild>
@@ -363,7 +366,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                     {ev.sourceLabel}
                   </span>
                   <span className="text-[10px] text-neutral-500 font-mono">
-                    {ev.startAt?.split('T')[1]?.slice(0, 5)}
+                    {localEventTime(ev.startAt)}
                   </span>
                 </div>
                 <h4 className="text-xs font-bold text-neutral-900 line-clamp-1">{ev.title}</h4>

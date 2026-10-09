@@ -4,10 +4,10 @@ import { AppHeader } from '@/components/shared/AppHeader';
 import { AppSidebar } from '@/components/shared/AppSidebar';
 import { BottomTabBar } from '@/components/shared/BottomTabBar';
 import { LoginGate } from '@/components/shared/LoginGate';
-import { DevScenarioPanel } from '@/components/shared/DevScenarioPanel';
 import { GuestAccessBoundary } from '@/components/shared/GuestAccessBoundary';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/cn';
+import { PageLoading } from '@/components/shared/PageLoading';
 
 /**
  * Bố cục chung cho cả thành viên lẫn khách — khách xem như thành viên,
@@ -68,14 +68,15 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
                 : 'max-w-7xl 2xl:max-w-[1600px] 3xl:max-w-[1920px] 4xl:max-w-[2240px] mx-auto px-4 sm:px-6 md:px-8 py-6 pb-24 md:pb-12',
             )}
           >
-            <GuestAccessBoundary>{children ?? <Outlet />}</GuestAccessBoundary>
+            <React.Suspense fallback={<PageLoading />}>
+              <GuestAccessBoundary>{children ?? <Outlet />}</GuestAccessBoundary>
+            </React.Suspense>
           </main>
         </div>
       </div>
 
       <BottomTabBar />
       <LoginGate />
-      <DevScenarioPanel />
     </div>
   );
 };

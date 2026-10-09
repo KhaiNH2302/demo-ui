@@ -27,6 +27,8 @@ import { Select } from '@/components/ui/Select';
 import { Combobox } from '@/components/ui/Combobox';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { UserAvatar } from '@/components/shared/UserAvatar';
+import { StatusBadge } from '@/components/shared/StatusBadge';
+import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/components/ui/Toast';
 import { apiClient } from '@/lib/apiClient';
 import { queryKeys } from '@/lib/queryKeys';
@@ -45,6 +47,7 @@ export default function SwapListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const viewerId = useAuthStore((state) => state.user?.id);
 
   // URL query params
   const paramCreate = searchParams.get('create') === '1';
@@ -111,8 +114,8 @@ export default function SwapListPage() {
 
   const incomingPendingCount = useMemo(() => {
     const conns = connectionsQuery.data || [];
-    return conns.filter((c) => c.status === 'Pending' && c.recipientId === 'usr_student_01').length;
-  }, [connectionsQuery.data]);
+    return conns.filter((c) => c.status === 'Pending' && c.recipientId === viewerId).length;
+  }, [connectionsQuery.data, viewerId]);
 
   // Query: Matches for Block B
   const matchesQuery = useQuery<{
@@ -225,7 +228,7 @@ export default function SwapListPage() {
     onSuccess: () => {
       toast({ variant: 'default', title: 'Đã hủy yêu cầu đổi lớp' });
       setCancelingRequest(null);
-      queryClient.invalidateQueries({ queryKey: queryKeys.swap.list() });
+      queryClient.invalidateQueries({ queryKey: ['swap'] });
     },
   });
 
@@ -253,7 +256,7 @@ export default function SwapListPage() {
       nextParams.set('for', newReqId);
     }
     setSearchParams(nextParams);
-    queryClient.invalidateQueries({ queryKey: queryKeys.swap.list() });
+    queryClient.invalidateQueries({ queryKey: ['swap', 'list'] });
     // Scroll to Block B
     setTimeout(() => {
       blockBRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -710,7 +713,7 @@ export default function SwapListPage() {
                 </p>
               ) : (
                 recentConnections.map((conn) => {
-                  const isIncoming = conn.recipientId === 'usr_student_01';
+                  const isIncoming = conn.recipientId === viewerId;
                   const otherUserId = isIncoming ? conn.initiatorId : conn.recipientId;
                   const otherUser = seedUsers.find((u) => u.id === otherUserId) || {
                     id: otherUserId,
@@ -735,12 +738,7 @@ export default function SwapListPage() {
                           </span>
                         </div>
                       </div>
-                      <Badge
-                        variant={conn.status === 'Pending' ? 'brand' : 'neutral'}
-                        className="text-[10px] py-0 px-1 shrink-0"
-                      >
-                        {conn.status}
-                      </Badge>
+                      <StatusBadge group="swapConnection" value={conn.status} className="text-[10px] shrink-0" />
                     </div>
                   );
                 })
@@ -777,7 +775,7 @@ export default function SwapListPage() {
           initialData={editingRequest}
           onSuccess={() => {
             setEditingRequest(null);
-            queryClient.invalidateQueries({ queryKey: queryKeys.swap.list() });
+            queryClient.invalidateQueries({ queryKey: ['swap', 'list'] });
           }}
         />
       )}
@@ -809,7 +807,7 @@ export default function SwapListPage() {
           myRequest={activeOpenRequest}
           partnerRequest={sendInviteTarget}
           onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.swap.connections() });
+            queryClient.invalidateQueries({ queryKey: ['swap', 'connections'] });
             queryClient.invalidateQueries({ queryKey: ['swap', 'matches'] });
           }}
         />

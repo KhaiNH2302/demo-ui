@@ -29,6 +29,8 @@ import { useAuthStore } from '@/store/authStore';
 import { useViewer } from '@/lib/viewer';
 import { useGuardedAction } from '@/lib/guestGate';
 import { toast } from '@/components/ui/Toast';
+import { ErrorState } from '@/components/shared/ErrorState';
+import { programRegistrationUnavailable } from './rules';
 import type {
   ProgramAnnouncement,
   ProgramChannel,
@@ -51,7 +53,7 @@ export const ProgramDetailPage: React.FC = () => {
   const guard = useGuardedAction();
   const [reportOpen, setReportOpen] = useState(false);
 
-  const { data: prog, isLoading } = useQuery<ProgramDetailData>({
+  const { data: prog, isLoading, isError, refetch } = useQuery<ProgramDetailData>({
     queryKey: ['program', id],
     queryFn: () => apiClient.get(`/programs/${id}`),
     enabled: !!id,
@@ -63,21 +65,21 @@ export const ProgramDetailPage: React.FC = () => {
         action: 'toggleVisibility',
         visibleToCoParticipants: visible,
       }),
+    onError: (error: Error) => toast.error(error.message),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['program', id] });
       toast.success('Đã cập nhật tùy chọn hiển thị danh sách');
     },
   });
 
+  if (isError || (!isLoading && !prog)) return <ErrorState title="Không thể tải chương trình" onRetry={() => refetch()} />;
   if (isLoading || !prog) {
     return <Card className="h-80 animate-pulse bg-neutral-100" />;
   }
 
-  const isOrganizerOrCo =
-    user?.id === prog.organizer.userId ||
-    prog.coOrganizers.some((c) => c.userId === user?.id && c.status === 'Accepted');
+  const isOrganizerOrCo = Boolean(user?.roles.includes('event_manager')) && user?.id === prog.organizer.userId;
 
-  const isFull = prog.confirmedCount >= prog.quota;
+  const unavailable = programRegistrationUnavailable(prog, prog.myRegistration);
   const pct = Math.min(
     100,
     Math.round((prog.confirmedCount / Math.max(1, prog.quota)) * 100)
@@ -154,7 +156,7 @@ export const ProgramDetailPage: React.FC = () => {
             {/* Organizer & Co-Organizers Card */}
             <div className="p-4 rounded-lg bg-neutral-50 border border-neutral-200 space-y-3">
               <div className="text-caption font-semibold text-neutral-500">
-                Sinh viên khởi xướng &amp; điều phối
+                Event Manager phụ trách
               </div>
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2.5">
@@ -417,7 +419,7 @@ export const ProgramDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {myReg ? (
+            {myReg && !['Withdrawn', 'Cancelled'].includes(myReg.status) ? (
               <div className="p-3.5 rounded-lg bg-neutral-50 border border-neutral-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-caption font-semibold text-neutral-600">
@@ -435,7 +437,7 @@ export const ProgramDetailPage: React.FC = () => {
                     {myReg.feedbackNote}
                   </p>
                 )}
-                <Link to="/chats" className="block">
+                {myReg.status === 'Confirmed' && <Link to="/chats" className="block">
                   <Button
                     variant="secondary"
                     size="sm"
@@ -444,21 +446,17 @@ export const ProgramDetailPage: React.FC = () => {
                   >
                     Nhắn tin cho người tổ chức
                   </Button>
-                </Link>
+                </Link>}
               </div>
             ) : (
               <div className="space-y-2.5">
                 <Button
                   variant="primary"
                   className="w-full"
-                  disabled={prog.status !== 'Published' || isFull}
+                  disabled={Boolean(unavailable)}
                   onClick={handleRegisterClick}
                 >
-                  {isFull
-                    ? 'Đã đủ số lượng'
-                    : prog.status !== 'Published'
-                    ? 'Chưa mở đăng ký'
-                    : 'Đăng ký tham gia'}
+                  {unavailable || 'Đăng ký tham gia'}
                 </Button>
                 <p className="text-caption text-neutral-500 text-center">
                   Thông tin Họ tên, MSSV, Email sẽ được điền tự động từ hồ sơ của bạn.

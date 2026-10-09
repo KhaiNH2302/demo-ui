@@ -34,6 +34,7 @@ export const QuickCreateSheet: React.FC<QuickCreateSheetProps> = ({
   const representedClubs = useAuthStore((s) => s.representedClubs);
   const hasRepresentedClub = representedClubs.length > 0;
   const isMentor = useAuthStore((s) => s.user?.roles?.some((r) => r.toLowerCase() === 'mentor'));
+  const isEventManager = useAuthStore((s) => s.user?.roles.includes('event_manager'));
 
   const actions = [
     {
@@ -78,12 +79,12 @@ export const QuickCreateSheet: React.FC<QuickCreateSheetProps> = ({
     },
     {
       key: 'program',
-      title: 'Tạo hoạt động mới',
-      description: 'Tạo sự kiện, hoạt động tình nguyện hoặc workshop cho sinh viên',
+      title: isEventManager ? 'Tạo chương trình cộng đồng' : 'Đề xuất chương trình cộng đồng',
+      description: isEventManager ? 'Tổ chức hoạt động tình nguyện hoặc workshop cho sinh viên' : 'Gửi ý tưởng để Event Manager xem xét và tổ chức',
       icon: HeartHandshake,
       onClick: () => {
         onOpenChange(false);
-        navigate('/programs/new');
+        navigate(isEventManager ? '/programs/new' : '/programs/proposals');
       },
     },
     // FE-05: Mentor tạo nội dung trong Mentor Center; học viên đi tìm Mentor

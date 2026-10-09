@@ -10,7 +10,9 @@ import { PROGRAM_TYPE_LABELS } from '@/components/shared/ProgramCard';
 import { apiClient } from '@/lib/apiClient';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from '@/components/ui/Toast';
-import type { ProgramChannel } from '@/types/entities';
+import { ErrorState } from '@/components/shared/ErrorState';
+import { programRegistrationUnavailable } from './rules';
+import type { ProgramChannel, ProgramRegistration } from '@/types/entities';
 
 export const ProgramRegisterPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,7 +20,7 @@ export const ProgramRegisterPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
 
-  const { data: prog, isLoading } = useQuery<ProgramChannel>({
+  const { data: prog, isLoading, isError, refetch } = useQuery<ProgramChannel & { myRegistration?: ProgramRegistration | null }>({
     queryKey: ['program', id],
     queryFn: () => apiClient.get(`/programs/${id}`),
     enabled: !!id,
@@ -28,12 +30,12 @@ export const ProgramRegisterPage: React.FC = () => {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [note, setNote] = useState('');
   const [acknowledgedTerms, setAcknowledgedTerms] = useState(false);
-  const [visibleToCoParticipants, setVisibleToCoParticipants] = useState(true);
+  const [visibleToCoParticipants, setVisibleToCoParticipants] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (prog?.slots && prog.slots.length > 0 && !slotId) {
-      setSlotId(prog.slots[0].id);
+      setSlotId(prog.slots.find((slot) => slot.confirmedCount < slot.quota)?.id || '');
     }
   }, [prog]);
 
@@ -52,6 +54,7 @@ export const ProgramRegisterPage: React.FC = () => {
         visibleToCoParticipants,
       });
     },
+    onError: (error: Error) => toast.error(error.message),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['program', id] });
       queryClient.invalidateQueries({ queryKey: ['programs', 'registrations', 'me'] });
@@ -60,9 +63,13 @@ export const ProgramRegisterPage: React.FC = () => {
     },
   });
 
+  if (isError || (!isLoading && !prog)) return <ErrorState title="Không thể tải chương trình" onRetry={() => refetch()} />;
   if (isLoading || !prog) {
     return <Card className="h-72 animate-pulse bg-neutral-100" />;
   }
+
+  const unavailable = programRegistrationUnavailable(prog, prog.myRegistration, slotId) || (prog.organizer.userId === user?.id ? 'Người tổ chức không đăng ký vào chương trình của mình.' : null);
+  if (unavailable) return <div className="space-y-4"><ErrorState title="Không thể đăng ký" message={unavailable} /><Link to={`/programs/${prog.id}`} className="text-brand-600">Quay lại chương trình</Link></div>;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,6 +160,7 @@ export const ProgramRegisterPage: React.FC = () => {
                   <input
                     type="radio"
                     name="prog-slot"
+                    disabled={s.confirmedCount >= s.quota}
                     checked={slotId === s.id}
                     onChange={() => setSlotId(s.id)}
                     className="mt-1 text-brand-600 focus:ring-brand-500"

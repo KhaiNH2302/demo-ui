@@ -1,6 +1,6 @@
 import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { queryKeys } from '@/lib/queryKeys';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -13,9 +13,14 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Users, Plus, Settings, ArrowRight, Clock } from 'lucide-react';
 import type { Group, GroupJoinRequest } from '@/types/entities';
+import type { GroupInvitation } from '@/mocks/data/groups';
+import { invalidateGroupQueries } from './groupQueries';
+import { toast } from '@/components/ui/Toast';
 
 export const MyGroupsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
 
   const ownedGroupsQuery = useQuery({
     queryKey: queryKeys.groups.mine('owner'),
@@ -28,8 +33,18 @@ export const MyGroupsPage: React.FC = () => {
   });
 
   const myRequestsQuery = useQuery({
-    queryKey: ['join-requests', 'mine'],
+    queryKey: queryKeys.groups.myJoinRequests,
     queryFn: () => apiClient.get<GroupJoinRequest[]>('/join-requests/mine'),
+  });
+
+  const invitationsQuery = useQuery({
+    queryKey: ['group-invitations', 'mine'],
+    queryFn: () => apiClient.get<(GroupInvitation & { groupName: string })[]>('/group-invitations'),
+  });
+  const invitationMutation = useMutation({
+    mutationFn: ({ invitation, decision }: { invitation: GroupInvitation; decision: 'accept' | 'decline' }) => apiClient.post(`/groups/${invitation.groupId}/invitations/${invitation.id}/${decision}`),
+    onSuccess: (_, { decision }) => { toast.success(decision === 'accept' ? 'Bạn đã tham gia nhóm.' : 'Đã từ chối lời mời.'); invalidateGroupQueries(queryClient); },
+    onError: (error: Error) => toast.error(error.message || 'Không thể phản hồi lời mời.'),
   });
 
   return (
@@ -49,8 +64,8 @@ export const MyGroupsPage: React.FC = () => {
         }
       />
 
-      <Tabs defaultValue="owner" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
+      <Tabs value={searchParams.get('tab') || 'owner'} onValueChange={(tab) => setSearchParams({ tab })} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 max-w-2xl h-auto">
           <TabsTrigger value="owner">
             Tôi quản lý ({ownedGroupsQuery.data?.length || 0})
           </TabsTrigger>
@@ -60,6 +75,7 @@ export const MyGroupsPage: React.FC = () => {
           <TabsTrigger value="requests">
             Yêu cầu đã gửi ({myRequestsQuery.data?.length || 0})
           </TabsTrigger>
+          <TabsTrigger value="invitations">Lời mời ({invitationsQuery.data?.filter((item) => item.status === 'Pending').length || 0})</TabsTrigger>
         </TabsList>
 
         {/* Tab 1: Groups Owned */}
@@ -195,6 +211,29 @@ export const MyGroupsPage: React.FC = () => {
                       <Button variant="outline" size="sm" onClick={() => navigate(`/groups/${req.groupId}`)}>
                         Xem nhóm
                       </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </QueryBoundary>
+        </TabsContent>
+        <TabsContent value="invitations" className="mt-6">
+          <QueryBoundary query={invitationsQuery}>
+            {!invitationsQuery.data?.length ? <EmptyState title="Chưa có lời mời tham gia nhóm" /> : (
+              <div className="space-y-3">
+                {invitationsQuery.data.map((invitation) => (
+                  <Card key={invitation.id}>
+                    <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <Link to={`/groups/${invitation.groupId}`} className="text-sm font-semibold hover:underline">{invitation.groupName}</Link>
+                        <p className="text-xs text-neutral-500 mt-1">{invitation.message || 'Trưởng nhóm mời bạn tham gia.'}</p>
+                        <p className="text-xs mt-1">{({ Pending: 'Chờ phản hồi', Accepted: 'Đã tham gia', Declined: 'Đã từ chối', Cancelled: 'Đã hủy' })[invitation.status]}</p>
+                      </div>
+                      {invitation.status === 'Pending' && <div className="flex gap-2">
+                        <Button size="sm" variant="outline" disabled={invitationMutation.isPending} onClick={() => invitationMutation.mutate({ invitation, decision: 'decline' })}>Từ chối</Button>
+                        <Button size="sm" disabled={invitationMutation.isPending} loading={invitationMutation.isPending && invitationMutation.variables?.invitation.id === invitation.id} onClick={() => invitationMutation.mutate({ invitation, decision: 'accept' })}>Tham gia</Button>
+                      </div>}
                     </CardContent>
                   </Card>
                 ))}

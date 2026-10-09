@@ -78,7 +78,7 @@ export default function SwapDetailPage() {
     onSuccess: () => {
       toast({ variant: 'default', title: 'Đã hủy yêu cầu đổi lớp' });
       queryClient.invalidateQueries({ queryKey: queryKeys.swap.detail(id) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.swap.list() });
+      queryClient.invalidateQueries({ queryKey: ['swap'] });
       navigate('/swap');
     },
   });
@@ -346,7 +346,7 @@ export default function SwapDetailPage() {
                   initialData={req}
                   onSuccess={() => {
                     queryClient.invalidateQueries({ queryKey: queryKeys.swap.detail(id) });
-                    queryClient.invalidateQueries({ queryKey: queryKeys.swap.list() });
+                    queryClient.invalidateQueries({ queryKey: ['swap', 'list'] });
                   }}
                 />
               )}
@@ -377,7 +377,7 @@ export default function SwapDetailPage() {
                   partnerRequest={req}
                   onSuccess={() => {
                     queryClient.invalidateQueries({ queryKey: queryKeys.swap.detail(id) });
-                    queryClient.invalidateQueries({ queryKey: queryKeys.swap.connections({ requestId: id }) });
+                    queryClient.invalidateQueries({ queryKey: ['swap', 'connections'] });
                   }}
                 />
               )}
@@ -395,7 +395,7 @@ export default function SwapDetailPage() {
                   }}
                   onSuccess={() => {
                     queryClient.invalidateQueries({ queryKey: queryKeys.swap.detail(id) });
-                    queryClient.invalidateQueries({ queryKey: queryKeys.swap.list() });
+                    queryClient.invalidateQueries({ queryKey: ['swap', 'list'] });
                   }}
                 />
               )}
@@ -406,11 +406,11 @@ export default function SwapDetailPage() {
                   open={!!reviewConn}
                   onOpenChange={(open) => !open && setReviewConn(null)}
                   connection={reviewConn}
-                  requestA={req}
-                  requestB={req}
+                  requestA={reviewConn.requestAId === req.id ? req : undefined}
+                  requestB={reviewConn.requestBId === req.id ? req : undefined}
                   onSuccess={() => {
                     queryClient.invalidateQueries({ queryKey: queryKeys.swap.detail(id) });
-                    queryClient.invalidateQueries({ queryKey: queryKeys.swap.connections({ requestId: id }) });
+                    queryClient.invalidateQueries({ queryKey: ['swap', 'connections'] });
                   }}
                 />
               )}

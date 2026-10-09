@@ -15,6 +15,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/RadioGroup';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import { apiClient } from '@/lib/apiClient';
+import { useQueryClient } from '@tanstack/react-query';
+import { invalidateGroupQueries } from './groupQueries';
 import type { JoinMode } from '@/types/entities';
 
 const groupSchema = z.object({
@@ -38,6 +40,7 @@ const purposeOptions = [
 ];
 
 export default function GroupFormPage() {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -70,6 +73,7 @@ export default function GroupFormPage() {
     setLoading(true);
     try {
       const result = (await apiClient.post('/groups', data)) as any;
+      await invalidateGroupQueries(queryClient);
       toast({ variant: 'success', title: 'Tạo nhóm thành công! Đang chuyển đến phần gợi ý thành viên AI...' });
       navigate(`/groups/${result.id}/manage?tab=suggestions`);
     } catch {

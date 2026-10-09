@@ -2,7 +2,19 @@ import type {
   ProgramChannel,
   ProgramRegistration,
   ProgramAnnouncement,
+  ProgramProposal,
 } from '@/types/entities';
+
+export const seedProgramProposals: ProgramProposal[] = [{
+  id: 'proposal_01', studentId: 'usr_student_01', studentName: 'Nguyễn Văn An',
+  type: 'Workshop', title: 'Workshop Git cho sinh viên năm nhất',
+  description: 'Thực hành Git, xử lý conflict và tạo pull request theo nhóm nhỏ.',
+  goal: 'Giúp sinh viên tự tin làm việc nhóm trong môn học.', targetAudience: 'Sinh viên năm nhất',
+  expectedParticipants: 30, suggestedStartAt: '2026-10-24T08:00:00+07:00',
+  location: 'Phòng học tại Hòa Lạc', costInfo: 'Free', safetyNotes: 'Không thu phí; tuân thủ nội quy phòng học.',
+  mode: 'Offline', contactInfo: 'nguyenvanan@fpt.edu.vn', acknowledgedTerms: true,
+  status: 'PendingReview', createdAt: '2026-10-08T08:00:00Z', updatedAt: '2026-10-08T08:00:00Z',
+}];
 
 export const seedProgramChannels: ProgramChannel[] = [
   {
@@ -419,3 +431,17 @@ export const seedProgramAnnouncements: ProgramAnnouncement[] = [
     recipientCount: 41,
   },
 ];
+
+// The 07/10 model assigns programs to the Event Manager, never Student co-organizers.
+for (const program of seedProgramChannels) {
+  program.organizer = { userId: 'usr_opsmanager_06', fullName: 'Đỗ Hải Phong', studentCode: 'MG0002', major: 'Phòng Công tác Sinh viên', cohort: 'Cán bộ', roleNote: 'Event Manager' };
+  program.coOrganizers = [];
+  program.sourceType = 'ManagerCreated';
+  if (program.type === 'Event') program.type = 'Workshop';
+  if (program.status === 'PendingReview' || program.status === 'Rejected') { program.status = 'Draft'; program.rejectionReason = undefined; }
+}
+
+for (const announcement of seedProgramAnnouncements) {
+  announcement.authorId = 'usr_opsmanager_06';
+  announcement.authorName = 'Đỗ Hải Phong';
+}

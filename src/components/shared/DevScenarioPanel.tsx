@@ -51,7 +51,7 @@ export const DevScenarioPanel: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-[99]">
+    <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-4 right-4 z-[99] max-w-[calc(100vw-2rem)]">
       {!isOpen ? (
         <Button
           variant="secondary"
@@ -63,13 +63,14 @@ export const DevScenarioPanel: React.FC = () => {
           Dev Scenarios
         </Button>
       ) : (
-        <div className="w-80 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-surface/98 backdrop-blur shadow-2xl p-4 animate-in slide-in-from-bottom-5">
+        <div className="w-80 max-w-full max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-xl border border-neutral-200 dark:border-neutral-700 bg-surface/98 backdrop-blur shadow-2xl p-4 animate-in slide-in-from-bottom-5">
           <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-700 pb-2 mb-3">
             <h4 className="text-xs font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
               <Sliders size={14} className="text-brand-600" /> Dev Scenarios & Seed Accounts
             </h4>
             <button
               type="button"
+              aria-label="Đóng bảng kịch bản kiểm thử"
               onClick={() => setIsOpen(false)}
               className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 p-0.5"
             >

@@ -3,11 +3,12 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { AppProviders } from './app/providers';
 import { router } from './app/router';
-import './styles/tokens.css';
+import { PageLoading } from './components/shared/PageLoading';
+import { isDemoMode } from './lib/demoMode';
 import './index.css';
 
 async function enableMocking() {
-  if (import.meta.env.VITE_USE_MOCK !== 'true' && import.meta.env.DEV !== true) {
+  if (!isDemoMode) {
     return;
   }
   const { worker } = await import('./mocks/browser');
@@ -23,7 +24,7 @@ function renderApp() {
   createRoot(rootElement).render(
     <React.StrictMode>
       <AppProviders>
-        <RouterProvider router={router} />
+        <React.Suspense fallback={<PageLoading />}><RouterProvider router={router} /></React.Suspense>
       </AppProviders>
     </React.StrictMode>
   );

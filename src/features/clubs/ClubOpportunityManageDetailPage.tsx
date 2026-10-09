@@ -28,28 +28,31 @@ import { OPPORTUNITY_TYPE_LABELS } from '@/components/shared/OpportunityCard';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { apiClient } from '@/lib/apiClient';
 import { toast } from '@/components/ui/Toast';
+import { useAuthStore } from '@/store/authStore';
+import { ErrorState } from '@/components/shared/ErrorState';
 import type { ClubOpportunity, OpportunityResponse } from '@/types/entities';
 import type { OpportunityResponseStatus } from '@/types/status';
 
 export const ClubOpportunityManageDetailPage: React.FC = () => {
   const { oppId } = useParams<{ oppId: string }>();
   const queryClient = useQueryClient();
+  const { isRepresentativeOf } = useAuthStore();
 
   const [selectedResponse, setSelectedResponse] = useState<OpportunityResponse | null>(null);
   const [feedbackNote, setFeedbackNote] = useState('');
   const [closeReasonOpen, setCloseReasonOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
 
-  const { data: opp, isLoading } = useQuery<ClubOpportunity>({
+  const { data: opp, isLoading, isError, refetch } = useQuery<ClubOpportunity>({
     queryKey: ['club-opportunity', oppId],
     queryFn: () => apiClient.get(`/clubs/opportunities/${oppId}`),
     enabled: !!oppId,
   });
 
-  const { data: responses = [] } = useQuery<OpportunityResponse[]>({
+  const { data: responses = [], isError: responsesError, refetch: refetchResponses } = useQuery<OpportunityResponse[]>({
     queryKey: ['club-opportunity-responses', oppId],
     queryFn: () => apiClient.get(`/clubs/opportunities/${oppId}/responses`),
-    enabled: !!oppId,
+    enabled: !!oppId && !!opp && isRepresentativeOf(opp.clubId),
   });
 
   const reviewMutation = useMutation({
@@ -62,6 +65,7 @@ export const ClubOpportunityManageDetailPage: React.FC = () => {
         status: payload.status,
         feedbackNote: payload.feedbackNote,
       }),
+    onError: (error: Error) => toast.error(error.message),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['club-opportunity-responses', oppId] });
       queryClient.invalidateQueries({ queryKey: ['club-opportunity', oppId] });
@@ -74,6 +78,7 @@ export const ClubOpportunityManageDetailPage: React.FC = () => {
   const updateOppStatusMutation = useMutation({
     mutationFn: (payload: { status: 'Closed' | 'Cancelled'; cancelReason?: string }) =>
       apiClient.put(`/clubs/opportunities/${oppId}`, payload),
+    onError: (error: Error) => toast.error(error.message),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['club-opportunity', oppId] });
       setCloseReasonOpen(false);
@@ -81,9 +86,13 @@ export const ClubOpportunityManageDetailPage: React.FC = () => {
     },
   });
 
+  if (isError || (!isLoading && !opp)) return <ErrorState title="Không thể tải cơ hội CLB" onRetry={() => refetch()} />;
   if (isLoading || !opp) {
     return <Card className="h-72 animate-pulse bg-neutral-100" />;
   }
+
+  if (!isRepresentativeOf(opp.clubId)) return <ErrorState title="Cần quyền đại diện CLB" message="Bạn không có quyền quản lý cơ hội của CLB này." />;
+  if (responsesError) return <ErrorState title="Không thể tải đăng ký" onRetry={() => refetchResponses()} />;
 
   const confirmedList = responses.filter(
     (r) => r.status === 'Confirmed' || r.status === 'Accepted'
@@ -102,6 +111,7 @@ export const ClubOpportunityManageDetailPage: React.FC = () => {
     a.href = url;
     a.download = `danh-sach-${opp.id}.csv`;
     a.click();
+    URL.revokeObjectURL(url);
     toast.success('Đã tải xuống file CSV danh sách tham gia');
   };
 
@@ -369,6 +379,7 @@ export const ClubOpportunityManageDetailPage: React.FC = () => {
                   variant="secondary"
                   size="sm"
                   isLoading={reviewMutation.isPending}
+                  disabled={!['Submitted','UnderReview','NeedsMoreInfo'].includes(selectedResponse.status) || !['Published','Closed'].includes(opp.status)}
                   onClick={() => {
                     if (!feedbackNote.trim()) {
                       toast.error('Vui lòng nhập nội dung cần sinh viên bổ sung');
@@ -416,6 +427,7 @@ export const ClubOpportunityManageDetailPage: React.FC = () => {
                     })
                   }
                   leftIcon={<Check className="h-4 w-4" />}
+                  disabled={reviewMutation.isPending || !['Submitted','UnderReview','NeedsMoreInfo'].includes(selectedResponse.status) || !['Published','Closed'].includes(opp.status) || opp.used >= opp.quota || !!opp.positions?.some((position) => position.id === selectedResponse.positionId && position.registeredCount >= position.quota)}
                 >
                   {opp.type === 'Event' ? 'Xác nhận tham gia' : 'Chấp nhận đơn'}
                 </Button>

@@ -1,6 +1,24 @@
 import type { Group, GroupMember, GroupJoinRequest } from '@/types/entities';
+import { seedConversations } from './conversations';
 
-export const seedGroups: Group[] = [
+export type ManagedGroup = Group & {
+  status?: 'Active' | 'Closed';
+  closedReason?: string;
+  closedAt?: string;
+};
+
+export interface GroupInvitation {
+  id: string;
+  groupId: string;
+  userId: string;
+  invitedBy: string;
+  message?: string;
+  status: 'Pending' | 'Accepted' | 'Declined' | 'Cancelled';
+  createdAt: string;
+  respondedAt?: string;
+}
+
+export const seedGroups: ManagedGroup[] = [
   {
     id: 'grp_01',
     ownerId: 'usr_student_01',
@@ -115,3 +133,43 @@ export const seedJoinRequests: GroupJoinRequest[] = [
     createdAt: '2026-09-17T08:30:00Z',
   },
 ];
+
+export const seedGroupInvitations: GroupInvitation[] = [];
+
+export function groupMemberIds(groupId: string): string[] {
+  return [...new Set(seedGroupMembers.filter((member) => member.groupId === groupId).map((member) => member.userId))];
+}
+
+/** Every membership change uses the same source for badges and chat access. */
+export function syncGroupMembership(group: ManagedGroup) {
+  const participantIds = groupMemberIds(group.id);
+  group.memberCount = participantIds.length;
+  const conversation = seedConversations.find((item) => item.kind === 'group' && item.refId === group.id);
+  if (conversation) {
+    conversation.title = group.name;
+    conversation.participantIds = participantIds;
+    conversation.archived = group.status === 'Closed';
+  }
+  return conversation;
+}
+
+export function ensureGroupConversation(group: ManagedGroup) {
+  const existing = syncGroupMembership(group);
+  if (existing) return existing;
+  const conversation = {
+    id: `conv_group_${group.id}`,
+    kind: 'group' as const,
+    refId: group.id,
+    title: group.name,
+    participantIds: groupMemberIds(group.id),
+    requestStatus: 'accepted' as const,
+    unreadCount: 0,
+  };
+  seedConversations.unshift(conversation);
+  return conversation;
+}
+
+seedGroups.forEach((group) => {
+  group.status ??= 'Active';
+  syncGroupMembership(group);
+});

@@ -3,14 +3,12 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Calendar,
-  Check,
   FileText,
   HeartHandshake,
   Plus,
   Search,
   Settings,
   Users,
-  X,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card } from '@/components/ui/Card';
@@ -29,10 +27,12 @@ import type { ProgramChannel, ProgramRegistration } from '@/types/entities';
 
 export const ProgramsExplorePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'explore';
+  const selectedTab = searchParams.get('tab') || 'explore';
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const isGuest = !user;
+  const isManager = Boolean(user?.roles.includes('event_manager'));
+  const activeTab = selectedTab === 'organizing' && !isManager ? 'explore' : selectedTab;
 
   const [q, setQ] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -56,30 +56,17 @@ export const ProgramsExplorePage: React.FC = () => {
   const { data: myOrganized = [] } = useQuery<ProgramChannel[]>({
     queryKey: ['programs', 'mine'],
     queryFn: () => apiClient.get('/programs?mine=true'),
-    enabled: !isGuest,
-  });
-
-  const coOrgMutation = useMutation({
-    mutationFn: (payload: { programId: string; action: 'accept' | 'decline' }) =>
-      apiClient.put(`/programs/${payload.programId}/co-organizers/respond`, {
-        action: payload.action,
-      }),
-    onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['programs', 'mine'] });
-      toast.success(
-        vars.action === 'accept'
-          ? 'Đã chấp nhận làm Đồng tổ chức chương trình'
-          : 'Đã từ chối lời mời đồng tổ chức'
-      );
-    },
+    enabled: !isGuest && isManager,
   });
 
   const withdrawRegMutation = useMutation({
     mutationFn: (regId: string) =>
       apiClient.put(`/programs/registrations/${regId}`, { action: 'withdraw' }),
+    onError: (error: Error) => toast.error(error.message),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['programs', 'registrations', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['programs'] });
+      queryClient.invalidateQueries({ queryKey: ['program'] });
       toast.success('Đã hủy đăng ký tham gia chương trình');
     },
   });
@@ -92,23 +79,15 @@ export const ProgramsExplorePage: React.FC = () => {
 
   const displayedPrograms = programs;
 
-  const pendingCoOrgInvites = myOrganized.filter((p) =>
-    p.coOrganizers.some((co) => co.userId === user?.id && co.status === 'Pending')
-  );
-
   return (
     <div className="space-y-6">
       <PageHeader
         variant="band"
         icon={HeartHandshake}
         title="Hoạt động"
-        description="Các chiến dịch tình nguyện vì cộng đồng và buổi chia sẻ kỹ năng do chính sinh viên trong trường khởi xướng, đã được Admin xác minh."
+        description="Khám phá tình nguyện và workshop do Event Manager tổ chức. Student có thể gửi ý tưởng và theo dõi kết quả đề xuất."
         actions={
-          <Link to="/programs/new">
-            <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>
-              Mở kênh đăng ký
-            </Button>
-          </Link>
+          <div className="flex gap-2">{!isGuest && <Link to={isManager ? '/programs/new' : '/programs/proposals'}><Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>{isManager ? 'Tạo chương trình' : 'Đề xuất của tôi'}</Button></Link>}{isManager && <Link to="/programs/proposals/review"><Button variant="secondary">Xét duyệt đề xuất</Button></Link>}</div>
         }
       />
 
@@ -124,9 +103,7 @@ export const ProgramsExplorePage: React.FC = () => {
             <TabsTrigger value="registrations">
               Đăng ký của tôi ({myRegistrations.length})
             </TabsTrigger>
-            <TabsTrigger value="organizing">
-              Kênh tôi tổ chức ({myOrganized.length})
-            </TabsTrigger>
+            {isManager && <TabsTrigger value="organizing">Chương trình tôi quản lý ({myOrganized.length})</TabsTrigger>}
           </TabsList>
         )}
 
@@ -150,7 +127,7 @@ export const ProgramsExplorePage: React.FC = () => {
                 className="w-40"
               >
                 <option value="all">Tất cả loại kênh</option>
-                        <option value="Event">Sự kiện</option>
+
                         <option value="Volunteer">Tình nguyện</option>
                 <option value="Workshop">Workshop</option>
               </Select>
@@ -187,7 +164,7 @@ export const ProgramsExplorePage: React.FC = () => {
             <EmptyState
               icon={HeartHandshake}
               title="Không tìm thấy chương trình phù hợp"
-              description="Thử thay đổi bộ lọc hoặc tự mở kênh đăng ký mới cho hoạt động của bạn."
+              description="Thử thay đổi bộ lọc hoặc gửi ý tưởng chương trình tại mục Đề xuất của tôi."
             />
           ) : (
             <>
@@ -278,65 +255,20 @@ export const ProgramsExplorePage: React.FC = () => {
             )}
           </TabsContent>
 
-          {/* TAB 3: KÊNH TÔI TỔ CHỨC (PG6 list + PG8 Co-organizer invites) */}
+          {/* TAB 3: CHƯƠNG TRÌNH EVENT MANAGER QUẢN LÝ */}
           <TabsContent value="organizing" className="space-y-5">
-            {pendingCoOrgInvites.length > 0 && (
-              <Card className="p-4 bg-brand-50/40 border-brand-200 space-y-3">
-                <h3 className="text-sm font-semibold text-neutral-900">
-                  Lời mời làm Đồng tổ chức ({pendingCoOrgInvites.length})
-                </h3>
-                {pendingCoOrgInvites.map((prog) => (
-                  <div
-                    key={prog.id}
-                    className="p-3.5 rounded-lg bg-surface border border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                  >
-                    <div>
-                      <div className="text-caption font-semibold text-brand-600">
-                        {PROGRAM_TYPE_LABELS[prog.type]} · Khởi xướng bởi {prog.organizer.fullName}
-                      </div>
-                      <div className="text-sm font-semibold text-neutral-900 mt-0.5">
-                        {prog.title}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() =>
-                          coOrgMutation.mutate({ programId: prog.id, action: 'decline' })
-                        }
-                        leftIcon={<X className="h-3.5 w-3.5" />}
-                      >
-                        Từ chối
-                      </Button>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() =>
-                          coOrgMutation.mutate({ programId: prog.id, action: 'accept' })
-                        }
-                        leftIcon={<Check className="h-3.5 w-3.5" />}
-                      >
-                        Chấp nhận đồng tổ chức
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </Card>
-            )}
-
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-card-title text-neutral-900">
-                  Các kênh bạn khởi xướng hoặc đồng tổ chức
+                  Chương trình do bạn phụ trách
                 </h3>
                 <p className="text-caption text-neutral-500">
-                  Mỗi sinh viên được mở tối đa 2 kênh đang hoạt động hoặc chờ duyệt cùng lúc
+                  Event Manager trực tiếp tạo, công bố và quản lý chương trình.
                 </p>
               </div>
               <Link to="/programs/new">
                 <Button variant="primary" size="sm" leftIcon={<Plus className="h-4 w-4" />}>
-                  Mở kênh mới
+                  Tạo chương trình
                 </Button>
               </Link>
             </div>
@@ -361,9 +293,7 @@ export const ProgramsExplorePage: React.FC = () => {
                         </span>
                         <span className="text-neutral-300">·</span>
                         <span className="text-caption text-neutral-500">
-                          {prog.organizer.userId === user?.id
-                            ? 'Trưởng nhóm tổ chức'
-                            : 'Đồng tổ chức'}
+                          Event Manager phụ trách
                         </span>
                       </div>
                       <Link

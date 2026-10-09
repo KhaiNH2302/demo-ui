@@ -311,7 +311,7 @@ export const seedUsers: (User & { password: string })[] = [
     cohort: 'Cán bộ',
     campus: 'Hà Nội',
     studentCode: 'MG0002',
-    roles: ['manager'],
+    roles: ['manager', 'event_manager'],
     adminPermissions: ['dashboard', 'moderation', 'clubs', 'programs', 'mentoring', 'master_data'],
     status: 'active',
     avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',

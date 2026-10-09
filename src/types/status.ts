@@ -11,6 +11,7 @@ export type Role =
   | 'treasurer'
   // Quản lý nghiệp vụ (business admin): kiểm duyệt, duyệt CLB/chương trình/Mentor, danh mục
   | 'manager'
+  | 'event_manager'
   | 'admin'
   | 'Student'
   | 'Mentor'
@@ -115,6 +116,7 @@ export type ProgramRegistrationStatus =
   | 'Expired'
   | 'Cancelled';
 export type CoOrganizerStatus = 'Pending' | 'Accepted' | 'Declined' | 'Removed';
+export type ProgramProposalStatus = 'Draft' | 'PendingReview' | 'Approved' | 'Rejected';
 
 // Social & Moderation (29/09/2026)
 export type FollowStatus = 'Pending' | 'Active' | 'Declined' | 'Withdrawn' | 'Cancelled' | 'Ended';

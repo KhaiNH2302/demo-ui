@@ -24,6 +24,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import { useAuthStore } from '@/store/authStore';
 import { useThemeStore } from '@/store/themeStore';
 import { cn } from '@/lib/cn';
+import { PageLoading } from '@/components/shared/PageLoading';
 
 export const AdminShell: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -43,7 +44,7 @@ export const AdminShell: React.FC = () => {
     { to: '/admin/users', label: 'Quản lý người dùng', icon: Users, systemOnly: true, permission: 'users' },
     { to: '/admin/moderation', label: 'Kiểm duyệt nội dung', icon: CheckSquare, permission: 'moderation' },
     { to: '/admin/clubs', label: 'Quyền đại diện CLB', icon: Building2, permission: 'clubs' },
-    { to: '/admin/programs', label: 'Duyệt kênh chương trình', icon: HeartHandshake, permission: 'programs' },
+    { to: '/admin/programs', label: 'Chương trình cộng đồng', icon: HeartHandshake, permission: 'programs' },
     { to: '/admin/mentor-applications', label: 'Duyệt Mentor', icon: GraduationCap, permission: 'mentoring' },
     { to: '/admin/master-data', label: 'Dữ liệu danh mục', icon: Database, permission: 'master_data' },
     { to: '/admin/settings', label: 'Cấu hình hệ thống', icon: Sliders, systemOnly: true, permission: 'settings' },
@@ -215,7 +216,7 @@ export const AdminShell: React.FC = () => {
 
         {/* Admin Content Area */}
         <main className="flex-1 px-4 py-6 md:px-8 max-w-7xl w-full mx-auto">
-          <Outlet />
+          <React.Suspense fallback={<PageLoading />}><Outlet /></React.Suspense>
         </main>
       </div>
     </div>

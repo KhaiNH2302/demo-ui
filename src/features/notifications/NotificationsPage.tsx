@@ -15,7 +15,7 @@ import { Bell, ChevronDown, ChevronRight, UserPlus } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { queryKeys } from '@/lib/queryKeys';
 import { toast } from '@/components/ui/Toast';
-import type { Notification } from '@/types/entities';
+import type { Notification, Follow } from '@/types/entities';
 
 interface FollowRequestItem {
   id: string;
@@ -26,25 +26,6 @@ interface FollowRequestItem {
   cohort?: string;
   createdAt: string;
 }
-
-const DEFAULT_FOLLOW_REQUESTS: FollowRequestItem[] = [
-  {
-    id: 'fr-1',
-    userId: 'usr-student-4',
-    fullName: 'Phạm Hoàng Nam',
-    major: 'An toàn thông tin',
-    cohort: 'K18',
-    createdAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'fr-2',
-    userId: 'usr-student-5',
-    fullName: 'Đỗ Thu Hà',
-    major: 'Thiết kế đồ họa số',
-    cohort: 'K19',
-    createdAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
-  },
-];
 
 const sourceOptions = [
   { value: '', label: 'Tất cả nguồn' },
@@ -91,10 +72,26 @@ export default function NotificationsPage() {
   const [selectedSource, setSelectedSource] = useState('');
   const [selectedRead, setSelectedRead] = useState('');
   const [followReqsOpen, setFollowReqsOpen] = useState(false);
-  const [followRequests, setFollowRequests] = useState<FollowRequestItem[]>(DEFAULT_FOLLOW_REQUESTS);
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const followRequestsQuery = useQuery({
+    queryKey: ['follow-requests'],
+    queryFn: () => apiClient.get<{ incoming: Follow[]; outgoing: Follow[] }>('/follow-requests'),
+  });
+  const followRequests: FollowRequestItem[] = (followRequestsQuery.data?.incoming || []).map((item) => ({
+    id: item.id, userId: item.followerId, fullName: item.followerName,
+    avatarUrl: item.followerAvatar, major: item.followerMeta, createdAt: item.createdAt,
+  }));
+  const followResponseMutation = useMutation({
+    mutationFn: ({ req, action }: { req: FollowRequestItem; action: 'approve' | 'reject' }) => apiClient.put(`/follow-requests/${req.id}/respond`, { action: action === 'approve' ? 'accept' : 'decline' }),
+    onSuccess: (_, { req, action }) => {
+      toast.success(action === 'approve' ? `Đã xác nhận yêu cầu theo dõi từ ${req.fullName}` : `Đã từ chối yêu cầu theo dõi từ ${req.fullName}`);
+      [['follow-requests'], ['profile'], ['users'], ['people'], ['nav'], ['notifications'], ['dashboard'], ['requests']].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+    },
+    onError: (error: Error) => toast.error(error.message || 'Không thể phản hồi yêu cầu theo dõi.'),
+  });
 
   const notificationsQuery = useQuery<Notification[]>({
     queryKey: queryKeys.notifications.list({
@@ -113,8 +110,10 @@ export default function NotificationsPage() {
   const markReadMutation = useMutation({
     mutationFn: (id: string) => apiClient.post(`/notifications/${id}/read`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['nav'] });
     },
+    onError: (error: Error) => toast.error(error.message || 'Không thể đánh dấu thông báo đã đọc.'),
   });
 
   const handleItemClick = (item: Notification) => {
@@ -130,12 +129,7 @@ export default function NotificationsPage() {
   };
 
   const handleFollowRequestAction = (req: FollowRequestItem, action: 'approve' | 'reject') => {
-    setFollowRequests((prev) => prev.filter((r) => r.id !== req.id));
-    toast.success(
-      action === 'approve'
-        ? `Đã xác nhận yêu cầu theo dõi từ ${req.fullName}`
-        : `Đã xóa yêu cầu theo dõi từ ${req.fullName}`
-    );
+    followResponseMutation.mutate({ req, action });
   };
 
   const grouped = useMemo(() => {
@@ -162,6 +156,7 @@ export default function NotificationsPage() {
       />
 
       {/* Dòng Yêu cầu theo dõi đầu danh sách (05-social-patterns #8) */}
+      <QueryBoundary query={followRequestsQuery}>
       {followRequests.length > 0 && (
         <Card className="overflow-hidden">
           <button
@@ -214,6 +209,8 @@ export default function NotificationsPage() {
                         size="sm"
                         variant="primary"
                         onClick={() => handleFollowRequestAction(req, 'approve')}
+                        loading={followResponseMutation.isPending && followResponseMutation.variables?.req.id === req.id && followResponseMutation.variables?.action === 'approve'}
+                        disabled={followResponseMutation.isPending}
                       >
                         Xác nhận
                       </Button>
@@ -221,6 +218,7 @@ export default function NotificationsPage() {
                         size="sm"
                         variant="secondary"
                         onClick={() => handleFollowRequestAction(req, 'reject')}
+                        disabled={followResponseMutation.isPending}
                       >
                         Xóa
                       </Button>
@@ -232,6 +230,7 @@ export default function NotificationsPage() {
           )}
         </Card>
       )}
+      </QueryBoundary>
 
       <FilterBar
         onClear={handleClearFilters}

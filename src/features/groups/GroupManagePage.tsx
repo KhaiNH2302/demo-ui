@@ -23,6 +23,8 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Select } from '@/components/ui/Select';
 import { RadioGroup } from '@/components/ui/RadioGroup';
 import { toast } from '@/components/ui/Toast';
+import { invalidateGroupQueries } from './groupQueries';
+import { createGroupDialogAction } from './groupDialog';
 import {
   Users,
   UserPlus,
@@ -40,6 +42,7 @@ import type { Group, GroupMember, GroupJoinRequest, AiMemberSuggestion, User } f
 
 interface GroupDetailData extends Group {
   members: GroupMember[];
+  status?: 'Active' | 'Closed';
 }
 
 export const GroupManagePage: React.FC = () => {
@@ -62,14 +65,14 @@ export const GroupManagePage: React.FC = () => {
   const requestsQuery = useQuery({
     queryKey: queryKeys.groups.joinRequests(id!),
     queryFn: () => apiClient.get<GroupJoinRequest[]>(`/groups/${id}/join-requests`),
-    enabled: !!id,
+    enabled: !!id && !!user && groupQuery.data?.ownerId === user.id,
   });
 
   // AI Member Suggestions
   const suggestionsQuery = useQuery({
-    queryKey: ['groups', id, 'ai-suggested-members'],
+    queryKey: queryKeys.groups.suggestedMembers(id!),
     queryFn: () => apiClient.get<AiMemberSuggestion[]>(`/groups/${id}/ai-suggested-members`),
-    enabled: !!id,
+    enabled: !!id && !!user && groupQuery.data?.ownerId === user.id && groupQuery.data?.status !== 'Closed',
   });
 
   // Action Mutations
@@ -78,30 +81,53 @@ export const GroupManagePage: React.FC = () => {
       apiClient.post(`/groups/${id}/join-requests/${reqId}/${decision}`),
     onSuccess: (_, vars) => {
       toast.success(vars.decision === 'approve' ? 'Đã duyệt thành viên vào nhóm!' : 'Đã từ chối yêu cầu.');
-      queryClient.invalidateQueries({ queryKey: queryKeys.groups.joinRequests(id!) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.groups.detail(id!) });
+      invalidateGroupQueries(queryClient);
     },
-    onError: () => toast.error('Có lỗi xảy ra, vui lòng thử lại.'),
+    onError: (error: Error) => toast.error(error.message || 'Có lỗi xảy ra, vui lòng thử lại.'),
   });
 
   const updateSettingsMutation = useMutation({
     mutationFn: (data: Partial<Group>) => apiClient.put(`/groups/${id}/settings`, data),
     onSuccess: () => {
       toast.success('Cập nhật thông tin nhóm thành công!');
-      queryClient.invalidateQueries({ queryKey: queryKeys.groups.detail(id!) });
+      invalidateGroupQueries(queryClient);
     },
-    onError: () => toast.error('Cập nhật thất bại.'),
+    onError: (error: Error) => toast.error(error.message || 'Cập nhật thất bại.'),
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: (userId: string) => apiClient.post(`/groups/${id}/invitations`, { userId }),
+    onSuccess: () => { toast.success('Đã gửi lời mời tham gia nhóm.'); invalidateGroupQueries(queryClient); },
+    onError: (error: Error) => toast.error(error.message || 'Không thể gửi lời mời.'),
+  });
+  const removeMutation = useMutation({
+    mutationFn: (userId: string) => apiClient.delete(`/groups/${id}/members/${userId}`),
+    onSuccess: () => { toast.success('Đã xóa thành viên khỏi nhóm.'); setRemoveMemberId(null); invalidateGroupQueries(queryClient); },
+    onError: (error: Error) => toast.error(error.message || 'Không thể xóa thành viên.'),
+  });
+  const closeMutation = useMutation({
+    mutationFn: (reason: string) => apiClient.post(`/groups/${id}/close`, { reason }),
+    onSuccess: async () => { toast.success('Đã đóng nhóm.'); setIsCloseGroupOpen(false); await invalidateGroupQueries(queryClient); navigate('/groups/me'); },
+    onError: (error: Error) => toast.error(error.message || 'Không thể đóng nhóm.'),
+  });
+  const messageInvitationMutation = useMutation({
+    mutationFn: (message: string) => apiClient.post<{ id: string }>(`/groups/${id}/message-invitations`, { userId: directChatTarget?.id, message }),
+    onSuccess: async (conversation) => { toast.success('Đã gửi tin nhắn mời trò chuyện.'); setIsDirectChatOpen(false); await invalidateGroupQueries(queryClient); navigate(`/chats/${conversation.id}`); },
+    onError: (error: Error) => toast.error(error.message || 'Không thể gửi lời mời trò chuyện.'),
   });
 
   // Form State for Settings
   const [settingsForm, setSettingsForm] = useState<Partial<Group>>({});
-  const [isFormInitialized, setIsFormInitialized] = useState(false);
+  const [initializedGroupId, setInitializedGroupId] = useState<string | null>(null);
 
   // Modal States
   const [removeMemberId, setRemoveMemberId] = useState<string | null>(null);
   const [isCloseGroupOpen, setIsCloseGroupOpen] = useState(false);
   const [directChatTarget, setDirectChatTarget] = useState<User | null>(null);
   const [isDirectChatOpen, setIsDirectChatOpen] = useState(false);
+  const [removeDialog] = useState(() => createGroupDialogAction((open) => { if (!open) setRemoveMemberId(null); }));
+  const [closeDialog] = useState(() => createGroupDialogAction(setIsCloseGroupOpen));
+  const [messageDialog] = useState(() => createGroupDialogAction(setIsDirectChatOpen));
 
   const handleOpenDirectChat = async (userId: string) => {
     try {
@@ -109,22 +135,14 @@ export const GroupManagePage: React.FC = () => {
       setDirectChatTarget(targetUser);
       setIsDirectChatOpen(true);
     } catch {
-      setDirectChatTarget({
-        id: userId,
-        fullName: 'Sinh viên tiềm năng',
-        school: 'Đại học FPT',
-        roles: ['student'],
-        status: 'active',
-        createdAt: new Date().toISOString(),
-      } as User);
-      setIsDirectChatOpen(true);
+      toast.error('Không thể tải thông tin sinh viên.');
     }
   };
 
   const group = groupQuery.data;
 
   // Initialize form when group data arrives
-  if (group && !isFormInitialized) {
+  if (group && initializedGroupId !== group.id) {
     setSettingsForm({
       name: group.name,
       purpose: group.purpose,
@@ -135,11 +153,11 @@ export const GroupManagePage: React.FC = () => {
       joinMode: group.joinMode,
       memberLimit: group.memberLimit,
     });
-    setIsFormInitialized(true);
+    setInitializedGroupId(group.id);
   }
 
   // Security Check: Only Owner
-  if (group && user && group.ownerId !== user.id) {
+  if (group && group.ownerId !== user?.id) {
     return (
       <div className="max-w-md mx-auto my-12 p-6 bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded-xl text-center space-y-4">
         <ShieldAlert className="w-12 h-12 text-[var(--status-danger-fg)] mx-auto" />
@@ -153,6 +171,7 @@ export const GroupManagePage: React.FC = () => {
   }
 
   const isFull = group ? group.memberCount >= group.memberLimit : false;
+  const isClosed = group?.status === 'Closed';
 
   return (
     <QueryBoundary queries={[groupQuery]}>
@@ -168,6 +187,8 @@ export const GroupManagePage: React.FC = () => {
               { label: 'Quản lý' },
             ]}
           />
+
+          {isClosed && <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm">Nhóm đã đóng. Danh sách thành viên và chat nhóm đã ngừng hoạt động.</div>}
 
           <Tabs
             value={currentTab}
@@ -195,7 +216,7 @@ export const GroupManagePage: React.FC = () => {
                 <div className="p-3 bg-[var(--status-attention-bg)] border border-[var(--status-attention-border)] rounded-lg text-sm text-[var(--status-attention-fg)] flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                   <span>
-                    Nhóm đã đủ thành viên ({group.memberCount}/{group.memberLimit}). Nếu bạn duyệt thêm, nhóm sẽ vượt số lượng thành viên dự kiến.
+                    Nhóm đã đủ thành viên ({group.memberCount}/{group.memberLimit}). Tăng sức chứa hoặc xóa thành viên trước khi duyệt thêm.
                   </span>
                 </div>
               )}
@@ -235,6 +256,7 @@ export const GroupManagePage: React.FC = () => {
                             <Button
                               size="sm"
                               onClick={() => approveRejectMutation.mutate({ reqId: req.id, decision: 'approve' })}
+                              disabled={isFull || isClosed}
                               loading={approveRejectMutation.isPending}
                             >
                               <Check className="w-4 h-4 mr-1" /> Duyệt tham gia
@@ -301,7 +323,7 @@ export const GroupManagePage: React.FC = () => {
                 </span>
               </div>
 
-              <QueryBoundary queries={[suggestionsQuery]}>
+              {isClosed ? <EmptyState title="Nhóm đã đóng" description="Không thể mời thêm thành viên vào nhóm đã đóng." /> : <QueryBoundary queries={[suggestionsQuery]}>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {suggestionsQuery.data?.map((sug) => (
                     <AIResultCard
@@ -315,7 +337,9 @@ export const GroupManagePage: React.FC = () => {
                           <Button
                             size="sm"
                             className="flex-1"
-                            onClick={() => toast.success('Đã gửi lời mời tham gia nhóm!')}
+                            onClick={() => inviteMutation.mutate(sug.userId)}
+                            loading={inviteMutation.isPending && inviteMutation.variables === sug.userId}
+                            disabled={isFull || isClosed || inviteMutation.isPending}
                           >
                             <UserPlus className="w-3.5 h-3.5 mr-1" /> Mời vào nhóm
                           </Button>
@@ -332,7 +356,7 @@ export const GroupManagePage: React.FC = () => {
                     </AIResultCard>
                   ))}
                 </div>
-              </QueryBoundary>
+              </QueryBoundary>}
             </TabsContent>
 
             {/* TAB 4: SETTINGS */}
@@ -353,12 +377,12 @@ export const GroupManagePage: React.FC = () => {
                     <FormField label="Mục đích" required>
                       <Select
                         value={settingsForm.purpose}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, purpose: e.target.value as any })}
+                        onValueChange={(purpose) => setSettingsForm({ ...settingsForm, purpose })}
                         options={[
-                          { label: 'Học tập', value: 'study' },
-                          { label: 'Dự án / Hackathon', value: 'project' },
-                          { label: 'Rèn luyện kỹ năng', value: 'skill' },
-                          { label: 'Sở thích / Giao lưu', value: 'hobby' },
+                          { label: 'Học tập', value: 'Học tập' },
+                          { label: 'Dự án / Hackathon', value: 'Dự án' },
+                          { label: 'Rèn luyện kỹ năng', value: 'Kỹ năng' },
+                          { label: 'Sở thích / Giao lưu', value: 'Sở thích' },
                         ]}
                       />
                     </FormField>
@@ -423,12 +447,14 @@ export const GroupManagePage: React.FC = () => {
                     variant="danger"
                     size="sm"
                     onClick={() => setIsCloseGroupOpen(true)}
+                    disabled={isClosed}
                   >
                     Đóng nhóm này
                   </Button>
                   <Button
                     onClick={() => updateSettingsMutation.mutate(settingsForm)}
                     loading={updateSettingsMutation.isPending}
+                    disabled={isClosed}
                   >
                     Lưu thay đổi
                   </Button>
@@ -440,45 +466,37 @@ export const GroupManagePage: React.FC = () => {
           {/* Remove Member Dialog */}
           <ConfirmDialog
             open={!!removeMemberId}
-            onOpenChange={() => setRemoveMemberId(null)}
+            onOpenChange={removeDialog.changeOpen}
             title="Xóa thành viên khỏi nhóm"
             description="Bạn có chắc chắn muốn xóa thành viên này khỏi nhóm? Họ sẽ không thể truy cập tài nguyên nhóm nữa."
             variant="danger"
-            onConfirm={() => {
-              toast.success('Đã xóa thành viên khỏi nhóm');
-              setRemoveMemberId(null);
-            }}
+            loading={removeMutation.isPending}
+            onConfirm={() => removeDialog.submit(() => removeMutation.mutateAsync(removeMemberId!))}
           />
 
           {/* Close Group Reason Dialog */}
           <ReasonDialog
             open={isCloseGroupOpen}
-            onOpenChange={setIsCloseGroupOpen}
+            onOpenChange={closeDialog.changeOpen}
             title="Xác nhận đóng nhóm"
             description="Khi đóng nhóm, toàn bộ thành viên sẽ rời nhóm và bài đăng sẽ không còn hiển thị tìm kiếm."
             label="Lý do đóng nhóm"
             placeholder="Ví dụ: Đã hoàn thành đồ án môn học..."
-            onConfirm={(reason) => {
-              toast.success(`Đã đóng nhóm với lý do: ${reason}`);
-              setIsCloseGroupOpen(false);
-              navigate('/groups/me');
-            }}
+            loading={closeMutation.isPending}
+            onConfirm={(reason) => closeDialog.submit(() => closeMutation.mutateAsync(reason))}
           />
 
           {/* Start Direct Conversation Dialog */}
           <ReasonDialog
             open={isDirectChatOpen}
-            onOpenChange={setIsDirectChatOpen}
+            onOpenChange={messageDialog.changeOpen}
             title={`Nhắn tin cho ${directChatTarget?.fullName || 'sinh viên'}`}
             description={`Về lời mời tham gia nhóm ${group.name}`}
             label="Nội dung tin nhắn"
             placeholder="Chào bạn, nhóm mình đang tìm thành viên..."
             confirmLabel="Gửi tin nhắn"
-            onConfirm={() => {
-              toast.success('Đã gửi lời mời trò chuyện');
-              setIsDirectChatOpen(false);
-              navigate('/chats');
-            }}
+            loading={messageInvitationMutation.isPending}
+            onConfirm={(message) => messageDialog.submit(() => messageInvitationMutation.mutateAsync(message))}
           />
         </div>
       )}

@@ -26,6 +26,8 @@ import { apiClient } from '@/lib/apiClient';
 import { useAuthStore } from '@/store/authStore';
 import { useGuardedAction } from '@/lib/guestGate';
 import { toast } from '@/components/ui/Toast';
+import { ErrorState } from '@/components/shared/ErrorState';
+import { clubRegistrationUnavailable } from '@/features/programs/rules';
 import type { ClubOpportunity, OpportunityResponse } from '@/types/entities';
 
 interface OpportunityDetailData extends ClubOpportunity {
@@ -41,7 +43,7 @@ export const ClubOpportunityDetailPage: React.FC = () => {
   const guard = useGuardedAction();
   const [reportOpen, setReportOpen] = useState(false);
 
-  const { data: opp, isLoading } = useQuery<OpportunityDetailData>({
+  const { data: opp, isLoading, isError, refetch } = useQuery<OpportunityDetailData>({
     queryKey: ['club-opportunity', oppId],
     queryFn: () => apiClient.get(`/clubs/opportunities/${oppId}`),
     enabled: !!oppId,
@@ -53,12 +55,14 @@ export const ClubOpportunityDetailPage: React.FC = () => {
         action: 'toggleVisibility',
         visibleToCoParticipants: visible,
       }),
+    onError: (error: Error) => toast.error(error.message),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['club-opportunity', oppId] });
       toast.success('Đã cập nhật tùy chọn hiển thị danh sách');
     },
   });
 
+  if (isError) return <ErrorState title="Không thể tải dữ liệu" onRetry={() => refetch()} />;
   if (isLoading) {
     return <Card className="h-80 animate-pulse bg-neutral-100" />;
   }
@@ -79,7 +83,7 @@ export const ClubOpportunityDetailPage: React.FC = () => {
   }
 
   const isRep = isRepresentativeOf(opp.clubId);
-  const isFull = opp.used >= opp.quota;
+  const unavailable = clubRegistrationUnavailable(opp, opp.myResponse) || (isRep ? 'Đại diện CLB không đăng ký cơ hội của chính CLB mình.' : null);
   const pct = Math.min(100, Math.round((opp.used / Math.max(1, opp.quota)) * 100));
   const myResponse = opp.myResponse;
   const isConfirmedOrAccepted =
@@ -331,7 +335,7 @@ export const ClubOpportunityDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {myResponse ? (
+            {myResponse && !['Withdrawn', 'Cancelled', 'Draft'].includes(myResponse.status) ? (
               <div className="p-3.5 rounded-lg bg-neutral-50 border border-neutral-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-caption font-semibold text-neutral-600">
@@ -376,16 +380,10 @@ export const ClubOpportunityDetailPage: React.FC = () => {
                 <Button
                   variant="primary"
                   className="w-full"
-                  disabled={opp.status !== 'Published' || isFull}
+                  disabled={Boolean(unavailable)}
                   onClick={handleRegisterClick}
                 >
-                  {isFull
-                    ? 'Đã đủ chỉ tiêu'
-                    : opp.status !== 'Published'
-                    ? 'Đã đóng đăng ký'
-                    : opp.type === 'Event'
-                    ? 'Đăng ký tham gia sự kiện'
-                    : 'Ứng tuyển / Đăng ký ngay'}
+                  {unavailable || (opp.type === 'Event' ? 'Đăng ký tham gia sự kiện' : 'Ứng tuyển / Đăng ký ngay')}
                 </Button>
                 <p className="text-caption text-neutral-500 text-center">
                   Thông tin Họ tên, MSSV, Email sẽ được điền tự động từ hồ sơ của bạn.

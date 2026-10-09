@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/cn';
 import { Search, ChevronDown, Check } from 'lucide-react';
+import { useFieldAccessibility } from './FieldContext';
 
 export interface ComboboxOption {
   value: string;
@@ -9,6 +10,10 @@ export interface ComboboxOption {
 }
 
 export interface ComboboxProps {
+  id?: string;
+  'aria-label'?: string;
+  'aria-labelledby'?: string;
+  'aria-describedby'?: string;
   options: ComboboxOption[];
   value?: string;
   onChange: (value: string) => void;
@@ -30,7 +35,10 @@ export const Combobox: React.FC<ComboboxProps> = ({
   error,
   disabled,
   className,
+  id,
+  ...ariaProps
 }) => {
+  const fieldProps = useFieldAccessibility(ariaProps, error);
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -56,6 +64,12 @@ export const Combobox: React.FC<ComboboxProps> = ({
   return (
     <div ref={containerRef} className={cn('relative w-full', className)}>
       <button
+        id={id}
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        {...ariaProps}
+        {...fieldProps}
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
@@ -74,6 +88,7 @@ export const Combobox: React.FC<ComboboxProps> = ({
           <div className="flex items-center border-b border-neutral-200 px-2 pb-1.5 pt-1">
             <Search size={14} className="text-neutral-400 mr-2 shrink-0" />
             <input
+              aria-label={searchPlaceholder}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -82,7 +97,7 @@ export const Combobox: React.FC<ComboboxProps> = ({
               className="w-full text-xs text-neutral-900 placeholder:text-neutral-400 outline-none bg-transparent"
             />
           </div>
-          <div className="max-h-56 overflow-y-auto py-1">
+          <div role="listbox" aria-label="Các lựa chọn" className="max-h-56 overflow-y-auto py-1">
             {filteredOptions.length === 0 ? (
               <div className="px-3 py-2 text-center text-xs text-neutral-400">{emptyText}</div>
             ) : (
@@ -90,6 +105,8 @@ export const Combobox: React.FC<ComboboxProps> = ({
                 const isSelected = opt.value === value;
                 return (
                   <button
+                    role="option"
+                    aria-selected={isSelected}
                     key={opt.value}
                     type="button"
                     onClick={() => {
@@ -117,3 +134,4 @@ export const Combobox: React.FC<ComboboxProps> = ({
     </div>
   );
 };
+Combobox.displayName = 'Combobox';

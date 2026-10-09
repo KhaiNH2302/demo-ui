@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import type { SwapConnectionDetails } from './swapTransactions';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -69,7 +70,8 @@ export const SwapOwnerPanel: React.FC<SwapOwnerPanelProps> = ({
     mutationFn: (connId: string) => apiClient.post(`/swap-connections/${connId}/reject`),
     onSuccess: () => {
       toast({ variant: 'default', title: 'Đã thu hồi lời mời kết nối' });
-      queryClient.invalidateQueries({ queryKey: queryKeys.swap.connections({ requestId: request.id }) });
+      queryClient.invalidateQueries({ queryKey: ['swap', 'connections'] });
+      queryClient.invalidateQueries({ queryKey: ['swap', 'list'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.swap.detail(request.id) });
     },
   });
@@ -81,6 +83,7 @@ export const SwapOwnerPanel: React.FC<SwapOwnerPanelProps> = ({
   // If status === 'Connected'
   if (request.status === 'Connected') {
     const confirmedConn = connections.find((c) => c.status === 'Confirmed');
+    const conversationId = (confirmedConn as SwapConnectionDetails | undefined)?.conversationId;
     const partnerId = confirmedConn
       ? confirmedConn.initiatorId === request.studentId
         ? confirmedConn.recipientId
@@ -119,7 +122,7 @@ export const SwapOwnerPanel: React.FC<SwapOwnerPanelProps> = ({
             <Button
               className="w-full"
               leftIcon={<MessageSquare className="w-4 h-4" />}
-              onClick={() => navigate(`/chats?user=${partnerId}`)}
+              onClick={() => navigate(conversationId ? '/chats/' + conversationId : '/chats')}
             >
               Mở hộp chat trao đổi
             </Button>

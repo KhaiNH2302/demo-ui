@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { User, ClubMembership } from '@/types/entities';
 import type { Role, MembershipRole } from '@/types/status';
 import { seedUsers } from '@/mocks/data/users';
+import { isDemoMode } from '@/lib/demoMode';
 
 export interface RepresentedClubInfo {
   clubId: string;
@@ -72,13 +73,13 @@ const DEFAULT_REPRESENTED_CLUBS_BY_USER: Record<string, RepresentedClubInfo[]> =
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      user: seedUsers[0],
-      token: 'mock_jwt_token_usr_student_01',
-      isAuthenticated: true,
-      representedClubs: DEFAULT_REPRESENTED_CLUBS_BY_USER['usr_student_01'] || [],
+      user: isDemoMode ? seedUsers[0] : null,
+      token: isDemoMode ? 'mock_jwt_token_usr_student_01' : null,
+      isAuthenticated: isDemoMode,
+      representedClubs: isDemoMode ? DEFAULT_REPRESENTED_CLUBS_BY_USER['usr_student_01'] || [] : [],
       clubMemberships: [],
       login: (user, token, membershipsOrClubs = []) => {
-        const defaultReps = DEFAULT_REPRESENTED_CLUBS_BY_USER[user.id] || [];
+        const defaultReps = isDemoMode ? DEFAULT_REPRESENTED_CLUBS_BY_USER[user.id] || [] : [];
         const isRepArray =
           membershipsOrClubs.length > 0 && 'name' in membershipsOrClubs[0];
         set({
@@ -94,7 +95,7 @@ export const useAuthStore = create<AuthState>()(
         });
       },
       setSession: (user, token, representedClubs) => {
-        const defaultReps = DEFAULT_REPRESENTED_CLUBS_BY_USER[user.id] || [];
+        const defaultReps = isDemoMode ? DEFAULT_REPRESENTED_CLUBS_BY_USER[user.id] || [] : [];
         set({
           user,
           token,
@@ -103,7 +104,7 @@ export const useAuthStore = create<AuthState>()(
         });
       },
       setAuth: (user, token, representedClubs) => {
-        const defaultReps = DEFAULT_REPRESENTED_CLUBS_BY_USER[user.id] || [];
+        const defaultReps = isDemoMode ? DEFAULT_REPRESENTED_CLUBS_BY_USER[user.id] || [] : [];
         set({
           user,
           token,
@@ -146,13 +147,6 @@ export const useAuthStore = create<AuthState>()(
       isRepresentativeOf: (clubId: string) => {
         const { representedClubs, user } = get();
         if (!user) return false;
-        if (
-          user.roles.some((r) =>
-            ['manager', 'admin', 'Manager', 'Admin'].includes(r)
-          )
-        ) {
-          return true;
-        }
         return representedClubs.some((c) => c.clubId === clubId);
       },
       isAdmin: () => {
@@ -174,7 +168,7 @@ export const useAuthStore = create<AuthState>()(
       setClubMemberships: (clubMemberships) => set({ clubMemberships }),
     }),
     {
-      name: 'scs_auth_session',
+      name: isDemoMode ? 'scs_auth_session' : 'scs_auth_session_live',
       version: 2,
       migrate: (persistedState: unknown) => {
         const state = persistedState as AuthState;

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,7 @@ export const SendSwapConnectionDialog: React.FC<SendSwapConnectionDialogProps> =
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleSend = async () => {
     setLoading(true);
@@ -45,6 +47,8 @@ export const SendSwapConnectionDialog: React.FC<SendSwapConnectionDialogProps> =
         message,
       });
       toast({ variant: 'success', title: 'Đã gửi lời mời đổi lớp thành công!' });
+      queryClient.invalidateQueries({ queryKey: ['swap'] });
+      queryClient.invalidateQueries({ queryKey: ['swap-explore'] });
       onOpenChange(false);
       onSuccess?.();
     } catch (err) {

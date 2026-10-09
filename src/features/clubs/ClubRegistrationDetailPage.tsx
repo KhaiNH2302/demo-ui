@@ -21,6 +21,7 @@ import {
 import { OPPORTUNITY_TYPE_LABELS } from '@/components/shared/OpportunityCard';
 import { apiClient } from '@/lib/apiClient';
 import { toast } from '@/components/ui/Toast';
+import { ErrorState } from '@/components/shared/ErrorState';
 import type { ClubOpportunity, OpportunityResponse } from '@/types/entities';
 
 interface RegistrationDetailData extends OpportunityResponse {
@@ -37,7 +38,7 @@ export const ClubRegistrationDetailPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
-  const { data: resp, isLoading } = useQuery<RegistrationDetailData>({
+  const { data: resp, isLoading, isError, refetch } = useQuery<RegistrationDetailData>({
     queryKey: ['club-registration', responseId],
     queryFn: () => apiClient.get(`/clubs/registrations/${responseId}`),
     enabled: !!responseId,
@@ -48,6 +49,7 @@ export const ClubRegistrationDetailPage: React.FC = () => {
       apiClient.put(`/clubs/registrations/${responseId}`, {
         action: 'withdraw',
       }),
+    onError: (error: Error) => toast.error(error.message),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['club-registration', responseId] });
       queryClient.invalidateQueries({ queryKey: ['clubs', 'registrations', 'me'] });
@@ -62,12 +64,14 @@ export const ClubRegistrationDetailPage: React.FC = () => {
         action: 'toggleVisibility',
         visibleToCoParticipants: visible,
       }),
+    onError: (error: Error) => toast.error(error.message),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['club-registration', responseId] });
       toast.success('Đã cập nhật tùy chọn hiển thị');
     },
   });
 
+  if (isError) return <ErrorState title="Không thể tải dữ liệu" onRetry={() => refetch()} />;
   if (isLoading) {
     return <Card className="h-72 animate-pulse bg-neutral-100" />;
   }
@@ -91,7 +95,8 @@ export const ClubRegistrationDetailPage: React.FC = () => {
     resp.status === 'Submitted' ||
     resp.status === 'UnderReview' ||
     resp.status === 'NeedsMoreInfo' ||
-    resp.status === 'Confirmed';
+    resp.status === 'Confirmed' ||
+    resp.status === 'Accepted';
 
   const isConfirmedOrAccepted =
     resp.status === 'Confirmed' || resp.status === 'Accepted';

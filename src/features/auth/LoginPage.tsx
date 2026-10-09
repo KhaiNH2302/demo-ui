@@ -15,6 +15,7 @@ import { savePendingGuestAction, getPendingGuestAction } from '@/lib/viewer';
 import { seedUsers } from '@/mocks/data/users';
 import { seedClubMemberships } from '@/mocks/data/clubs';
 import type { User } from '@/types/entities';
+import { isDemoMode } from '@/lib/demoMode';
 
 const loginSchema = z.object({
   email: z.string().email('Email không đúng định dạng'),
@@ -64,8 +65,8 @@ export default function LoginPage() {
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: 'student@fpt.edu.vn',
-      password: 'password123',
+      email: isDemoMode ? 'student@fpt.edu.vn' : '',
+      password: isDemoMode ? 'password123' : '',
     },
   });
 
@@ -111,6 +112,7 @@ export default function LoginPage() {
   };
 
   const handleGoogleOAuth = async () => {
+    if (!isDemoMode) return;
     setLoadingGoogle(true);
     setErrorMessage(null);
     try {
@@ -120,24 +122,23 @@ export default function LoginPage() {
         token?: string;
         memberships?: unknown[];
       };
+      const token = response.accessToken || response.token;
+      if (!token) throw new Error('Không nhận được phiên đăng nhập hợp lệ.');
       login(
         response.user,
-        response.accessToken || response.token || 'mock_google_jwt',
+        token,
         response.memberships as never,
       );
       navigateAfterLogin(response.user);
-    } catch {
-      const fallback = seedUsers[0];
-      const { password: _, ...safeUser } = fallback;
-      const memberships = seedClubMemberships.filter((m) => m.userId === fallback.id);
-      login(safeUser, `mock_jwt_token_${fallback.id}`, memberships);
-      navigateAfterLogin(safeUser);
+    } catch (error) {
+      setErrorMessage((error as Error).message || 'Đăng nhập Google mô phỏng thất bại. Vui lòng thử lại.');
     } finally {
       setLoadingGoogle(false);
     }
   };
 
   const handleQuickLogin = (email: string) => {
+    if (!isDemoMode) return;
     setValue('email', email);
     setValue('password', 'password123');
     const targetUser = seedUsers.find((u) => u.email === email);
@@ -168,7 +169,7 @@ export default function LoginPage() {
     {
       email: 'organizer@fpt.edu.vn',
       name: 'Đặng Thu Hà',
-      roleLabel: 'Tổ chức Tình nguyện/Workshop',
+      roleLabel: 'Student · Đề xuất chương trình',
     },
     {
       email: 'applicant@fpt.edu.vn',
@@ -188,7 +189,7 @@ export default function LoginPage() {
     {
       email: 'manager@fpt.edu.vn',
       name: 'Đỗ Hải Phong',
-      roleLabel: 'Manager · Quản lý nghiệp vụ',
+      roleLabel: 'Event Manager · Tổ chức chương trình',
     },
   ];
 
@@ -200,12 +201,12 @@ export default function LoginPage() {
           <div>
             <h1 className="text-xl font-bold text-neutral-900">Đăng nhập</h1>
             <p className="text-xs text-neutral-500 mt-1">
-              Sử dụng Google hoặc email cá nhân/email trường để tiếp tục
+              {isDemoMode ? 'Bản demo: dùng tài khoản mẫu hoặc Google mô phỏng' : 'Sử dụng email cá nhân/email trường để tiếp tục'}
             </p>
           </div>
 
           {/* Nút Tiếp tục với Google */}
-          <Button
+          {isDemoMode && <Button
             type="button"
             variant="secondary"
             loading={loadingGoogle}
@@ -213,8 +214,8 @@ export default function LoginPage() {
             leftIcon={<GoogleLogoSvg />}
             className="w-full h-10 font-medium text-neutral-800 border-neutral-200 hover:bg-neutral-100"
           >
-            Tiếp tục với Google
-          </Button>
+            Google mô phỏng
+          </Button>}
 
           {/* Dải phân cách "hoặc" */}
           <div className="relative flex items-center justify-center">
@@ -223,7 +224,7 @@ export default function LoginPage() {
             <div className="border-t border-neutral-200 w-full" />
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {errorMessage && (
               <Alert tier="danger" onClose={() => setErrorMessage(null)}>
                 {errorMessage}
@@ -291,7 +292,7 @@ export default function LoginPage() {
       </div>
 
       {/* Seed Accounts Panel for Testing in DEV mode */}
-      <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 space-y-3">
+      {isDemoMode && <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="text-xs font-semibold text-neutral-800 flex items-center gap-1.5">
             <KeyRound size={14} className="text-brand-600" /> Tài khoản mẫu kiểm thử (Bấm để đăng nhập nhanh):
@@ -310,7 +311,7 @@ export default function LoginPage() {
             </button>
           ))}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

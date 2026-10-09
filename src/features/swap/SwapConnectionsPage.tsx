@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DisclaimerBanner } from '@/components/shared/DisclaimerBanner';
@@ -14,30 +15,28 @@ import { Repeat2, ArrowRight } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { queryKeys } from '@/lib/queryKeys';
 import { formatDateTime } from '@/lib/format';
-import type { SwapConnection, SwapRequest } from '@/types/entities';
+import type { SwapConnectionDetails } from './swapTransactions';
 
 export default function SwapConnectionsPage() {
   const [direction, setDirection] = useState<'incoming' | 'outgoing'>('incoming');
-  const [activeReviewConn, setActiveReviewConn] = useState<SwapConnection | null>(null);
+  const [activeReviewConn, setActiveReviewConn] = useState<SwapConnectionDetails | null>(null);
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const connectionsQuery = useQuery<SwapConnection[]>({
+  const connectionsQuery = useQuery<SwapConnectionDetails[]>({
     queryKey: queryKeys.swap.connections({ direction }),
     queryFn: () => apiClient.get('/swap-connections', { params: { direction } }),
-  });
-
-  const allRequestsQuery = useQuery<SwapRequest[]>({
-    queryKey: queryKeys.swap.list(),
-    queryFn: () => apiClient.get('/swap-requests'),
   });
 
   const cancelMutation = useMutation({
     mutationFn: (id: string) => apiClient.post(`/swap-connections/${id}/reject`),
     onSuccess: () => {
       toast({ variant: 'default', title: 'Đã thu hồi lời mời kết nối' });
-      queryClient.invalidateQueries({ queryKey: queryKeys.swap.connections() });
+      queryClient.invalidateQueries({ queryKey: ['swap'] });
+      queryClient.invalidateQueries({ queryKey: ['swap-explore'] });
     },
+    onError: (error) => toast({ variant: 'error', title: 'Không thể thu hồi lời mời', description: error.message }),
   });
 
   return (
@@ -71,8 +70,7 @@ export default function SwapConnectionsPage() {
         {(connections) => (
           <div className="space-y-3">
             {connections.map((conn) => {
-              const reqA = allRequestsQuery.data?.find((r) => r.id === conn.requestAId);
-              const reqB = allRequestsQuery.data?.find((r) => r.id === conn.requestBId);
+              const reqA = conn.requestA;
 
               return (
                 <Card key={conn.id} className="hover:border-neutral-300 transition-colors shadow-xs">
@@ -115,7 +113,7 @@ export default function SwapConnectionsPage() {
                       )}
 
                       {conn.status === 'Confirmed' && (
-                        <Button size="sm" variant="outline" rightIcon={<ArrowRight size={14} />}>
+                        <Button size="sm" variant="outline" rightIcon={<ArrowRight size={14} />} onClick={() => navigate(conn.conversationId ? '/chats/' + conn.conversationId : '/chats')}>
                           Đến khung Chat
                         </Button>
                       )}
@@ -133,10 +131,11 @@ export default function SwapConnectionsPage() {
           open={!!activeReviewConn}
           onOpenChange={(open) => !open && setActiveReviewConn(null)}
           connection={activeReviewConn}
-          requestA={allRequestsQuery.data?.find((r) => r.id === activeReviewConn.requestAId)}
-          requestB={allRequestsQuery.data?.find((r) => r.id === activeReviewConn.requestBId)}
+          requestA={activeReviewConn.requestA}
+          requestB={activeReviewConn.requestB}
           onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.swap.connections() });
+            queryClient.invalidateQueries({ queryKey: ['swap'] });
+            queryClient.invalidateQueries({ queryKey: ['swap-explore'] });
           }}
         />
       )}

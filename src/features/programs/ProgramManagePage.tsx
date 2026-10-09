@@ -26,6 +26,8 @@ import {
 } from '@/components/ui/Dialog';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PROGRAM_TYPE_LABELS } from '@/components/shared/ProgramCard';
+import { useAuthStore } from '@/store/authStore';
+import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { apiClient } from '@/lib/apiClient';
 import { toast } from '@/components/ui/Toast';
@@ -43,12 +45,14 @@ interface ProgramManageData extends ProgramChannel {
 export const ProgramManagePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const [reviewReason, setReviewReason] = useState('');
 
   const [annOpen, setAnnOpen] = useState(false);
   const [annTitle, setAnnTitle] = useState('');
   const [annBody, setAnnBody] = useState('');
 
-  const { data: prog, isLoading } = useQuery<ProgramManageData>({
+  const { data: prog, isLoading, isError, refetch } = useQuery<ProgramManageData>({
     queryKey: ['program', id],
     queryFn: () => apiClient.get(`/programs/${id}`),
     enabled: !!id,
@@ -58,7 +62,9 @@ export const ProgramManagePage: React.FC = () => {
     mutationFn: (payload: { regId: string; status: 'Confirmed' | 'Rejected' }) =>
       apiClient.put(`/programs/registrations/${payload.regId}`, {
         status: payload.status,
+        feedbackNote: reviewReason.trim() || undefined,
       }),
+    onError: (error: Error) => toast.error(error.message),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['program', id] });
       toast.success('Đã cập nhật trạng thái đăng ký');
@@ -71,6 +77,7 @@ export const ProgramManagePage: React.FC = () => {
         title: annTitle.trim(),
         body: annBody.trim(),
       }),
+    onError: (error: Error) => toast.error(error.message),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['program', id] });
       setAnnOpen(false);
@@ -82,16 +89,19 @@ export const ProgramManagePage: React.FC = () => {
 
   const closeChannelMutation = useMutation({
     mutationFn: () => apiClient.put(`/programs/${id}`, { status: 'Closed' }),
+    onError: (error: Error) => toast.error(error.message),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['program', id] });
       toast.success('Đã đóng nhận đăng ký cho kênh này');
     },
   });
 
+  if (isError || (!isLoading && !prog)) return <ErrorState title="Không thể tải chương trình" onRetry={() => refetch()} />;
   if (isLoading || !prog) {
     return <Card className="h-72 animate-pulse bg-neutral-100" />;
   }
 
+  if (!user?.roles.includes('event_manager') || prog.organizer.userId !== user.id) return <ErrorState title="Không có quyền quản lý chương trình này" />;
   const registrations = prog.registrations || [];
   const confirmedRegs = registrations.filter((r) => r.status === 'Confirmed');
   const announcements = prog.announcements || [];
@@ -169,6 +179,7 @@ export const ProgramManagePage: React.FC = () => {
         </div>
       </Card>
 
+      <Input aria-label="Lý do từ chối đăng ký" placeholder="Lý do từ chối (bắt buộc khi từ chối đăng ký)" value={reviewReason} onChange={(e) => setReviewReason(e.target.value)} />
       <Tabs defaultValue="registrations">
         <TabsList>
           <TabsTrigger value="registrations">
@@ -180,9 +191,7 @@ export const ProgramManagePage: React.FC = () => {
           <TabsTrigger value="announcements">
             Thông báo chung ({announcements.length}/5 hôm nay)
           </TabsTrigger>
-          <TabsTrigger value="coorganizers">
-            Đồng tổ chức ({prog.coOrganizers.length})
-          </TabsTrigger>
+
         </TabsList>
 
         <TabsContent value="registrations" className="space-y-4">
@@ -244,6 +253,7 @@ export const ProgramManagePage: React.FC = () => {
                                     status: 'Rejected',
                                   })
                                 }
+                                disabled={!reviewReason.trim() || reviewRegMutation.isPending}
                                 leftIcon={<X className="h-3.5 w-3.5" />}
                               >
                                 Từ chối
@@ -257,6 +267,7 @@ export const ProgramManagePage: React.FC = () => {
                                     status: 'Confirmed',
                                   })
                                 }
+                                disabled={reviewRegMutation.isPending || prog.confirmedCount >= prog.quota || (Boolean(reg.slotId) && (prog.slots?.find((slot) => slot.id === reg.slotId)?.confirmedCount || 0) >= (prog.slots?.find((slot) => slot.id === reg.slotId)?.quota || 0))}
                                 leftIcon={<Check className="h-3.5 w-3.5" />}
                               >
                                 Xác nhận
@@ -357,28 +368,7 @@ export const ProgramManagePage: React.FC = () => {
           ))}
         </TabsContent>
 
-        <TabsContent value="coorganizers" className="space-y-3">
-          {prog.coOrganizers.length === 0 ? (
-            <EmptyState
-              title="Chưa có đồng tổ chức"
-              description="Bạn là người điều phối chính của kênh chương trình này."
-            />
-          ) : (
-            prog.coOrganizers.map((co) => (
-              <Card
-                key={co.userId}
-                className="p-4 flex items-center justify-between"
-              >
-                <div>
-                  <div className="text-sm font-semibold text-neutral-900">
-                    {co.fullName} ({co.studentCode})
-                  </div>
-                </div>
-                <StatusBadge group="coOrganizer" status={co.status} />
-              </Card>
-            ))
-          )}
-        </TabsContent>
+
       </Tabs>
 
       {/* PG7 Announcement Dialog */}

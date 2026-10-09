@@ -22,97 +22,99 @@ import { AdminShell } from './layouts/AdminShell';
 import { ProtectedRoute } from './ProtectedRoute';
 
 // Public & Auth Pages
-import LoginPage from '@/features/auth/LoginPage';
-import RegisterPage from '@/features/auth/RegisterPage';
-import VerifyEmailPage from '@/features/auth/VerifyEmailPage';
-import ForgotPasswordPage from '@/features/auth/ForgotPasswordPage';
-import OnboardingPage from '@/features/auth/OnboardingPage';
-import HelpPage from '@/features/help/HelpPage';
+const LoginPage = React.lazy(() => import('@/features/auth/LoginPage'));
+const RegisterPage = React.lazy(() => import('@/features/auth/RegisterPage'));
+const VerifyEmailPage = React.lazy(() => import('@/features/auth/VerifyEmailPage'));
+const ForgotPasswordPage = React.lazy(() => import('@/features/auth/ForgotPasswordPage'));
+const OnboardingPage = React.lazy(() => import('@/features/auth/OnboardingPage'));
+const HelpPage = React.lazy(() => import('@/features/help/HelpPage'));
 
 // Common & Global Navigation Pages
-import DashboardPage from '@/features/common/DashboardPage';
-import SearchPage from '@/features/search/SearchPage';
-import EventsPage from '@/features/events/EventsPage';
-import RequestsPage from '@/features/requests/RequestsPage';
-import SettingsPage from '@/features/settings/SettingsPage';
-import ErrorPage from '@/features/common/ErrorPage';
-import PeoplePage from '@/features/people/PeoplePage';
+const DashboardPage = React.lazy(() => import('@/features/common/DashboardPage'));
+const SearchPage = React.lazy(() => import('@/features/search/SearchPage'));
+const EventsPage = React.lazy(() => import('@/features/events/EventsPage'));
+const RequestsPage = React.lazy(() => import('@/features/requests/RequestsPage'));
+const SettingsPage = React.lazy(() => import('@/features/settings/SettingsPage'));
+const ErrorPage = React.lazy(() => import('@/features/common/ErrorPage'));
+const PeoplePage = React.lazy(() => import('@/features/people/PeoplePage'));
 
 // Profile (Unified C7 + C8)
-import ProfilePage from '@/features/profile/ProfilePage';
+const ProfilePage = React.lazy(() => import('@/features/profile/ProfilePage'));
 
 // Notifications & Chat
-import NotificationsPage from '@/features/notifications/NotificationsPage';
-import ChatsPage from '@/features/chat/ChatsPage';
+const NotificationsPage = React.lazy(() => import('@/features/notifications/NotificationsPage'));
+const ChatsPage = React.lazy(() => import('@/features/chat/ChatsPage'));
 
 // FE-01: Class Swap
-import SwapListPage from '@/features/swap/SwapListPage';
-import SwapDetailPage from '@/features/swap/SwapDetailPage';
-import SwapConnectionsPage from '@/features/swap/SwapConnectionsPage';
+const SwapListPage = React.lazy(() => import('@/features/swap/SwapListPage'));
+const SwapDetailPage = React.lazy(() => import('@/features/swap/SwapDetailPage'));
+const SwapConnectionsPage = React.lazy(() => import('@/features/swap/SwapConnectionsPage'));
 
 // FE-02: Knowledge Sharing
-import KnowledgeHubPage from '@/features/knowledge/KnowledgeHubPage';
-import KnowledgePostDetailPage from '@/features/knowledge/KnowledgePostDetailPage';
-import MyPostsPage from '@/features/knowledge/MyPostsPage';
+const KnowledgeHubPage = React.lazy(() => import('@/features/knowledge/KnowledgeHubPage'));
+const KnowledgePostDetailPage = React.lazy(() => import('@/features/knowledge/KnowledgePostDetailPage'));
+const MyPostsPage = React.lazy(() => import('@/features/knowledge/MyPostsPage'));
 
 // FE-03: Group Finding
-import GroupsFindPage from '@/features/groups/GroupsFindPage';
-import GroupFormPage from '@/features/groups/GroupFormPage';
-import GroupDetailPage from '@/features/groups/GroupDetailPage';
-import MyGroupsPage from '@/features/groups/MyGroupsPage';
-import GroupManagePage from '@/features/groups/GroupManagePage';
+const GroupsFindPage = React.lazy(() => import('@/features/groups/GroupsFindPage'));
+const GroupFormPage = React.lazy(() => import('@/features/groups/GroupFormPage'));
+const GroupDetailPage = React.lazy(() => import('@/features/groups/GroupDetailPage'));
+const MyGroupsPage = React.lazy(() => import('@/features/groups/MyGroupsPage'));
+const GroupManagePage = React.lazy(() => import('@/features/groups/GroupManagePage'));
 
 // FE-04: Club Connection (CL1–CL12)
-import ClubsExplorePage from '@/features/clubs/ClubsExplorePage';
-import ClubProfilePage from '@/features/clubs/ClubProfilePage';
-import ClubOpportunityDetailPage from '@/features/clubs/ClubOpportunityDetailPage';
-import ClubOpportunityRegisterPage from '@/features/clubs/ClubOpportunityRegisterPage';
-import ClubRegistrationDetailPage from '@/features/clubs/ClubRegistrationDetailPage';
-import ClubOpportunityFormPage from '@/features/clubs/ClubOpportunityFormPage';
-import ClubOpportunityManageDetailPage from '@/features/clubs/ClubOpportunityManageDetailPage';
-import ClubRepresentRequestPage from '@/features/clubs/ClubRepresentRequestPage';
+const ClubsExplorePage = React.lazy(() => import('@/features/clubs/ClubsExplorePage'));
+const ClubProfilePage = React.lazy(() => import('@/features/clubs/ClubProfilePage'));
+const ClubOpportunityDetailPage = React.lazy(() => import('@/features/clubs/ClubOpportunityDetailPage'));
+const ClubOpportunityRegisterPage = React.lazy(() => import('@/features/clubs/ClubOpportunityRegisterPage'));
+const ClubRegistrationDetailPage = React.lazy(() => import('@/features/clubs/ClubRegistrationDetailPage'));
+const ClubOpportunityFormPage = React.lazy(() => import('@/features/clubs/ClubOpportunityFormPage'));
+const ClubOpportunityManageDetailPage = React.lazy(() => import('@/features/clubs/ClubOpportunityManageDetailPage'));
+const ClubRepresentRequestPage = React.lazy(() => import('@/features/clubs/ClubRepresentRequestPage'));
 
 // FE-06: Community Program Registration (PG1–PG8)
-import ProgramsExplorePage from '@/features/programs/ProgramsExplorePage';
-import ProgramDetailPage from '@/features/programs/ProgramDetailPage';
-import ProgramRegisterPage from '@/features/programs/ProgramRegisterPage';
-import ProgramFormPage from '@/features/programs/ProgramFormPage';
-import ProgramManagePage from '@/features/programs/ProgramManagePage';
+const ProgramsExplorePage = React.lazy(() => import('@/features/programs/ProgramsExplorePage'));
+const ProgramDetailPage = React.lazy(() => import('@/features/programs/ProgramDetailPage'));
+const ProgramRegisterPage = React.lazy(() => import('@/features/programs/ProgramRegisterPage'));
+const ProgramFormPage = React.lazy(() => import('@/features/programs/ProgramFormPage'));
+const ProgramManagePage = React.lazy(() => import('@/features/programs/ProgramManagePage'));
+const ProgramProposalsPage = React.lazy(() => import('@/features/programs/ProgramProposalsPage').then(module => ({ default: module.ProgramProposalsPage })));
+const ProgramProposalReviewPage = React.lazy(() => import('@/features/programs/ProgramProposalsPage').then(module => ({ default: module.ProgramProposalReviewPage })));
 
 // FE-05: Mentoring — phía Học viên (/mentoring/*): tìm Mentor, gửi & theo dõi yêu cầu đã gửi
-import MentorAiSearchPage from '@/features/mentoring/MentorAiSearchPage';
-import MentorBrowsePage from '@/features/mentoring/MentorBrowsePage';
-import MentoringPostDetailPage from '@/features/mentoring/MentoringPostDetailPage';
-import MyMentoringRequestsPage from '@/features/mentoring/MyMentoringRequestsPage';
-import MentoringFeedPage from '@/features/mentoring/MentoringFeedPage';
+const MentorAiSearchPage = React.lazy(() => import('@/features/mentoring/MentorAiSearchPage'));
+const MentorBrowsePage = React.lazy(() => import('@/features/mentoring/MentorBrowsePage'));
+const MentoringPostDetailPage = React.lazy(() => import('@/features/mentoring/MentoringPostDetailPage'));
+const MyMentoringRequestsPage = React.lazy(() => import('@/features/mentoring/MyMentoringRequestsPage'));
+const MentoringFeedPage = React.lazy(() => import('@/features/mentoring/MentoringFeedPage'));
 
 // FE-05: Mentoring Application Flow (MR0 - MR3)
-import MentorApplyIntroPage from '@/features/mentor/MentorApplyIntroPage';
-import MentorApplyFormPage from '@/features/mentor/MentorApplyFormPage';
-import MentorApplyReviewPage from '@/features/mentor/MentorApplyReviewPage';
+const MentorApplyIntroPage = React.lazy(() => import('@/features/mentor/MentorApplyIntroPage'));
+const MentorApplyFormPage = React.lazy(() => import('@/features/mentor/MentorApplyFormPage'));
+const MentorApplyReviewPage = React.lazy(() => import('@/features/mentor/MentorApplyReviewPage'));
 
 // FE-05: Mentoring — phía Mentor (/mentor/*, Mentor Center): nhận & phản hồi yêu cầu
-import MentorCenterShell from '@/features/mentor/MentorCenterShell';
-import MentorProfilePage from '@/features/mentor/MentorProfilePage';
-import MentorPostsPage from '@/features/mentor/MentorPostsPage';
-import MentorRequestsPage from '@/features/mentor/MentorRequestsPage';
+const MentorCenterShell = React.lazy(() => import('@/features/mentor/MentorCenterShell'));
+const MentorProfilePage = React.lazy(() => import('@/features/mentor/MentorProfilePage'));
+const MentorPostsPage = React.lazy(() => import('@/features/mentor/MentorPostsPage'));
+const MentorRequestsPage = React.lazy(() => import('@/features/mentor/MentorRequestsPage'));
 
 // Admin Portal
-import AdminDashboardPage from '@/features/admin/AdminDashboardPage';
-import AdminUsersPage from '@/features/admin/AdminUsersPage';
-import AdminUserDetailPage from '@/features/admin/AdminUserDetailPage';
-import ModerationPage from '@/features/admin/ModerationPage';
-import AdminClubsPage from '@/features/admin/AdminClubsPage';
-import AdminProgramsPage from '@/features/admin/AdminProgramsPage';
-import AdminMentorApplicationsPage from '@/features/admin/AdminMentorApplicationsPage';
-import AdminMentorApplicationDetailPage from '@/features/admin/AdminMentorApplicationDetailPage';
-import MasterDataPage from '@/features/admin/MasterDataPage';
-import SystemSettingsPage from '@/features/admin/SystemSettingsPage';
-import AdminManagementPage from '@/features/admin/AdminManagementPage';
-import AuditLogsPage from '@/features/admin/AuditLogsPage';
+const AdminDashboardPage = React.lazy(() => import('@/features/admin/AdminDashboardPage'));
+const AdminUsersPage = React.lazy(() => import('@/features/admin/AdminUsersPage'));
+const AdminUserDetailPage = React.lazy(() => import('@/features/admin/AdminUserDetailPage'));
+const ModerationPage = React.lazy(() => import('@/features/admin/ModerationPage'));
+const AdminClubsPage = React.lazy(() => import('@/features/admin/AdminClubsPage'));
+const AdminProgramsPage = React.lazy(() => import('@/features/admin/AdminProgramsPage'));
+const AdminMentorApplicationsPage = React.lazy(() => import('@/features/admin/AdminMentorApplicationsPage'));
+const AdminMentorApplicationDetailPage = React.lazy(() => import('@/features/admin/AdminMentorApplicationDetailPage'));
+const MasterDataPage = React.lazy(() => import('@/features/admin/MasterDataPage'));
+const SystemSettingsPage = React.lazy(() => import('@/features/admin/SystemSettingsPage'));
+const AdminManagementPage = React.lazy(() => import('@/features/admin/AdminManagementPage'));
+const AuditLogsPage = React.lazy(() => import('@/features/admin/AuditLogsPage'));
 
 // Dev / Showcase
-import KitchenSinkPage from '@/features/dev/KitchenSinkPage';
+const KitchenSinkPage = React.lazy(() => import('@/features/dev/KitchenSinkPage'));
 
 export const router = createBrowserRouter([
   // Legal: mở hộp điều khoản ngay trên Home Feed
@@ -199,11 +201,13 @@ export const router = createBrowserRouter([
 
       // FE-06: Community Program Registration
       { path: 'programs', element: <ProgramsExplorePage /> },
+      { path: 'programs/proposals', element: <ProtectedRoute requireRoles={['student', 'Student']}><ProgramProposalsPage /></ProtectedRoute> },
+      { path: 'programs/proposals/review', element: <ProtectedRoute requireRoles={['event_manager']}><ProgramProposalReviewPage /></ProtectedRoute> },
       { path: 'programs/:id', element: <ProgramDetailPage /> },
-      { path: 'programs/new', element: <ProgramFormPage /> },
-      { path: 'programs/:id/edit', element: <ProgramFormPage /> },
+      { path: 'programs/new', element: <ProtectedRoute requireRoles={['event_manager']}><ProgramFormPage /></ProtectedRoute> },
+      { path: 'programs/:id/edit', element: <ProtectedRoute requireRoles={['event_manager']}><ProgramFormPage /></ProtectedRoute> },
       { path: 'programs/:id/register', element: <ProgramRegisterPage /> },
-      { path: 'programs/manage/:id', element: <ProgramManagePage /> },
+      { path: 'programs/manage/:id', element: <ProtectedRoute requireRoles={['event_manager']}><ProgramManagePage /></ProtectedRoute> },
 
       // FE-05: Mentoring (Student)
       { path: 'mentoring', element: <MentoringFeedPage /> },

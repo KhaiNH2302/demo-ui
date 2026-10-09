@@ -6,6 +6,9 @@ import { queryKeys } from '@/lib/queryKeys';
 import { useAuthStore } from '@/store/authStore';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { QueryBoundary } from '@/components/shared/QueryBoundary';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { invalidateGroupQueries } from './groupQueries';
+import { createGroupDialogAction } from './groupDialog';
 import { CoverHeader } from '@/components/shared/CoverHeader';
 import { AvatarStack } from '@/components/shared/AvatarStack';
 import { UserMiniCard } from '@/components/shared/UserMiniCard';
@@ -33,6 +36,8 @@ import type { Group, GroupMember, GroupJoinRequest, Conversation } from '@/types
 
 interface GroupDetailData extends Group {
   members: (GroupMember & { user?: any })[];
+  status?: 'Active' | 'Closed';
+  closedReason?: string;
 }
 
 export const GroupDetailPage: React.FC = () => {
@@ -44,6 +49,8 @@ export const GroupDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'info' | 'chat'>('info');
   const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
   const [joinMessage, setJoinMessage] = useState('');
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [leaveDialog] = useState(() => createGroupDialogAction(setLeaveOpen));
 
   const groupQuery = useQuery({
     queryKey: queryKeys.groups.detail(id!),
@@ -52,15 +59,19 @@ export const GroupDetailPage: React.FC = () => {
   });
 
   const myRequestsQuery = useQuery({
-    queryKey: ['join-requests', 'mine'],
+    queryKey: queryKeys.groups.myJoinRequests,
     queryFn: () => apiClient.get<GroupJoinRequest[]>('/join-requests/mine'),
     enabled: !!user,
   });
 
-  const conversationsQuery = useQuery<Conversation[]>({
-    queryKey: queryKeys.chat.conversations,
-    queryFn: () => apiClient.get('/conversations'),
-    enabled: !!user,
+  const group = groupQuery.data;
+  const isOwner = !!user && user.id === group?.ownerId;
+  const isClosed = group?.status === 'Closed';
+  const isMember = !!user && !isClosed && (isOwner || !!group?.members?.some((member) => member.userId === user.id));
+  const groupConversationQuery = useQuery<Conversation>({
+    queryKey: ['chat', 'group', id],
+    queryFn: () => apiClient.post<Conversation>(`/groups/${id}/conversation`),
+    enabled: !!id && isMember && activeTab === 'chat',
   });
 
   const joinMutation = useMutation({
@@ -73,24 +84,27 @@ export const GroupDetailPage: React.FC = () => {
       }
       setIsJoinDialogOpen(false);
       setJoinMessage('');
-      queryClient.invalidateQueries({ queryKey: queryKeys.groups.detail(id!) });
-      queryClient.invalidateQueries({ queryKey: ['join-requests', 'mine'] });
+      invalidateGroupQueries(queryClient);
     },
-    onError: () => {
-      toast.error('Gửi yêu cầu thất bại, vui lòng thử lại.');
+    onError: (error: Error) => {
+      toast.error(error.message || 'Gửi yêu cầu thất bại, vui lòng thử lại.');
     },
   });
 
-  const group = groupQuery.data;
+  const leaveMutation = useMutation({
+    mutationFn: () => apiClient.post(`/groups/${id}/leave`),
+    onSuccess: () => {
+      toast.success('Bạn đã rời nhóm.');
+      setLeaveOpen(false);
+      setActiveTab('info');
+      invalidateGroupQueries(queryClient);
+    },
+    onError: (error: Error) => toast.error(error.message || 'Không thể rời nhóm.'),
+  });
   const myRequests = myRequestsQuery.data || [];
   const myPendingRequest = myRequests.find((r) => r.groupId === id && r.status === 'Pending');
 
-  const isOwner = user?.id === group?.ownerId;
-  const isMember = isOwner || group?.members?.some((m) => m.userId === user?.id);
   const isFull = group ? group.memberCount >= group.memberLimit : false;
-
-  // Find group conversation if exists
-  const groupConv = conversationsQuery.data?.find((c) => c.kind === 'group' && (c.refId === id || c.id === 'conv_04'));
 
   const tabOptions = [
     { value: 'info', label: 'Thông tin', icon: Info },
@@ -131,6 +145,7 @@ export const GroupDetailPage: React.FC = () => {
                 <Badge tier="brand">
                   {group.joinMode === 'direct' ? 'Tham gia trực tiếp' : 'Cần duyệt'}
                 </Badge>
+                {isClosed && <Badge tier="danger">Nhóm đã đóng</Badge>}
               </div>
             }
             actions={
@@ -159,19 +174,11 @@ export const GroupDetailPage: React.FC = () => {
           {/* Content Area */}
           {activeTab === 'chat' && isMember ? (
             <div className="h-[520px]">
-              <ChatWindow
-                conversationId={groupConv?.id || 'conv_04'}
-                conversation={
-                  groupConv || {
-                    id: 'conv_04',
-                    kind: 'group',
-                    refId: group.id,
-                    title: group.name,
-                    participantIds: group.members?.map((m) => m.userId) || [user?.id || ''],
-                    lastMessage: 'Kênh chat nhóm đã sẵn sàng',
-                  }
-                }
-              />
+              <QueryBoundary query={groupConversationQuery}>
+                {groupConversationQuery.data && (
+                  <ChatWindow conversationId={groupConversationQuery.data.id} conversation={groupConversationQuery.data} />
+                )}
+              </QueryBoundary>
             </div>
           ) : (
             <Card>
@@ -234,7 +241,7 @@ export const GroupDetailPage: React.FC = () => {
                 {/* Members List */}
                 <div>
                   <h3 className="text-sm font-semibold text-[var(--text-main)] mb-3 flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-primary" /> Danh sách thành viên ({group.members?.length || 1})
+                    <Users className="w-4 h-4 text-primary" /> Danh sách thành viên ({group.members?.length || 0})
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {group.members?.map((m) => (
@@ -248,7 +255,9 @@ export const GroupDetailPage: React.FC = () => {
               </CardContent>
 
               <CardFooter className="flex items-center justify-end border-t border-[var(--border-subtle)] pt-4">
-                {isOwner ? (
+                {isClosed ? (
+                  <span className="text-sm text-neutral-500">Nhóm đã đóng{group.closedReason ? `: ${group.closedReason}` : '.'}</span>
+                ) : isOwner ? (
                   <Button onClick={() => navigate(`/groups/${id}/manage`)}>
                     <Settings className="w-4 h-4 mr-2" /> Vào trang quản lý nhóm
                   </Button>
@@ -257,7 +266,7 @@ export const GroupDetailPage: React.FC = () => {
                     <span className="flex items-center text-sm text-[var(--status-success-fg)] font-medium">
                       <CheckCircle className="w-4 h-4 mr-1.5" /> Bạn đã là thành viên của nhóm
                     </span>
-                    <Button variant="outline" size="sm" onClick={() => toast.info('Đã gửi yêu cầu rời nhóm')}>
+                    <Button variant="outline" size="sm" onClick={() => setLeaveOpen(true)}>
                       <LogOut className="w-3.5 h-3.5 mr-1" /> Rời nhóm
                     </Button>
                   </div>
@@ -283,6 +292,14 @@ export const GroupDetailPage: React.FC = () => {
           )}
 
           {/* Join Group Dialog */}
+          <ConfirmDialog
+            open={leaveOpen}
+            onOpenChange={leaveDialog.changeOpen}
+            title="Rời nhóm"
+            description="Bạn sẽ không còn quyền truy cập chat nhóm sau khi rời."
+            loading={leaveMutation.isPending}
+            onConfirm={() => leaveDialog.submit(() => leaveMutation.mutateAsync())}
+          />
           <Dialog open={isJoinDialogOpen} onOpenChange={setIsJoinDialogOpen}>
             <DialogContent>
               <DialogHeader>

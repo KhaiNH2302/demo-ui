@@ -12,6 +12,7 @@ import { CoverImagePicker } from '@/components/shared/CoverImagePicker';
 import { ImageUploader } from '@/components/shared/ImageUploader';
 import { apiClient } from '@/lib/apiClient';
 import { toast } from '@/components/ui/Toast';
+import { ErrorState } from '@/components/shared/ErrorState';
 import { useAuthStore } from '@/store/authStore';
 import type {
   FormQuestion,
@@ -20,6 +21,8 @@ import type {
   ProgramSlot,
 } from '@/types/entities';
 import type { ProgramType } from '@/types/status';
+
+const toLocalDateTime = (value: string) => { const date = new Date(value); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0,16); };
 
 interface EligibilityData {
   eligible: boolean;
@@ -34,7 +37,7 @@ export const ProgramFormPage: React.FC = () => {
   const isEdit = Boolean(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { representedClubs } = useAuthStore();
+  const { representedClubs, user } = useAuthStore();
 
   const initialStep = Math.min(Math.max(Number(searchParams.get('step')) || 1, 1), 4);
   const [step, setStep] = useState(initialStep);
@@ -45,7 +48,7 @@ export const ProgramFormPage: React.FC = () => {
       setStep(requestedStep);
     }
   }, [searchParams]);
-  const [type, setType] = useState<ProgramType>('Event');
+  const [type, setType] = useState<ProgramType>('Workshop');
   const [isClubEvent, setIsClubEvent] = useState(false);
   const [clubId, setClubId] = useState('');
   const [title, setTitle] = useState('');
@@ -83,7 +86,7 @@ export const ProgramFormPage: React.FC = () => {
 
   const [confirmMode, setConfirmMode] = useState<'Instant' | 'Approval'>('Instant');
   const [quota, setQuota] = useState(40);
-  const [registrationDeadline, setRegistrationDeadline] = useState('2026-10-16');
+  const [registrationDeadline, setRegistrationDeadline] = useState(toLocalDateTime(new Date(Date.now()+5*86400000).toISOString()));
   const [questions, setQuestions] = useState<FormQuestion[]>([
     {
       id: 'q_prog_1',
@@ -99,7 +102,7 @@ export const ProgramFormPage: React.FC = () => {
     queryFn: () => apiClient.get('/programs/eligibility'),
   });
 
-  const { data: existingProg } = useQuery<ProgramChannel>({
+  const { data: existingProg, isLoading, isError, refetch } = useQuery<ProgramChannel>({
     queryKey: ['program', id],
     queryFn: () => apiClient.get(`/programs/${id}`),
     enabled: isEdit,
@@ -107,16 +110,16 @@ export const ProgramFormPage: React.FC = () => {
 
   useEffect(() => {
     if (existingProg) {
-      setType(existingProg.type);
-      setIsClubEvent(Boolean((existingProg as ProgramChannel & { isClubEvent?: boolean }).isClubEvent));
+      setType(existingProg.type === 'Volunteer' ? 'Volunteer' : 'Workshop');
+      setIsClubEvent(false);
       setClubId((existingProg as ProgramChannel & { clubId?: string }).clubId || '');
       setTitle(existingProg.title);
       setSummary(existingProg.summary);
       setDescription(existingProg.description);
       setRoleNote(existingProg.organizer.roleNote);
       setTagsInput(existingProg.tags.join(', '));
-      setStartAt(existingProg.startAt.slice(0, 16));
-      setEndAt(existingProg.endAt.slice(0, 16));
+      setStartAt(toLocalDateTime(existingProg.startAt));
+      setEndAt(toLocalDateTime(existingProg.endAt));
       setMode(existingProg.mode);
       setLocationOrLink(existingProg.locationOrLink);
       setGatheringPoint(existingProg.gatheringPoint || '');
@@ -130,14 +133,18 @@ export const ProgramFormPage: React.FC = () => {
       }
       setConfirmMode(existingProg.confirmMode);
       setQuota(existingProg.quota);
-      setRegistrationDeadline(existingProg.registrationDeadline.slice(0, 10));
+      setCoverImageUrl(existingProg.coverImageUrl || existingProg.coverUrl || null);
+      setGallery(existingProg.gallery || []);
+      setRegistrationDeadline(toLocalDateTime(existingProg.registrationDeadline));
       setQuestions(existingProg.questions || []);
       setCommitted(true);
     }
   }, [existingProg]);
 
+  useEffect(() => { if (type === 'Volunteer' && slots.length) setQuota(slots.reduce((sum,slot) => sum+slot.quota,0)); }, [type,slots]);
+
   const saveMutation = useMutation({
-    mutationFn: (status: 'Draft' | 'PendingReview') => {
+    mutationFn: (status: 'Draft' | 'Published') => {
       const payload = {
         type,
         isClubEvent: type === 'Event' ? isClubEvent : false,
@@ -158,6 +165,9 @@ export const ProgramFormPage: React.FC = () => {
         beneficiaryAndGoal: type === 'Volunteer' ? beneficiaryAndGoal : undefined,
         slots: type === 'Volunteer' ? slots : undefined,
         safetyNotes,
+        coverUrl: coverImageUrl || undefined,
+        coverImageUrl,
+        gallery,
         costInfo,
         speakerInfo:
           type === 'Workshop'
@@ -179,22 +189,28 @@ export const ProgramFormPage: React.FC = () => {
       }
       return apiClient.post('/programs', payload);
     },
+    onError: (error: Error) => toast.error(error.message),
     onSuccess: (_, status) => {
       queryClient.invalidateQueries({ queryKey: ['programs'] });
       toast.success(
         status === 'Draft'
           ? 'Đã lưu bản nháp kênh chương trình'
-          : 'Đã gửi kênh chương trình tới Admin xét duyệt!'
+          : 'Đã công bố chương trình trực tiếp!'
       );
       navigate('/programs?tab=organizing');
     },
   });
 
+  if (!user?.roles.includes('event_manager')) return <ErrorState title="Cần quyền Event Manager" message="Student gửi ý tưởng tại mục Đề xuất của tôi." />;
+  if (isEdit && isLoading) return <Card className="h-72 animate-pulse" />;
+  if (isEdit && (isError || !existingProg)) return <ErrorState title="Không thể mở chương trình" onRetry={() => refetch()} />;
+  if (existingProg && existingProg.organizer.userId !== user.id) return <ErrorState title="Không có quyền quản lý chương trình này" />;
+
   const steps = [
     { num: 1, label: 'Điều kiện & Thông tin' },
     { num: 2, label: 'Thời gian & Nội dung' },
     { num: 3, label: 'Chỉ tiêu & Câu hỏi' },
-    { num: 4, label: 'Cam kết & Gửi duyệt' },
+    { num: 4, label: 'Cam kết & Công bố' },
   ];
 
   return (
@@ -214,7 +230,7 @@ export const ProgramFormPage: React.FC = () => {
             : 'Mở kênh đăng ký Tình nguyện / Workshop'}
         </h1>
         <p className="text-meta text-neutral-500 mt-1">
-          Kênh do sinh viên khởi xướng sẽ được Admin nhà trường xác minh nhanh trước khi hiển thị công khai.
+          Event Manager trực tiếp tổ chức và công bố chương trình. Student gửi ý tưởng ở mục Đề xuất của tôi.
         </p>
       </div>
 
@@ -270,7 +286,7 @@ export const ProgramFormPage: React.FC = () => {
                 value={type}
                 onChange={(e) => setType(e.target.value as ProgramType)}
               >
-                <option value="Event">Sự kiện</option>
+
                 <option value="Volunteer">Hoạt động Tình nguyện</option>
                 <option value="Workshop">Workshop chia sẻ kỹ năng / học thuật</option>
               </Select>
@@ -615,7 +631,7 @@ export const ProgramFormPage: React.FC = () => {
                 Hạn cuối đăng ký
               </label>
               <Input
-                type="date"
+                type="datetime-local"
                 value={registrationDeadline}
                 onChange={(e) => setRegistrationDeadline(e.target.value)}
               />
@@ -639,7 +655,7 @@ export const ProgramFormPage: React.FC = () => {
               Quay lại
             </Button>
             <Button variant="primary" onClick={() => setStep(4)}>
-              Tiếp tục: Cam kết &amp; Gửi duyệt
+              Tiếp tục: Cam kết &amp; Công bố
             </Button>
           </div>
         </Card>
@@ -686,9 +702,9 @@ export const ProgramFormPage: React.FC = () => {
                 variant="primary"
                 disabled={!committed}
                 isLoading={saveMutation.isPending}
-                onClick={() => saveMutation.mutate('PendingReview')}
+                onClick={() => saveMutation.mutate('Published')}
               >
-                Gửi Admin duyệt mở kênh
+                Công bố chương trình
               </Button>
             </div>
           </div>

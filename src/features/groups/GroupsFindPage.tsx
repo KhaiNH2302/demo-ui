@@ -150,8 +150,12 @@ export default function GroupsFindPage() {
             <LoadingSkeleton variant="card" count={3} />
           ) : (
             (() => {
-              const aiResults = useAi && !isAiFailed && searchMutation.data ? (searchMutation.data as AiGroupMatch[]) : null;
-              const filterResults = !useAi || isAiFailed ? (searchMutation.data ? (searchMutation.data as Group[]) : groupsList) : null;
+              const aiResults = useAi && !isAiFailed && searchMutation.variables?.mode === 'ai' && searchMutation.data
+                ? (searchMutation.data as AiGroupMatch[]).filter((match) => groupsList.some((group) => group.id === match.groupId)) : null;
+              const filteredIds = searchMutation.variables?.mode === 'filter' && searchMutation.data
+                ? new Set((searchMutation.data as Group[]).map((group) => group.id)) : null;
+              const filterResults = !useAi || isAiFailed
+                ? groupsList.filter((group) => (!purpose || group.purpose === purpose) && (!filteredIds || filteredIds.has(group.id))) : null;
 
               if (aiResults && aiResults.length > 0) {
                 return (

@@ -105,7 +105,7 @@ export const SwapRequestDialog: React.FC<SwapRequestDialogProps> = ({
     onSuccess: (data: any) => {
       const createdOrUpdatedId = data?.data?.id || data?.id || (initialData && initialData.id) || 'swap_req_new';
       toast.success(isEdit ? 'Đã lưu thay đổi yêu cầu đổi lớp!' : 'Đã tạo yêu cầu đổi lớp thành công!');
-      queryClient.invalidateQueries({ queryKey: ['swap-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['swap'] });
       queryClient.invalidateQueries({ queryKey: ['swap-explore'] });
       onOpenChange(false);
       onSuccess?.(createdOrUpdatedId);
@@ -131,8 +131,16 @@ export const SwapRequestDialog: React.FC<SwapRequestDialogProps> = ({
     const cur = currentClassCode.trim().toUpperCase();
     const tgt = targetClassCode.trim().toUpperCase();
 
-    if (!cur || !tgt) {
-      setApiError('Vui lòng nhập cả mã lớp hiện tại và mã lớp muốn đổi');
+    if (!offeringId || !offeringsQuery.data?.some((offering) => offering.id === offeringId)) {
+      setApiError('Vui lòng chọn môn học');
+      return;
+    }
+    if (!cur) {
+      setApiError('Vui lòng nhập mã lớp hiện tại');
+      return;
+    }
+    if (!tgt) {
+      setApiError('Vui lòng nhập mã lớp muốn đổi');
       return;
     }
 
@@ -194,9 +202,9 @@ export const SwapRequestDialog: React.FC<SwapRequestDialogProps> = ({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 py-1">
+        <form noValidate onSubmit={handleSubmit} className="space-y-4 py-1">
           {/* Môn học */}
-          <FormField label="Môn học (Course Offering)" required>
+          <FormField label="Môn học" required>
             {isEdit ? (
               <div className="p-2.5 rounded-md border border-neutral-200 bg-neutral-50 dark:bg-neutral-900 dark:border-neutral-800 text-xs flex items-center justify-between">
                 <div>

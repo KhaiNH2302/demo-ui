@@ -3,6 +3,7 @@ import { Outlet, Link } from 'react-router-dom';
 import { ArrowLeft, Sun, Moon } from 'lucide-react';
 import { useThemeStore } from '@/store/themeStore';
 import { PublicFooter } from '@/components/shared/PublicFooter';
+import { PageLoading } from '@/components/shared/PageLoading';
 
 export const AuthLayout: React.FC = () => {
   const { resolvedTheme, toggleTheme } = useThemeStore();
@@ -45,7 +46,7 @@ export const AuthLayout: React.FC = () => {
       {/* Main Outlet */}
       <main className="flex-1 flex items-center justify-center py-10 px-4 sm:px-6">
         <div className="w-full max-w-4xl">
-          <Outlet />
+          <React.Suspense fallback={<PageLoading />}><Outlet /></React.Suspense>
         </div>
       </main>
 

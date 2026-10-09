@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Sheet,
   SheetContent,
@@ -17,13 +18,15 @@ import {
   DialogFooter,
 } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { ScheduleCompare } from '@/components/shared/ScheduleCompare';
 import { DisclaimerBanner } from '@/components/shared/DisclaimerBanner';
 import { CheckCircle2, MessageSquare, AlertTriangle } from 'lucide-react';
 import { apiClient, type ApiError } from '@/lib/apiClient';
 import { useToast } from '@/components/ui/Toast';
 import type { SwapConnection, SwapRequest } from '@/types/entities';
+import { queryKeys } from '@/lib/queryKeys';
+import { useAuthStore } from '@/store/authStore';
 
 export interface SwapConnectionReviewSheetProps {
   open: boolean;
@@ -38,8 +41,8 @@ export const SwapConnectionReviewSheet: React.FC<SwapConnectionReviewSheetProps>
   open,
   onOpenChange,
   connection,
-  requestA,
-  requestB,
+  requestA: providedRequestA,
+  requestB: providedRequestB,
   onSuccess,
 }) => {
   const [loadingAccept, setLoadingAccept] = useState(false);
@@ -48,17 +51,47 @@ export const SwapConnectionReviewSheet: React.FC<SwapConnectionReviewSheetProps>
   const [createdConvId, setCreatedConvId] = useState<string | null>(null);
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
   const [errorReason, setErrorReason] = useState<string>('');
+  const [completed, setCompleted] = useState(false);
 
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const userId = useAuthStore((state) => state.user?.id);
+  const validProvidedA = providedRequestA?.id === connection.requestAId ? providedRequestA : undefined;
+  const validProvidedB = providedRequestB?.id === connection.requestBId ? providedRequestB : undefined;
+  const requestAQuery = useQuery<SwapRequest>({
+    queryKey: queryKeys.swap.detail(connection.requestAId),
+    queryFn: () => apiClient.get('/swap-requests/' + connection.requestAId),
+    enabled: open && !validProvidedA,
+  });
+  const requestBQuery = useQuery<SwapRequest>({
+    queryKey: queryKeys.swap.detail(connection.requestBId),
+    queryFn: () => apiClient.get('/swap-requests/' + connection.requestBId),
+    enabled: open && !validProvidedB,
+  });
+  const requestA = validProvidedA || requestAQuery.data;
+  const requestB = validProvidedB || requestBQuery.data;
+  const detailsFailed = (!validProvidedA && requestAQuery.isError) || (!validProvidedB && requestBQuery.isError);
+  const detailsReady = Boolean(requestA && requestB) && !detailsFailed;
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['swap'] });
+    queryClient.invalidateQueries({ queryKey: ['swap-explore'] });
+    queryClient.invalidateQueries({ queryKey: ['chat', 'conversations'] });
+    onSuccess?.();
+  };
 
   const handleAccept = async () => {
+    if (!requestA || !requestB || loadingAccept || loadingReject || completed) return;
     setLoadingAccept(true);
     try {
-      const res = (await apiClient.post(`/swap-connections/${connection.id}/accept`)) as any;
+      const res = (await apiClient.post(`/swap-connections/${connection.id}/accept`, {
+        requestAVersion: requestA.version,
+        requestBVersion: requestB.version,
+      })) as any;
+      setCompleted(true);
       setCreatedConvId(res.conversationId);
       setSuccessDialogOpen(true);
-      onSuccess?.();
+      refresh();
     } catch (err) {
       const apiErr = err as ApiError;
       setErrorReason(apiErr.message || 'Không thể xác nhận kết nối đổi lớp.');
@@ -74,7 +107,7 @@ export const SwapConnectionReviewSheet: React.FC<SwapConnectionReviewSheetProps>
       await apiClient.post(`/swap-connections/${connection.id}/reject`);
       toast({ variant: 'default', title: 'Đã từ chối lời mời đổi lớp. Hai yêu cầu vẫn tiếp tục mở.' });
       onOpenChange(false);
-      onSuccess?.();
+      refresh();
     } catch (err) {
       const apiErr = err as ApiError;
       toast({ variant: 'error', title: 'Lỗi', description: apiErr.message });
@@ -90,9 +123,7 @@ export const SwapConnectionReviewSheet: React.FC<SwapConnectionReviewSheetProps>
           <SheetHeader>
             <div className="flex items-center justify-between">
               <SheetTitle>Chi tiết lời mời đổi lớp</SheetTitle>
-              <Badge tier="pending" size="sm">
-                {connection.status === 'Pending' ? 'Chờ phản hồi' : connection.status}
-              </Badge>
+              <StatusBadge group="swapConnection" value={completed ? 'Confirmed' : connection.status} />
             </div>
             <SheetDescription>
               Xem xét lịch học và mã lớp đối tác trước khi quyết định chấp nhận kết nối
@@ -101,6 +132,13 @@ export const SwapConnectionReviewSheet: React.FC<SwapConnectionReviewSheetProps>
 
           <div className="space-y-5 my-4">
             <DisclaimerBanner />
+            {!detailsReady && (
+              <div role={detailsFailed ? 'alert' : 'status'} className="rounded-lg border border-neutral-200 p-3 text-sm text-neutral-600">
+                {detailsFailed ? 'Không tải được dữ liệu hai yêu cầu. Vui lòng thử lại trước khi phản hồi.' : 'Đang tải thông tin yêu cầu của hai bên...'}
+                {detailsFailed && <Button size="sm" variant="outline" className="ml-2" onClick={() => { requestAQuery.refetch(); requestBQuery.refetch(); }}>Thử lại</Button>}
+              </div>
+            )}
+            {connection.message && <p className="rounded-lg bg-neutral-50 p-3 text-sm text-neutral-700">Lời nhắn: {connection.message}</p>}
 
             {/* Swap comparison box */}
             <div className="rounded-xl border border-neutral-200 bg-surface p-4 space-y-4">
@@ -139,18 +177,18 @@ export const SwapConnectionReviewSheet: React.FC<SwapConnectionReviewSheetProps>
             </div>
           </div>
 
-          {connection.status === 'Pending' && (
+          {connection.status === 'Pending' && connection.recipientId === userId && !completed && (
             <SheetFooter>
               <Button
                 variant="outline"
                 className="text-[#b3261e] border-[#f7c9c7] hover:bg-[#fdecec]/50"
                 onClick={handleReject}
                 loading={loadingReject}
-                disabled={loadingAccept}
+                disabled={loadingAccept || !detailsReady}
               >
                 Từ chối lời mời
               </Button>
-              <Button onClick={handleAccept} loading={loadingAccept} disabled={loadingReject}>
+              <Button onClick={handleAccept} loading={loadingAccept} disabled={loadingReject || !detailsReady}>
                 Chấp nhận kết nối
               </Button>
             </SheetFooter>
@@ -215,7 +253,7 @@ export const SwapConnectionReviewSheet: React.FC<SwapConnectionReviewSheetProps>
               onClick={() => {
                 setErrorDialogOpen(false);
                 onOpenChange(false);
-                onSuccess?.();
+                  refresh();
               }}
             >
               Đóng & Tải lại dữ liệu

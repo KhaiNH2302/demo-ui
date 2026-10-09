@@ -10,6 +10,8 @@ import { OPPORTUNITY_TYPE_LABELS } from '@/components/shared/OpportunityCard';
 import { apiClient } from '@/lib/apiClient';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from '@/components/ui/Toast';
+import { ErrorState } from '@/components/shared/ErrorState';
+import { clubRegistrationUnavailable } from '@/features/programs/rules';
 import type { ClubOpportunity, OpportunityResponse } from '@/types/entities';
 
 interface OpportunityWithMyResponse extends ClubOpportunity {
@@ -20,9 +22,9 @@ export const ClubOpportunityRegisterPage: React.FC = () => {
   const { oppId } = useParams<{ oppId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
+  const { user, isRepresentativeOf } = useAuthStore();
 
-  const { data: opp, isLoading } = useQuery<OpportunityWithMyResponse>({
+  const { data: opp, isLoading, isError, refetch } = useQuery<OpportunityWithMyResponse>({
     queryKey: ['club-opportunity', oppId],
     queryFn: () => apiClient.get(`/clubs/opportunities/${oppId}`),
     enabled: !!oppId,
@@ -31,7 +33,7 @@ export const ClubOpportunityRegisterPage: React.FC = () => {
   const [positionId, setPositionId] = useState<string>('');
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [note, setNote] = useState('');
-  const [visibleToCoParticipants, setVisibleToCoParticipants] = useState(true);
+  const [visibleToCoParticipants, setVisibleToCoParticipants] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export const ClubOpportunityRegisterPage: React.FC = () => {
         setNote(opp.myResponse.note || '');
         setVisibleToCoParticipants(opp.myResponse.visibleToCoParticipants);
       } else if (opp.positions && opp.positions.length > 0 && !positionId) {
-        setPositionId(opp.positions[0].id);
+        setPositionId(opp.positions.find((position) => position.registeredCount < position.quota)?.id || '');
       }
     }
   }, [opp]);
@@ -66,6 +68,7 @@ export const ClubOpportunityRegisterPage: React.FC = () => {
         isDraft,
       });
     },
+    onError: (error: Error) => toast.error(error.message),
     onSuccess: (res: any, isDraft) => {
       queryClient.invalidateQueries({ queryKey: ['club-opportunity', oppId] });
       queryClient.invalidateQueries({ queryKey: ['clubs', 'registrations', 'me'] });
@@ -78,9 +81,13 @@ export const ClubOpportunityRegisterPage: React.FC = () => {
     },
   });
 
+  if (isError || (!isLoading && !opp)) return <ErrorState title="Không thể tải cơ hội CLB" onRetry={() => refetch()} />;
   if (isLoading || !opp) {
     return <Card className="h-72 animate-pulse bg-neutral-100" />;
   }
+
+  const unavailable = clubRegistrationUnavailable(opp, opp.myResponse, positionId) || (isRepresentativeOf(opp.clubId) ? 'Đại diện CLB không đăng ký cơ hội của chính CLB mình.' : null);
+  if (unavailable) return <div className="space-y-4"><ErrorState title="Không thể đăng ký" message={unavailable} /><Link to={`/clubs/opportunities/${opp.id}`} className="text-brand-600">Quay lại cơ hội</Link></div>;
 
   const isSupplementMode = opp.myResponse?.status === 'NeedsMoreInfo';
 

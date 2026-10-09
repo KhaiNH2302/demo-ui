@@ -718,6 +718,8 @@ export interface ProgramSlot {
 }
 
 export interface ProgramChannel {
+  sourceType?: 'ManagerCreated' | 'StudentProposal';
+  proposalId?: string;
   id: string;
   type: ProgramType;
   title: string;
@@ -815,6 +817,33 @@ export interface ProgramAnnouncement {
   body: string;
   createdAt: string;
   recipientCount: number;
+}
+
+/** Student proposes an idea; approval transfers organization to an Event Manager. */
+export interface ProgramProposal {
+  id: string;
+  studentId: string;
+  studentName: string;
+  type: 'Volunteer' | 'Workshop';
+  title: string;
+  description: string;
+  goal: string;
+  targetAudience: string;
+  expectedParticipants: number;
+  suggestedStartAt: string;
+  location: string;
+  costInfo: string;
+  safetyNotes: string;
+  mode?: 'Offline' | 'Online' | 'Hybrid';
+  contactInfo?: string;
+  acknowledgedTerms?: boolean;
+  status: import('./status').ProgramProposalStatus;
+  reviewReason?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  programId?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ============================================================================
