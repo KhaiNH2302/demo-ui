@@ -1,3 +1,4 @@
+import { programUnlimited } from './rules';
 import { ActivityNavigation } from './ActivityNavigation';
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -120,7 +121,7 @@ export const ProgramDetailPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <ActivityNavigation />
-      {prog.mode === 'Hybrid' && <Card className="p-4 space-y-3"><h2 className="font-semibold">Hai hình thức tham gia</h2><div className="grid sm:grid-cols-2 gap-3">{prog.slots?.map(s => <div key={s.id} className="rounded-lg border border-neutral-200 p-3"><strong>{s.attendanceMode === 'Online' ? 'Online' : 'Trực tiếp'}</strong><p className="text-sm">{s.confirmedCount}/{s.quota} đã xác nhận · Còn {Math.max(0,s.quota-s.confirmedCount)} chỗ</p></div>)}</div>{prog.onlineLink ? <a href={prog.onlineLink} target="_blank" rel="noopener noreferrer" className="text-brand-600 underline">Mở phòng online</a> : <p className="text-sm text-neutral-500">Link online được cung cấp cho người đã xác nhận nhóm Online.</p>}</Card>}
+      {prog.mode === 'Hybrid' && <Card className="p-4 space-y-3"><h2 className="font-semibold">Hai hình thức tham gia</h2><div className="grid sm:grid-cols-2 gap-3">{prog.slots?.map(s => <div key={s.id} className="rounded-lg border border-neutral-200 p-3"><strong>{s.attendanceMode === 'Online' ? 'Online' : 'Trực tiếp'}</strong><p className="text-sm">{s.confirmedCount}/{s.unlimited ? 'Không giới hạn' : s.quota} đã xác nhận · {s.unlimited ? 'Không giới hạn' : `Còn ${Math.max(0,s.quota-s.confirmedCount)} chỗ`}</p></div>)}</div>{prog.onlineLink ? <a href={prog.onlineLink} target="_blank" rel="noopener noreferrer" className="text-brand-600 underline">Mở phòng online</a> : <p className="text-sm text-neutral-500">Link online được cung cấp cho người đã xác nhận nhóm Online.</p>}</Card>}
 
       <div className="flex items-center justify-between gap-3">
         <Link
@@ -314,7 +315,7 @@ export const ProgramDetailPage: React.FC = () => {
                                 {s.description || s.timeRange}
                               </td>
                               <td className="py-2.5 px-3.5 text-right font-medium text-neutral-800">
-                                {s.confirmedCount}/{s.quota}
+                                {s.confirmedCount}/{s.unlimited ? 'Không giới hạn' : s.quota}
                               </td>
                             </tr>
                           ))}
@@ -449,10 +450,10 @@ export const ProgramDetailPage: React.FC = () => {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-neutral-600">Số lượng đã xác nhận</span>
                 <span className="font-semibold text-neutral-900">
-                  {prog.confirmedCount} / {prog.quota} chỗ
+                  {prog.confirmedCount} đã xác nhận · {programUnlimited(prog) ? 'Online không giới hạn' : `${prog.quota} chỗ`}
                 </span>
               </div>
-              <div className="h-2 w-full rounded-full bg-neutral-100 overflow-hidden">
+              <div className={`${programUnlimited(prog) ? 'hidden' : ''} h-2 w-full rounded-full bg-neutral-100 overflow-hidden`}>
                 <div
                   className="h-full bg-brand-500 rounded-full transition-all"
                   style={{ width: `${pct}%` }}
@@ -475,7 +476,7 @@ export const ProgramDetailPage: React.FC = () => {
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {prog.slots.map((s) => {
                     const remaining = Math.max(0, s.quota - s.confirmedCount);
-                    const isFull = remaining === 0;
+                    const isFull = !s.unlimited && remaining === 0;
                     return (
                       <div
                         key={s.id}
@@ -499,7 +500,7 @@ export const ProgramDetailPage: React.FC = () => {
                             </span>
                           ) : (
                             <span className="font-semibold text-emerald-700">
-                              Còn {remaining}/{s.quota}
+                              {s.unlimited ? 'Không giới hạn' : `Còn ${remaining}/${s.quota}`} 
                             </span>
                           )}
                         </div>

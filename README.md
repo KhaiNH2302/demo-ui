@@ -11,12 +11,11 @@ npm ci
 npm run dev -- --host 127.0.0.1
 npm run build
 npm run lint
-npm test
 ```
 
 Mở địa chỉ Vite in trong terminal. `.env.development` bật mock. Build chỉ bật mock khi `VITE_USE_MOCK=true`; không dùng cấu hình mock để triển khai thật.
 
-`npm test` dùng Node test runner. `tests/source-loader.mjs` xử lý TypeScript và alias giống Vite. Lint chỉ quét `src`, không quét thư viện và output build.
+Lint chỉ quét `src`, không quét thư viện và output build.
 
 ## Vai trò demo
 

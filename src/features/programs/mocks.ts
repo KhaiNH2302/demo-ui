@@ -5,7 +5,7 @@ import { seedProgramChannels, seedProgramRegistrations, seedProgramAnnouncements
 import { seedNotifications } from '@/mocks/data/notifications';
 import { getViewerId } from '@/mocks/utils';
 import type { ProgramChannel, ProgramProposal, ProgramRegistration, ProgramAnnouncement, User } from '@/types/entities';
-import { programRegistrationUnavailable, proposalHybridError } from './rules';
+import { programRegistrationUnavailable, proposalHybridError, programUnlimited } from './rules';
 
 const error = (message: string, status = 400, code = 'PROGRAM_INVALID_REQUEST') => HttpResponse.json({ error: { code, message } }, { status });
 const actor = (request: Request) => request.headers.get('Authorization')?.startsWith('Bearer mock_jwt_token_') ? seedUsers.find((user) => user.id === getViewerId(request) && user.status.toLowerCase() === 'active') : undefined;
@@ -23,20 +23,23 @@ function changeSeats(program: ProgramChannel, registration: ProgramRegistration,
 function programValidation(program: ProgramChannel) {
   if (!['Event', 'Volunteer', 'Workshop'].includes(program.type)) return 'Chỉ hỗ trợ Tình nguyện hoặc Workshop.';
   if (!program.title.trim() || !program.description.trim() || !program.locationOrLink.trim()) return 'Vui lòng nhập tên, mô tả và địa điểm chương trình.';
-  if (!Number.isInteger(program.quota) || program.quota < 1 || program.quota < program.confirmedCount) return 'Chỉ tiêu phải là số nguyên dương và không thấp hơn số người đã xác nhận.';
+  if (!programUnlimited(program) && (!Number.isInteger(program.quota) || program.quota < 1 || program.quota < program.confirmedCount)) return 'Chỉ tiêu phải là số nguyên dương và không thấp hơn số người đã xác nhận.';
   if (program.mode === 'Hybrid' && (!program.slots?.some(s => s.attendanceMode === 'Offline') || !program.slots?.some(s => s.attendanceMode === 'Online') || program.slots.some(s => !s.attendanceMode) || !/^https?:\/\//.test(program.onlineLink || ''))) return 'Hybrid cần nhóm trực tiếp, nhóm online và link tham gia hợp lệ.';
+  if (program.onlineUnlimited !== undefined && typeof program.onlineUnlimited !== 'boolean') return 'Chế độ không giới hạn không hợp lệ.';
+  if (program.mode === 'Hybrid' && Boolean(program.onlineUnlimited) !== Boolean(program.slots?.find(s => s.attendanceMode === 'Online')?.unlimited)) return 'Chế độ không giới hạn phải khớp nhóm online.';
+  if ((program.mode === 'Offline' && program.onlineUnlimited) || program.slots?.some(s => s.unlimited && (program.mode !== 'Hybrid' || s.attendanceMode !== 'Online'))) return 'Chỉ nhóm online được phép không giới hạn.';
   const start = Date.parse(program.startAt), end = Date.parse(program.endAt), deadline = Date.parse(program.registrationDeadline);
   if (![start, end, deadline].every(Number.isFinite) || end <= start || deadline >= start) return 'Hạn đăng ký phải trước giờ bắt đầu; giờ kết thúc phải sau giờ bắt đầu.';
   if (program.status === 'Published' && (deadline <= Date.now() || start <= Date.now())) return 'Chỉ công bố chương trình có hạn đăng ký và thời gian diễn ra trong tương lai.';
-  if (program.slots?.some((slot) => !slot.name.trim() || !Number.isInteger(slot.quota) || slot.quota < 1 || slot.quota < slot.confirmedCount)) return 'Chỉ tiêu mỗi ca phải hợp lệ và không thấp hơn số người đã xác nhận.';
-  if (program.slots?.length && program.quota !== program.slots.reduce((sum, slot) => sum + slot.quota, 0)) return 'Chỉ tiêu tổng phải bằng tổng chỉ tiêu các ca.';
+  if (program.slots?.some((slot) => !slot.name.trim() || (!slot.unlimited && (!Number.isInteger(slot.quota) || slot.quota < 1 || slot.quota < slot.confirmedCount)))) return 'Chỉ tiêu mỗi ca phải hợp lệ và không thấp hơn số người đã xác nhận.';
+  if (program.slots?.length && program.quota !== program.slots.reduce((sum, slot) => sum + (slot.unlimited ? 0 : slot.quota), 0)) return 'Chỉ tiêu tổng phải bằng tổng chỉ tiêu các ca.';
   if (program.status === 'Published' && program.type === 'Workshop' && !program.speakerInfo?.name.trim()) return 'Nhập thông tin người trình bày workshop trước khi công bố.';
   return null;
 }
 function makeProgram(user: User, body: Partial<ProgramChannel>): ProgramChannel {
   const now = new Date().toISOString();
   return {
-    clubId: body.clubId, onlineLink: body.onlineLink, sourceType: 'ManagerCreated', id: crypto.randomUUID(), type: body.type || 'Workshop', title: body.title || '', summary: body.summary || '', description: body.description || '',
+    onlineUnlimited: body.mode !== 'Offline' && body.onlineUnlimited === true, clubId: body.clubId, onlineLink: body.onlineLink, sourceType: 'ManagerCreated', id: crypto.randomUUID(), type: body.type || 'Workshop', title: body.title || '', summary: body.summary || '', description: body.description || '',
     coverUrl: body.coverUrl, coverImageUrl: body.coverImageUrl, gallery: body.gallery || [], tags: body.tags || [],
     organizer: { userId: user.id, fullName: user.fullName, studentCode: user.studentCode || '', major: user.major || '', cohort: user.cohort || '', avatarUrl: user.avatarUrl, roleNote: 'Manager' },
     coOrganizers: [], startAt: body.startAt || new Date(Date.now() + 7 * 86400000).toISOString(), endAt: body.endAt || new Date(Date.now() + 7 * 86400000 + 7200000).toISOString(),
@@ -68,11 +71,11 @@ export const programHandlers = [
     const body = await request.json() as Partial<ProgramProposal>;
     if (body.status && !['Draft','PendingReview'].includes(body.status)) return error('Student chỉ lưu nháp hoặc gửi đề xuất.');
     if (body.type === 'Event' && (!isRep(user) || !seedClubs.some(c => c.id === body.clubId && c.representatives?.some(rep => rep.userId === user.id)))) return error('Chỉ Club Rep được đề xuất sự kiện cho CLB mình đại diện.', 403, 'FORBIDDEN');
-    if ((body.type && !['Event','Volunteer','Workshop'].includes(body.type)) || (body.mode && !['Offline','Online','Hybrid'].includes(body.mode)) || (body.expectedParticipants !== undefined && (!Number.isInteger(body.expectedParticipants) || body.expectedParticipants < 1))) return error('Loại chương trình, hình thức hoặc số người dự kiến không hợp lệ.');
+    if ((body.type && !['Event','Volunteer','Workshop'].includes(body.type)) || (body.mode && !['Offline','Online','Hybrid'].includes(body.mode)) || (!(body.mode === 'Online' && body.onlineUnlimited) && body.expectedParticipants !== undefined && (!Number.isInteger(body.expectedParticipants) || body.expectedParticipants < 1))) return error('Loại chương trình, hình thức hoặc số người dự kiến không hợp lệ.');
     const now = new Date().toISOString();
-    const proposal: ProgramProposal = { id: crypto.randomUUID(), studentId: user.id, studentName: user.fullName, clubId: body.type === 'Event' ? body.clubId : undefined, type: body.type === 'Event' ? 'Event' : body.type === 'Volunteer' ? 'Volunteer' : 'Workshop', title: body.title?.trim() || 'Đề xuất chưa đặt tên', description: body.description?.trim() || '', goal: body.goal?.trim() || '', targetAudience: body.targetAudience?.trim() || '', offlineQuota: body.mode === 'Hybrid' ? body.offlineQuota : undefined, onlineQuota: body.mode === 'Hybrid' ? body.onlineQuota : undefined, expectedParticipants: body.mode === 'Hybrid' ? (body.offlineQuota || 0) + (body.onlineQuota || 0) : Number(body.expectedParticipants) || 30, suggestedStartAt: body.suggestedStartAt || '', location: body.location?.trim() || '', safetyNotes: body.safetyNotes?.trim() || '', mode: body.mode || 'Offline', contactInfo: body.contactInfo?.trim() || user.email, acknowledgedTerms: body.acknowledgedTerms === true, status: body.status || 'PendingReview', createdAt: now, updatedAt: now };
+    const proposal: ProgramProposal = { id: crypto.randomUUID(), studentId: user.id, studentName: user.fullName, clubId: body.type === 'Event' ? body.clubId : undefined, type: body.type === 'Event' ? 'Event' : body.type === 'Volunteer' ? 'Volunteer' : 'Workshop', title: body.title?.trim() || 'Đề xuất chưa đặt tên', description: body.description?.trim() || '', goal: body.goal?.trim() || '', targetAudience: body.targetAudience?.trim() || '', onlineUnlimited: body.mode !== 'Offline' && body.onlineUnlimited === true, offlineQuota: body.mode === 'Hybrid' ? body.offlineQuota : undefined, onlineQuota: body.mode === 'Hybrid' ? body.onlineQuota : undefined, expectedParticipants: body.mode === 'Hybrid' ? (body.offlineQuota || 0) + (body.onlineUnlimited ? 0 : body.onlineQuota || 0) : body.mode === 'Online' && body.onlineUnlimited ? 0 : Number(body.expectedParticipants) || 30, suggestedStartAt: body.suggestedStartAt || '', location: body.location?.trim() || '', safetyNotes: body.safetyNotes?.trim() || '', mode: body.mode || 'Offline', contactInfo: body.contactInfo?.trim() || user.email, acknowledgedTerms: body.acknowledgedTerms === true, status: body.status || 'PendingReview', createdAt: now, updatedAt: now };
     if (proposalHybridError(proposal)) return error(proposalHybridError(proposal)!);
-    if (proposal.status === 'PendingReview' && (!proposal.description || !proposal.goal || !proposal.targetAudience || !proposal.location || !proposal.safetyNotes || !Number.isInteger(proposal.expectedParticipants) || proposal.expectedParticipants < 1 || !Number.isFinite(Date.parse(proposal.suggestedStartAt)) || Date.parse(proposal.suggestedStartAt) <= Date.now() || !proposal.acknowledgedTerms)) return error('Điền đầy đủ nội dung, thời gian tương lai và xác nhận cam kết trước khi gửi.');
+    if (proposal.status === 'PendingReview' && (!proposal.description || !proposal.goal || !proposal.targetAudience || !proposal.location || !proposal.safetyNotes || (!(proposal.mode === 'Online' && proposal.onlineUnlimited) && (!Number.isInteger(proposal.expectedParticipants) || proposal.expectedParticipants < 1)) || !Number.isFinite(Date.parse(proposal.suggestedStartAt)) || Date.parse(proposal.suggestedStartAt) <= Date.now() || !proposal.acknowledgedTerms)) return error('Điền đầy đủ nội dung, thời gian tương lai và xác nhận cam kết trước khi gửi.');
     if (proposal.status === 'PendingReview' && seedProgramProposals.filter((item) => item.studentId === user.id && item.status === 'PendingReview').length >= 3) return error('Bạn đang có 3 đề xuất chờ duyệt. Hãy chờ kết quả hoặc rút một đề xuất trước khi gửi thêm.', 409, 'PROPOSAL_LIMIT_REACHED');
     seedProgramProposals.unshift(proposal);
     if (proposal.status === 'PendingReview') seedUsers.filter(isManager).forEach((manager) => notify(manager.id, 'Có đề xuất chương trình mới', proposal.title, '/programs/proposals/review'));
@@ -89,14 +92,14 @@ export const programHandlers = [
         proposal.status = 'Draft';
       } else {
         if (proposal.status !== 'Draft') return error('Chỉ sửa bản nháp. Đề xuất đã từ chối phải tạo bản mới.', 409);
-        const editable = ['type','title','description','goal','targetAudience','expectedParticipants','offlineQuota','onlineQuota','suggestedStartAt','location','clubId','safetyNotes','mode','contactInfo','acknowledgedTerms'] as const;
+        const editable = ['type','title','description','goal','targetAudience','expectedParticipants','offlineQuota','onlineQuota','onlineUnlimited','suggestedStartAt','location','clubId','safetyNotes','mode','contactInfo','acknowledgedTerms'] as const;
         const next = { ...proposal, status: body.status! };
         for (const key of editable) if (body[key] !== undefined) Object.assign(next, { [key]: body[key] });
         if (proposalHybridError(next)) return error(proposalHybridError(next)!);
-        if (next.mode === 'Hybrid') next.expectedParticipants = next.offlineQuota! + next.onlineQuota!;
-        if (!['Event','Volunteer','Workshop'].includes(next.type) || !['Offline','Online','Hybrid'].includes(next.mode || 'Offline') || !Number.isInteger(next.expectedParticipants) || next.expectedParticipants < 1) return error('Loại chương trình, hình thức hoặc số người dự kiến không hợp lệ.');
+        if (next.mode === 'Hybrid') next.expectedParticipants = next.offlineQuota! + (next.onlineUnlimited ? 0 : next.onlineQuota!);
+        if (!['Event','Volunteer','Workshop'].includes(next.type) || !['Offline','Online','Hybrid'].includes(next.mode || 'Offline') || (!(next.mode === 'Online' && next.onlineUnlimited) && (!Number.isInteger(next.expectedParticipants) || next.expectedParticipants < 1))) return error('Loại chương trình, hình thức hoặc số người dự kiến không hợp lệ.');
         if (next.type === 'Event' && (!isRep(user) || !seedClubs.some(c => c.id === next.clubId && c.representatives?.some(rep => rep.userId === user?.id)))) return error('Bạn không đại diện CLB này.', 403);
-        if (next.status === 'PendingReview' && (!next.title.trim() || !next.description.trim() || !next.goal.trim() || !next.targetAudience.trim() || !next.location.trim() || !next.safetyNotes.trim() || !next.contactInfo?.trim() || !Number.isInteger(next.expectedParticipants) || next.expectedParticipants < 1 || !Number.isFinite(Date.parse(next.suggestedStartAt)) || Date.parse(next.suggestedStartAt) <= Date.now() || !next.acknowledgedTerms)) return error('Điền đầy đủ đề xuất, thời gian tương lai và cam kết trước khi gửi.');
+        if (next.status === 'PendingReview' && (!next.title.trim() || !next.description.trim() || !next.goal.trim() || !next.targetAudience.trim() || !next.location.trim() || !next.safetyNotes.trim() || !next.contactInfo?.trim() || (!(next.mode === 'Online' && next.onlineUnlimited) && (!Number.isInteger(next.expectedParticipants) || next.expectedParticipants < 1)) || !Number.isFinite(Date.parse(next.suggestedStartAt)) || Date.parse(next.suggestedStartAt) <= Date.now() || !next.acknowledgedTerms)) return error('Điền đầy đủ đề xuất, thời gian tương lai và cam kết trước khi gửi.');
         if (next.status === 'PendingReview' && seedProgramProposals.filter((item) => item.studentId === user!.id && item.status === 'PendingReview').length >= 3) return error('Bạn đang có 3 đề xuất chờ duyệt. Hãy chờ kết quả hoặc rút một đề xuất trước khi gửi thêm.', 409, 'PROPOSAL_LIMIT_REACHED');
         Object.assign(proposal,next);
         if (next.status === 'PendingReview') seedUsers.filter(isManager).forEach((manager) => notify(manager.id, 'Đề xuất chương trình đang chờ duyệt', proposal.title, '/programs/proposals/review'));
@@ -107,7 +110,7 @@ export const programHandlers = [
       if (!body.reviewReason?.trim()) return error('Vui lòng nhập lý do quyết định.');
       if (body.status === 'Approved') {
         const start = Math.max(Date.parse(proposal.suggestedStartAt), Date.now() + 7 * 86400000);
-        const program = makeProgram(user!, { type: proposal.type, clubId: proposal.clubId, title: proposal.title, description: proposal.description, summary: proposal.goal, targetAudience: proposal.targetAudience, slots: proposal.mode === 'Hybrid' ? [{id: crypto.randomUUID(), name: 'Tham gia trực tiếp', attendanceMode: 'Offline', timeRange: 'Theo lịch chương trình', quota: proposal.offlineQuota!, confirmedCount: 0}, {id: crypto.randomUUID(), name: 'Tham gia online', attendanceMode: 'Online', timeRange: 'Theo lịch chương trình', quota: proposal.onlineQuota!, confirmedCount: 0}] : undefined, quota: proposal.expectedParticipants, startAt: new Date(start).toISOString(), endAt: new Date(start+7200000).toISOString(), registrationDeadline: new Date(start-86400000).toISOString(), locationOrLink: proposal.location, mode: proposal.mode, safetyNotes: proposal.safetyNotes, status: 'Draft' });
+        const program = makeProgram(user!, { onlineUnlimited: proposal.onlineUnlimited, type: proposal.type, clubId: proposal.clubId, title: proposal.title, description: proposal.description, summary: proposal.goal, targetAudience: proposal.targetAudience, slots: proposal.mode === 'Hybrid' ? [{id: crypto.randomUUID(), name: 'Tham gia trực tiếp', attendanceMode: 'Offline', timeRange: 'Theo lịch chương trình', quota: proposal.offlineQuota!, confirmedCount: 0}, {id: crypto.randomUUID(), name: 'Tham gia online', attendanceMode: 'Online', timeRange: 'Theo lịch chương trình', unlimited: proposal.onlineUnlimited, quota: proposal.onlineUnlimited ? 0 : proposal.onlineQuota!, confirmedCount: 0}] : undefined, quota: proposal.expectedParticipants, startAt: new Date(start).toISOString(), endAt: new Date(start+7200000).toISOString(), registrationDeadline: new Date(start-86400000).toISOString(), locationOrLink: proposal.location, mode: proposal.mode, safetyNotes: proposal.safetyNotes, status: 'Draft' });
         program.sourceType = 'StudentProposal'; program.proposalId = proposal.id;
         seedProgramChannels.unshift(program); proposal.programId = program.id;
       }
@@ -218,7 +221,7 @@ export const programHandlers = [
       if (!['Published', 'Closed'].includes(program.status) || Date.parse(program.startAt) <= Date.now()) return error('Chương trình không còn nhận kết quả duyệt.', 409);
       if (body.status === 'Rejected' && !body.feedbackNote?.trim()) return error('Vui lòng nhập lý do từ chối.');
       const slot = slotFor(program, reg);
-      if (body.status === 'Confirmed' && (program.confirmedCount >= program.quota || (slot && slot.confirmedCount >= slot.quota))) return error('Chương trình hoặc ca đã hết chỗ.', 409);
+      if (body.status === 'Confirmed' && ((!programUnlimited(program) && program.confirmedCount >= program.quota) || (slot && !slot.unlimited && slot.confirmedCount >= slot.quota))) return error('Chương trình hoặc ca đã hết chỗ.', 409);
       reg.status = body.status!; reg.feedbackNote = body.feedbackNote?.trim();
       if (reg.status === 'Confirmed') changeSeats(program, reg, 1);
       notify(reg.studentId, reg.status === 'Confirmed' ? 'Đăng ký đã được xác nhận' : 'Đăng ký đã bị từ chối', `${program.title}${reg.feedbackNote ? `: ${reg.feedbackNote}` : ''}`, `/programs/${program.id}`);

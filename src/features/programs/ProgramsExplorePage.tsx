@@ -1,3 +1,4 @@
+import { programUnlimited } from './rules';
 import { ActivityNavigation } from './ActivityNavigation';
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -83,7 +84,7 @@ export const ProgramsExplorePage: React.FC = () => {
       .map((r) => [r.programId, r])
   );
 
-  const displayedPrograms = programs.filter(p => !onlyOpen || (p.status === 'Published' && Date.parse(p.registrationDeadline) > Date.now() && p.confirmedCount < p.quota));
+  const displayedPrograms = programs.filter(p => !onlyOpen || (p.status === 'Published' && Date.parse(p.registrationDeadline) > Date.now() && (programUnlimited(p) || p.confirmedCount < p.quota)));
 
   return (
     <div className="space-y-6">
@@ -417,7 +418,7 @@ export const ProgramsExplorePage: React.FC = () => {
                       </Link>
                       <div className="text-caption text-neutral-500 flex items-center gap-3">
                         <span>
-                          Đã xác nhận: <strong>{prog.confirmedCount}/{prog.quota}</strong>
+                          Đã xác nhận: <strong>{prog.confirmedCount}/{programUnlimited(prog) ? 'Không giới hạn online' : prog.quota}</strong>
                         </span>
                         <span>
                           Diễn ra: {new Date(prog.startAt).toLocaleDateString('vi-VN')}

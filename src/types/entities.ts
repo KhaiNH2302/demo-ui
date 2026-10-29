@@ -711,6 +711,7 @@ export interface Reconciliation {
 // ============================================================================
 
 export interface ProgramSlot {
+  unlimited?: boolean;
   attendanceMode?: 'Online' | 'Offline';
   id: string;
   name: string;
@@ -721,6 +722,7 @@ export interface ProgramSlot {
 }
 
 export interface ProgramChannel {
+  onlineUnlimited?: boolean;
   clubId?: string;
   onlineLink?: string;
   sourceType?: 'ManagerCreated' | 'StudentProposal';
@@ -824,6 +826,7 @@ export interface ProgramAnnouncement {
 
 /** Student proposes an idea; approval transfers organization to an Manager. */
 export interface ProgramProposal {
+  onlineUnlimited?: boolean;
   offlineQuota?: number;
   onlineQuota?: number;
   clubId?: string;

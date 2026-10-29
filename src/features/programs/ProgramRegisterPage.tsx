@@ -38,7 +38,7 @@ export const ProgramRegisterPage: React.FC = () => {
 
   useEffect(() => {
     if (prog?.slots && prog.slots.length > 0 && !slotId) {
-      setSlotId(prog.slots.find((slot) => slot.confirmedCount < slot.quota)?.id || '');
+      setSlotId(prog.slots.find((slot) => slot.unlimited || slot.confirmedCount < slot.quota)?.id || '');
     }
   }, [prog]);
 
@@ -171,7 +171,7 @@ export const ProgramRegisterPage: React.FC = () => {
             {prog.slots && prog.slots.length > 0 ? (
               <div className="space-y-2.5">
                 {prog.slots.map((s) => {
-                  const isFull = s.confirmedCount >= s.quota;
+                  const isFull = !s.unlimited && s.confirmedCount >= s.quota;
                   const isSelected = slotId === s.id;
                   return (
                     <label
@@ -196,7 +196,7 @@ export const ProgramRegisterPage: React.FC = () => {
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-sm font-semibold text-neutral-900">{s.name}</span>
                           <span className={`text-caption font-medium ${isFull ? 'text-tier-danger-text' : 'text-emerald-700'}`}>
-                            {isFull ? 'Đã hết chỗ' : `Còn ${s.quota - s.confirmedCount}/${s.quota} chỗ`}
+                            {s.unlimited ? 'Không giới hạn' : isFull ? 'Đã hết chỗ' : `Còn ${s.quota - s.confirmedCount}/${s.quota} chỗ`}
                           </span>
                         </div>
                         {s.timeRange && (

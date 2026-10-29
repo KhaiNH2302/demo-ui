@@ -1,3 +1,4 @@
+import { programUnlimited } from './rules';
 import { ActivityNavigation } from './ActivityNavigation';
 import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -125,7 +126,7 @@ export const ProgramManagePage: React.FC = () => {
   const announcements = prog.announcements || [];
 
   // Công thức: Available = Quota - Confirmed - Offered (còn hiệu lực)
-  const availableSlotsTotal = Math.max(0, prog.quota - confirmedRegs.length - offeredRegs.length);
+  const availableSlotsTotal = programUnlimited(prog) ? 'Không giới hạn online' : Math.max(0, prog.quota - confirmedRegs.length - offeredRegs.length);
 
   const filteredRegs = registrations.filter((r) => {
     if (filterSlot !== 'all' && r.slotId !== filterSlot) return false;
@@ -178,10 +179,10 @@ export const ProgramManagePage: React.FC = () => {
     }
     let approvedCount = 0;
     for (const reg of pendingRegs) {
-      if (reg.slotId && prog.slots) {
+      if (reg.slotId && !prog.slots?.find(s => s.id === reg.slotId)?.unlimited && prog.slots) {
         const slot = prog.slots.find((s) => s.id === reg.slotId);
-        if (slot && slot.confirmedCount >= slot.quota) continue;
-      } else if (prog.confirmedCount >= prog.quota) {
+        if (slot && !slot.unlimited && slot.confirmedCount >= slot.quota) continue;
+      } else if (!programUnlimited(prog) && prog.confirmedCount >= prog.quota) {
         continue;
       }
       try {
@@ -263,7 +264,7 @@ export const ProgramManagePage: React.FC = () => {
           </div>
           <h1 className="text-section-title text-neutral-900">{prog.title}</h1>
           <p className="text-caption text-neutral-500">
-            Đã xác nhận: <strong>{prog.confirmedCount}/{prog.quota}</strong> · Tổng lượt đăng ký:{' '}
+            Đã xác nhận: <strong>{prog.confirmedCount}/{programUnlimited(prog) ? 'Không giới hạn online' : prog.quota}</strong> · Tổng lượt đăng ký:{' '}
             <strong>{registrations.length}</strong>
           </p>
         </div>
@@ -295,7 +296,7 @@ export const ProgramManagePage: React.FC = () => {
                 </span>
                 <div className="text-body-sm text-neutral-800 flex items-center gap-2 mt-0.5">
                   <span>
-                    Đã nhận: <strong className="text-brand-700">{prog.confirmedCount}/{prog.quota}</strong>
+                    Đã nhận: <strong className="text-brand-700">{prog.confirmedCount}/{programUnlimited(prog) ? 'Không giới hạn online' : prog.quota}</strong>
                   </span>
                   <span>·</span>
                   <span>
@@ -303,7 +304,7 @@ export const ProgramManagePage: React.FC = () => {
                   </span>
                 </div>
                 <div className="text-xs text-neutral-500 mt-0.5">
-                  Công thức: <code>Available = Quota ({prog.quota}) - Confirmed ({confirmedRegs.length}) - Offered ({offeredRegs.length})</code>
+                  {programUnlimited(prog) ? 'Online không giới hạn; nhóm trực tiếp vẫn kiểm tra chỉ tiêu riêng khi duyệt.' : <>Công thức: <code>Available = Quota ({prog.quota}) - Confirmed ({confirmedRegs.length}) - Offered ({offeredRegs.length})</code></>}
                 </div>
               </div>
 
@@ -331,7 +332,7 @@ export const ProgramManagePage: React.FC = () => {
                   <option value="all">Tất cả các ca</option>
                   {prog.slots?.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} ({s.confirmedCount}/{s.quota})
+                      {s.name} ({s.confirmedCount}/{s.unlimited ? 'Không giới hạn' : s.quota})
                     </option>
                   ))}
                 </Select>
@@ -440,8 +441,8 @@ export const ProgramManagePage: React.FC = () => {
                                 }
                                 disabled={
                                   reviewRegMutation.isPending ||
-                                  prog.confirmedCount >= prog.quota ||
-                                  (Boolean(reg.slotId) &&
+                                  (!programUnlimited(prog) && prog.confirmedCount >= prog.quota) ||
+                                  (Boolean(reg.slotId) && !prog.slots?.find(s => s.id === reg.slotId)?.unlimited &&
                                     (prog.slots?.find((slot) => slot.id === reg.slotId)?.confirmedCount || 0) >=
                                       (prog.slots?.find((slot) => slot.id === reg.slotId)?.quota || 0))
                                 }

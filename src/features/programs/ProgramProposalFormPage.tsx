@@ -19,7 +19,7 @@ import { apiClient } from '@/lib/apiClient';
 import { toast } from '@/components/ui/Toast';
 import type { ProgramProposal } from '@/types/entities';
 
-const blank = { type: 'Workshop', title: '', description: '', goal: '', targetAudience: '', expectedParticipants: 30, offlineQuota: 30, onlineQuota: 100, suggestedStartAt: '', location: '', clubId: '', safetyNotes: '', mode: 'Offline', contactInfo: '', acknowledgedTerms: false };
+const blank = { type: 'Workshop', title: '', description: '', goal: '', targetAudience: '', expectedParticipants: 30, offlineQuota: 30, onlineQuota: 100, onlineUnlimited: false, suggestedStartAt: '', location: '', clubId: '', safetyNotes: '', mode: 'Offline', contactInfo: '', acknowledgedTerms: false };
 const textLabels = { goal: 'Mục tiêu / giá trị cộng đồng', targetAudience: 'Đối tượng tham gia', location: 'Địa điểm dự kiến', contactInfo: 'Thông tin liên hệ' };
 const localDateTime = (value: string) => {
   if (!value || !Number.isFinite(Date.parse(value))) return '';
@@ -43,11 +43,11 @@ export default function ProgramProposalFormPage() {
   const source = query.data?.find(p => p.id === sourceId);
   useEffect(() => {
     if (!source) return;
-    setForm({type: source.type, title: source.title, description: source.description, goal: source.goal, targetAudience: source.targetAudience, expectedParticipants: source.expectedParticipants, offlineQuota: source.offlineQuota || 30, onlineQuota: source.onlineQuota || 100, suggestedStartAt: localDateTime(source.suggestedStartAt), location: source.location, clubId: source.clubId || '', safetyNotes: source.safetyNotes, mode: source.mode || 'Offline', contactInfo: source.contactInfo || user?.email || '', acknowledgedTerms: false});
+    setForm({type: source.type, title: source.title, description: source.description, goal: source.goal, targetAudience: source.targetAudience, expectedParticipants: source.expectedParticipants, offlineQuota: source.offlineQuota || 30, onlineQuota: source.onlineQuota || 100, onlineUnlimited: source.onlineUnlimited === true, suggestedStartAt: localDateTime(source.suggestedStartAt), location: source.location, clubId: source.clubId || '', safetyNotes: source.safetyNotes, mode: source.mode || 'Offline', contactInfo: source.contactInfo || user?.email || '', acknowledgedTerms: false});
   }, [source, user?.email]);
   const save = useMutation({
     mutationFn: (status: 'Draft' | 'PendingReview') => {
-      const payload = { ...form, offlineQuota: form.mode === 'Hybrid' ? form.offlineQuota : undefined, onlineQuota: form.mode === 'Hybrid' ? form.onlineQuota : undefined, expectedParticipants: form.mode === 'Hybrid' ? form.offlineQuota + form.onlineQuota : form.expectedParticipants, clubId: form.type === 'Event' ? form.clubId : undefined, status, suggestedStartAt: form.suggestedStartAt ? new Date(form.suggestedStartAt).toISOString() : '' };
+      const payload = { ...form, onlineUnlimited: form.mode !== 'Offline' && form.onlineUnlimited, offlineQuota: form.mode === 'Hybrid' ? form.offlineQuota : undefined, onlineQuota: form.mode === 'Hybrid' ? form.onlineQuota : undefined, expectedParticipants: form.mode === 'Hybrid' ? form.offlineQuota + (form.onlineUnlimited ? 0 : form.onlineQuota) : form.mode === 'Online' && form.onlineUnlimited ? 0 : form.expectedParticipants, clubId: form.type === 'Event' ? form.clubId : undefined, status, suggestedStartAt: form.suggestedStartAt ? new Date(form.suggestedStartAt).toISOString() : '' };
       return editingId ? apiClient.put(`/programs/proposals/${editingId}`, payload) : apiClient.post('/programs/proposals', payload);
     },
     onSuccess: (_, status) => { client.invalidateQueries({ queryKey: ['program-proposals'] }); navigate('/programs/proposals'); toast.success(status === 'Draft' ? 'Đã lưu bản nháp đề xuất' : 'Đề xuất đang chờ Manager xem xét'); },
@@ -57,7 +57,7 @@ export default function ProgramProposalFormPage() {
     const next: Record<string, string> = {};
     if (status === 'PendingReview') {
       for (const field of [...Object.keys(textLabels), 'title', 'description', 'safetyNotes'] as (keyof typeof form)[]) if (!String(form[field]).trim()) next[field] = 'Vui lòng điền thông tin này trước khi gửi.';
-      if (!Number.isInteger(form.expectedParticipants) || form.expectedParticipants < 1) next.expectedParticipants = 'Nhập số người dự kiến là số nguyên dương.';
+      if (form.mode !== 'Hybrid' && !(form.mode === 'Online' && form.onlineUnlimited) && (!Number.isInteger(form.expectedParticipants) || form.expectedParticipants < 1)) next.expectedParticipants = 'Nhập số người dự kiến là số nguyên dương.';
       if (!Number.isFinite(Date.parse(form.suggestedStartAt)) || Date.parse(form.suggestedStartAt) <= Date.now()) next.suggestedStartAt = 'Chọn thời gian dự kiến trong tương lai.';
       if (form.type === 'Event' && !form.clubId) next.clubId = 'Chọn CLB bạn đại diện.';
       if (!form.acknowledgedTerms) next.acknowledgedTerms = 'Vui lòng xác nhận cam kết trước khi gửi.';
@@ -77,13 +77,14 @@ export default function ProgramProposalFormPage() {
       <h2 className="text-card-title">{editingId ? 'Chỉnh sửa bản nháp' : copyId ? 'Đề xuất lại bằng bản mới' : 'Đề xuất mới'}</h2>
       <div className="grid sm:grid-cols-2 gap-4">
         <FormField label="Loại chương trình"><Select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{user?.roles.includes('club_rep') && <option value="Event">Sự kiện CLB</option>}<option value="Volunteer">Tình nguyện</option><option value="Workshop">Workshop</option></Select></FormField>
-        <FormField label="Số người dự kiến" required error={errors.expectedParticipants}><Input type="number" min={1} disabled={form.mode === 'Hybrid'} value={form.mode === 'Hybrid' ? form.offlineQuota + form.onlineQuota : form.expectedParticipants} onChange={(e) => setForm({ ...form, expectedParticipants: Number(e.target.value) })} /></FormField>
+        <FormField label="Số người dự kiến" required error={errors.expectedParticipants}><Input type="number" min={1} disabled={form.mode === 'Hybrid' || (form.mode === 'Online' && form.onlineUnlimited)} placeholder={form.onlineUnlimited && form.mode !== 'Offline' ? 'Không giới hạn online' : ''} value={form.onlineUnlimited && form.mode !== 'Offline' ? '' : form.mode === 'Hybrid' ? form.offlineQuota + form.onlineQuota : form.expectedParticipants} onChange={(e) => setForm({ ...form, expectedParticipants: Number(e.target.value) })} /></FormField>
       </div>
       {form.type === 'Event' && <FormField label="CLB đại diện" required error={errors.clubId}><Select value={form.clubId} onChange={e => setForm({...form, clubId: e.target.value})}><option value="">Chọn CLB</option>{representedClubs.map(c => <option key={c.clubId} value={c.clubId}>{c.name}</option>)}</Select></FormField>}
       <ActivityContentField label="Tên ý tưởng" value={form.title} onChange={title => setForm({ ...form, title })} error={errors.title}/>
       {(Object.keys(textLabels) as (keyof typeof textLabels)[]).map((key) => <FormField key={key} label={textLabels[key]} required error={errors[key]}><Input value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} /></FormField>)}
       <div className="grid sm:grid-cols-2 gap-4"><FormField label="Thời gian dự kiến" required error={errors.suggestedStartAt}><Input type="datetime-local" value={form.suggestedStartAt} onChange={(e) => setForm({ ...form, suggestedStartAt: e.target.value })} /></FormField><FormField label="Hình thức"><Select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })}><option value="Offline">Offline</option><option value="Online">Online</option><option value="Hybrid">Hybrid</option></Select></FormField></div>
-      {form.mode === 'Hybrid' && <HybridQuotaFields offline={form.offlineQuota} online={form.onlineQuota} onOffline={offlineQuota => setForm({...form, offlineQuota})} onOnline={onlineQuota => setForm({...form, onlineQuota})} error={errors.hybrid}/>}
+      {form.mode === 'Online' && <label className="flex gap-2 text-sm"><input type="checkbox" checked={form.onlineUnlimited} onChange={e => setForm({...form, onlineUnlimited: e.target.checked})}/>Không giới hạn số lượng tham gia</label>}
+      {form.mode === 'Hybrid' && <HybridQuotaFields offline={form.offlineQuota} online={form.onlineQuota} onOffline={offlineQuota => setForm({...form, offlineQuota})} onOnline={onlineQuota => setForm({...form, onlineQuota})} error={errors.hybrid} unlimited={form.onlineUnlimited} onUnlimited={onlineUnlimited => setForm({...form, onlineUnlimited})}/>}
       <ActivityContentField label="Nội dung ý tưởng" value={form.description} onChange={description => setForm({ ...form, description })} multiline error={errors.description}/>
       <FormField label="Lưu ý an toàn / nguồn lực cần hỗ trợ" required error={errors.safetyNotes}><Textarea value={form.safetyNotes} onChange={(e) => setForm({ ...form, safetyNotes: e.target.value })} /></FormField>
       <label className="flex gap-2 text-sm"><input type="checkbox" checked={form.acknowledgedTerms} onChange={(e) => setForm({ ...form, acknowledgedTerms: e.target.checked })} />Thông tin đề xuất là thật; không quyên góp tiền, bán hàng hoặc tuyển dụng việc làm.</label>

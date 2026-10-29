@@ -1,3 +1,4 @@
+import { programUnlimited } from '@/features/programs/rules';
 import React, { useState } from 'react';
 import { Flag } from 'lucide-react';
 import { ActivityImageSlider } from '@/features/programs/ActivityImageSlider';
@@ -27,7 +28,7 @@ export const ProgramCard: React.FC<ProgramCardProps> = ({
 }) => {
   const [reportOpen, setReportOpen] = useState(false);
   const guard = useGuardedAction();
-  const isFull = program.confirmedCount >= program.quota;
+  const isFull = !programUnlimited(program) && program.confirmedCount >= program.quota;
   const isOpen = program.status === 'Published' && !isFull && Date.parse(program.registrationDeadline) > Date.now();
   const href = `/programs/${program.id}`;
   const coverUrl =
@@ -57,8 +58,9 @@ export const ProgramCard: React.FC<ProgramCardProps> = ({
       deadlineAt={program.registrationDeadline}
       locationOrMode={[program.mode, program.locationOrLink].filter(Boolean).join(' · ')}
       registeredCount={program.confirmedCount}
-      capacity={program.quota}
-      benefitBadge={null}
+      unlimited={programUnlimited(program)}
+      capacity={programUnlimited(program) ? null : program.quota}
+      benefitBadge={programUnlimited(program) ? 'Online không giới hạn' : null}
       actionSlot={
         myRegistrationStatus ? (
           <StatusBadge group="programRegistration" status={myRegistrationStatus} />

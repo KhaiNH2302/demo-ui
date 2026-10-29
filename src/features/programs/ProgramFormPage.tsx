@@ -64,6 +64,7 @@ export const ProgramFormPage: React.FC = () => {
   const [onlineLink, setOnlineLink] = useState('');
   const [offlineQuota, setOfflineQuota] = useState(30);
   const [onlineQuota, setOnlineQuota] = useState(100);
+  const [onlineUnlimited, setOnlineUnlimited] = useState(false);
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [description, setDescription] = useState('');
@@ -146,6 +147,7 @@ export const ProgramFormPage: React.FC = () => {
       }
       setConfirmMode(existingProg.confirmMode);
       setQuota(existingProg.quota);
+      setOnlineUnlimited(existingProg.onlineUnlimited === true);
       setCoverImageUrl(existingProg.coverImageUrl || existingProg.coverUrl || null);
       setGallery(existingProg.gallery || []);
       setRegistrationDeadline(toLocalDateTime(existingProg.registrationDeadline));
@@ -154,7 +156,7 @@ export const ProgramFormPage: React.FC = () => {
     }
   }, [existingProg]);
 
-  useEffect(() => { if (type === 'Volunteer' && slots.length) setQuota(slots.reduce((sum,slot) => sum+slot.quota,0)); }, [type,slots]);
+  useEffect(() => { if (type === 'Volunteer' && slots.length && mode !== 'Hybrid' && !(mode === 'Online' && onlineUnlimited)) setQuota(slots.reduce((sum,slot) => sum+slot.quota,0)); }, [type,slots,mode,onlineUnlimited]);
 
   const saveMutation = useMutation({
     mutationFn: (status: 'Draft' | 'Published') => {
@@ -173,11 +175,12 @@ export const ProgramFormPage: React.FC = () => {
         startAt: new Date(startAt).toISOString(),
         endAt: new Date(endAt).toISOString(),
         mode,
+        onlineUnlimited: mode !== 'Offline' && onlineUnlimited,
         locationOrLink,
         onlineLink: mode === 'Hybrid' ? onlineLink : undefined,
         gatheringPoint: type === 'Volunteer' ? gatheringPoint : undefined,
         beneficiaryAndGoal: type === 'Volunteer' ? beneficiaryAndGoal : undefined,
-        slots: mode === 'Hybrid' ? ['Offline','Online'].map((m,i) => ({ id: existingProg?.slots?.find(s => s.attendanceMode === m)?.id || 'hybrid_'+m.toLowerCase(), attendanceMode: m, name: m === 'Offline' ? 'Tham gia trực tiếp' : 'Tham gia online', timeRange: 'Theo lịch chương trình', quota: i === 0 ? offlineQuota : onlineQuota, confirmedCount: existingProg?.slots?.find(s => s.attendanceMode === m)?.confirmedCount || 0 })) : type === 'Volunteer' ? slots : [],
+        slots: mode === 'Hybrid' ? ['Offline','Online'].map((m,i) => ({ id: existingProg?.slots?.find(s => s.attendanceMode === m)?.id || 'hybrid_'+m.toLowerCase(), attendanceMode: m, name: m === 'Offline' ? 'Tham gia trực tiếp' : 'Tham gia online', timeRange: 'Theo lịch chương trình', unlimited: m === 'Online' && onlineUnlimited, quota: i === 0 ? offlineQuota : onlineUnlimited ? 0 : onlineQuota, confirmedCount: existingProg?.slots?.find(s => s.attendanceMode === m)?.confirmedCount || 0 })) : type === 'Volunteer' && !(mode === 'Online' && onlineUnlimited) ? slots : [],
         safetyNotes,
         coverUrl: coverImageUrl || undefined,
         coverImageUrl,
@@ -192,7 +195,7 @@ export const ProgramFormPage: React.FC = () => {
             : undefined,
         targetAudience,
         confirmMode,
-        quota: mode === 'Hybrid' ? offlineQuota + onlineQuota : Number(quota),
+        quota: mode === 'Hybrid' ? offlineQuota + (onlineUnlimited ? 0 : onlineQuota) : mode === 'Online' && onlineUnlimited ? 0 : Number(quota),
         registrationDeadline: new Date(registrationDeadline).toISOString(),
         questions,
         status,
@@ -393,7 +396,8 @@ export const ProgramFormPage: React.FC = () => {
                 <option value="Online">Online trực tuyến</option>
                 <option value="Hybrid">Hybrid kết hợp</option>
               </Select>
-              {mode === 'Hybrid' && <div className="mt-4 space-y-3"><HybridQuotaFields offline={offlineQuota} online={onlineQuota} onOffline={setOfflineQuota} onOnline={setOnlineQuota}/><label className="block text-sm">Link tham gia online<Input aria-label="Link tham gia online" type="url" value={onlineLink} onChange={e => setOnlineLink(e.target.value)} placeholder="https://meet.google.com/..."/></label></div>}
+              {mode === 'Online' && <label className="mt-3 flex gap-2 text-sm"><input type="checkbox" checked={onlineUnlimited} onChange={e => setOnlineUnlimited(e.target.checked)}/>Không giới hạn số lượng tham gia</label>}
+              {mode === 'Hybrid' && <div className="mt-4 space-y-3"><HybridQuotaFields offline={offlineQuota} online={onlineQuota} onOffline={setOfflineQuota} onOnline={setOnlineQuota} unlimited={onlineUnlimited} onUnlimited={setOnlineUnlimited}/><label className="block text-sm">Link tham gia online<Input aria-label="Link tham gia online" type="url" value={onlineLink} onChange={e => setOnlineLink(e.target.value)} placeholder="https://meet.google.com/..."/></label></div>}
 
             </div>
           </div>
@@ -420,7 +424,7 @@ export const ProgramFormPage: React.FC = () => {
                 />
               </div>
 
-              <div className={mode === 'Hybrid' ? 'hidden' : 'space-y-2.5 pt-2 border-t border-neutral-100'}>
+              <div className={mode === 'Hybrid' || (mode === 'Online' && onlineUnlimited) ? 'hidden' : 'space-y-2.5 pt-2 border-t border-neutral-100'}>
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-semibold text-neutral-900">
                     Các ca / Nhóm công việc tình nguyện
@@ -573,14 +577,15 @@ export const ProgramFormPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-neutral-800 mb-1">
-                Tổng chỉ tiêu (5 – 500 chỗ)
+                {onlineUnlimited && mode !== 'Offline' ? 'Online không giới hạn số lượng' : 'Tổng chỉ tiêu'}
               </label>
               <Input
                 type="number"
                 min={5}
                 max={500}
-                disabled={mode === 'Hybrid'}
-                value={mode === 'Hybrid' ? offlineQuota + onlineQuota : quota}
+                placeholder={onlineUnlimited && mode !== 'Offline' ? 'Không giới hạn online' : ''}
+                disabled={mode === 'Hybrid' || (mode === 'Online' && onlineUnlimited)}
+                value={onlineUnlimited && mode !== 'Offline' ? '' : mode === 'Hybrid' ? offlineQuota + onlineQuota : quota}
                 onChange={(e) => setQuota(Number(e.target.value))}
               />
             </div>
@@ -640,7 +645,7 @@ export const ProgramFormPage: React.FC = () => {
             <h2 className="text-section-title text-neutral-900">{title}</h2>
             <p className="text-meta text-neutral-600">{summary}</p>
             <div className="text-caption text-neutral-500 pt-1">
-              Chỉ tiêu: <strong>{mode === 'Hybrid' ? `${offlineQuota} trực tiếp + ${onlineQuota} online` : `${quota} chỗ`}</strong>
+              Chỉ tiêu: <strong>{mode === 'Hybrid' ? `${offlineQuota} trực tiếp + ${onlineUnlimited ? 'online không giới hạn' : `${onlineQuota} online`}` : mode === 'Online' && onlineUnlimited ? 'Không giới hạn' : `${quota} chỗ`}</strong>
             </div>
           </div>
 
