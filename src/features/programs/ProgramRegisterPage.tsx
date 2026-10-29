@@ -1,3 +1,4 @@
+import { ActivityNavigation } from './ActivityNavigation';
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -130,6 +131,7 @@ export const ProgramRegisterPage: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      <ActivityNavigation />
       <Link
         to={`/programs/${prog.id}`}
         className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900"
@@ -159,10 +161,10 @@ export const ProgramRegisterPage: React.FC = () => {
           <Card className="p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-card-title text-neutral-900">
-                Bước 1: Chọn ca / Nhóm công việc tham gia <span className="text-tier-danger-text">*</span>
+                Bước 1: Chọn hình thức / Ca tham gia <span className="text-tier-danger-text">*</span>
               </h3>
               <span className="text-caption text-neutral-500">
-                Chỉ được chọn 1 ca phù hợp với lịch của bạn
+                Chọn một hình thức hoặc ca phù hợp. Mỗi nhóm có chỉ tiêu riêng.
               </span>
             </div>
 
@@ -385,8 +387,7 @@ export const ProgramRegisterPage: React.FC = () => {
                 <span>Cam kết tham gia &amp; Lưu ý an toàn</span>
               </div>
               <p className="text-caption text-neutral-600">
-                Chi phí: <strong>{prog.costInfo === 'Free' ? 'Miễn phí 100%' : prog.costInfo}</strong>
-                {prog.safetyNotes ? ` · ${prog.safetyNotes}` : ''}
+                {prog.safetyNotes || 'Vui lòng làm theo hướng dẫn của Ban tổ chức.'}
               </p>
 
               <label className="flex items-start gap-2.5 pt-1 cursor-pointer text-sm text-neutral-800">
@@ -397,7 +398,7 @@ export const ProgramRegisterPage: React.FC = () => {
                   className="mt-1 rounded border-neutral-300 text-brand-600 focus:ring-brand-500"
                 />
                 <span>
-                  Tôi đã đọc kỹ thông tin thời gian, lưu ý an toàn, chi phí minh bạch của chương trình và cam kết tham gia đúng giờ (hoặc báo hủy trước tối thiểu 24h nếu bận đột xuất). <span className="text-tier-danger-text">*</span>
+                  Tôi đã đọc kỹ thông tin thời gian, lưu ý an toàn của chương trình và cam kết tham gia đúng giờ (hoặc báo hủy trước tối thiểu 24h nếu bận đột xuất). <span className="text-tier-danger-text">*</span>
                 </span>
               </label>
 

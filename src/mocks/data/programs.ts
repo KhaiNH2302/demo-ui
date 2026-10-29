@@ -18,7 +18,7 @@ export const seedProgramProposals: ProgramProposal[] = [
     expectedParticipants: 30,
     suggestedStartAt: '2026-10-24T08:00:00+07:00',
     location: 'Phòng học tại Hòa Lạc',
-    costInfo: 'Free',
+
     safetyNotes: 'Không thu phí; tuân thủ nội quy phòng học.',
     mode: 'Offline',
     contactInfo: 'nguyenvanan@fpt.edu.vn',
@@ -39,7 +39,7 @@ export const seedProgramProposals: ProgramProposal[] = [
     expectedParticipants: 45,
     suggestedStartAt: '2026-11-05T14:00:00+07:00',
     location: 'Hội trường Beta, ĐH FPT Hòa Lạc',
-    costInfo: 'Free',
+
     safetyNotes: 'Tuân thủ quy định phòng máy tính trường học.',
     mode: 'Offline',
     contactInfo: 'namdh@fpt.edu.vn',
@@ -60,7 +60,7 @@ export const seedProgramProposals: ProgramProposal[] = [
     expectedParticipants: 120,
     suggestedStartAt: '2026-11-20T08:00:00+07:00',
     location: 'Tòa nhà Alpha, Campus Hòa Lạc',
-    costInfo: 'Tài trợ từ CLB & Doanh nghiệp',
+
     safetyNotes: 'Có đội ngũ y tế trực và bảo vệ túc trực 24/24.',
     mode: 'Offline',
     contactInfo: 'kietpt@fpt.edu.vn',
@@ -82,7 +82,7 @@ export const seedProgramProposals: ProgramProposal[] = [
     expectedParticipants: 60,
     suggestedStartAt: '2026-11-15T07:00:00+07:00',
     location: 'Các điểm thi khu vực Thạch Thất',
-    costInfo: 'Kinh phí từ phòng CTSV',
+
     safetyNotes: 'Trang bị áo phản quang, mũ nón và nước uống đầy đủ.',
     mode: 'Offline',
     contactInfo: 'longpv@fpt.edu.vn',
@@ -160,7 +160,7 @@ export const seedProgramChannels: ProgramChannel[] = [
     ],
     preparationNotes: 'Mặc trang phục gọn gàng, mang theo bình nước cá nhân. Ban tổ chức chuẩn bị sẵn găng tay cao su, khẩu trang và nước uống.',
     safetyNotes: 'Tuyệt đối không dùng tay trần tiếp xúc với pin bị rò rỉ dung dịch hoặc phồng rộp; sử dụng kẹp gắp và hộp cách ly chuyên dụng tại trạm.',
-    costInfo: 'Free',
+
     confirmMode: 'Instant',
     quota: 50,
     confirmedCount: 32,
@@ -225,7 +225,7 @@ export const seedProgramChannels: ProgramChannel[] = [
     targetAudience: 'Sinh viên đang học DBI202, PRJ301, SWP391 hoặc chuẩn bị làm đồ án tốt nghiệp.',
     prerequisites: 'Nên mang theo laptop và bản nháp ERD của nhóm (nếu muốn được góp ý trực tiếp).',
     safetyNotes: 'Không thu bất kỳ khoản phí nào. Link Google Meet hiển thị cho người đã xác nhận đăng ký.',
-    costInfo: 'Free',
+
     confirmMode: 'Approval',
     quota: 60,
     confirmedCount: 41,
@@ -296,7 +296,7 @@ export const seedProgramChannels: ProgramChannel[] = [
     ],
     preparationNotes: 'Mang giày thể thao dễ di chuyển. Bữa trưa tự túc theo đoàn (khoảng 45.000đ/suất cơm đặt chung tại điểm trường).',
     safetyNotes: 'Di chuyển tập trung theo xe ô tô 29 chỗ của đoàn, tuyệt đối không tự ý tách đoàn đi xe máy cá nhân.',
-    costInfo: 'Tự túc bữa trưa 45.000đ/người (thanh toán trực tiếp tại quán ăn địa phương, không thu quỹ trước)',
+
     confirmMode: 'Approval',
     quota: 30,
     confirmedCount: 22,
@@ -350,7 +350,7 @@ export const seedProgramChannels: ProgramChannel[] = [
     },
     targetAudience: 'Sinh viên K18–K19 chuẩn bị đi thực tập OJT.',
     safetyNotes: 'Hoạt động chia sẻ phi lợi nhuận trong cộng đồng sinh viên.',
-    costInfo: 'Free',
+
     confirmMode: 'Instant',
     quota: 100,
     confirmedCount: 0,
@@ -386,7 +386,7 @@ export const seedProgramChannels: ProgramChannel[] = [
       studentCode: 'MG0002',
       major: 'Phòng Công tác Sinh viên',
       cohort: 'Cán bộ',
-      roleNote: 'Event Manager',
+      roleNote: 'Manager',
     },
     coOrganizers: [],
     startAt: '2026-09-15T14:00:00Z',
@@ -394,7 +394,7 @@ export const seedProgramChannels: ProgramChannel[] = [
     mode: 'Offline',
     locationOrLink: 'Hội trường Tầng 5 Gamma, ĐH FPT Hà Nội',
     targetAudience: 'Sinh viên năm cuối chuẩn bị bảo vệ đồ án tốt nghiệp.',
-    costInfo: 'Free',
+
     confirmMode: 'Instant',
     quota: 120,
     confirmedCount: 115,
@@ -424,7 +424,7 @@ export const seedProgramChannels: ProgramChannel[] = [
       studentCode: 'MG0002',
       major: 'Phòng Công tác Sinh viên',
       cohort: 'Cán bộ',
-      roleNote: 'Event Manager',
+      roleNote: 'Manager',
     },
     coOrganizers: [],
     startAt: '2026-11-10T08:00:00Z',
@@ -432,7 +432,7 @@ export const seedProgramChannels: ProgramChannel[] = [
     mode: 'Offline',
     locationOrLink: 'Quảng trường Tòa Alpha & Hội trường Trống Đồng',
     targetAudience: 'Toàn thể sinh viên ĐH FPT các chuyên ngành CNTT, An toàn thông tin, Thiết kế đồ họa và Kinh tế.',
-    costInfo: 'Free',
+
     confirmMode: 'Instant',
     quota: 500,
     confirmedCount: 230,
@@ -760,9 +760,9 @@ export const seedProgramAnnouncements: ProgramAnnouncement[] = [
   },
 ];
 
-// The 07/10 model assigns programs to the Event Manager, never Student co-organizers.
+// The 07/10 model assigns programs to the Manager, never Student co-organizers.
 for (const program of seedProgramChannels) {
-  program.organizer = { userId: 'usr_opsmanager_06', fullName: 'Đỗ Hải Phong', studentCode: 'MG0002', major: 'Phòng Công tác Sinh viên', cohort: 'Cán bộ', roleNote: 'Event Manager' };
+  program.organizer = { userId: 'usr_opsmanager_06', fullName: 'Đỗ Hải Phong', studentCode: 'MG0002', major: 'Phòng Công tác Sinh viên', cohort: 'Cán bộ', roleNote: 'Manager' };
   program.coOrganizers = [];
   program.sourceType = 'ManagerCreated';
   if (program.type === 'Event') program.type = 'Workshop';
@@ -772,4 +772,18 @@ for (const program of seedProgramChannels) {
 for (const announcement of seedProgramAnnouncements) {
   announcement.authorId = 'usr_opsmanager_06';
   announcement.authorName = 'Đỗ Hải Phong';
+}
+
+// Separate participation groups for existing Hybrid demo fixtures.
+for (const program of seedProgramChannels.filter(p => p.mode === 'Hybrid')) {
+  const offline = Math.ceil(program.quota / 2);
+  const offlineCount = Math.min(program.confirmedCount, offline);
+  program.onlineLink = 'https://meet.google.com/demo-room';
+  program.slots = [
+    { id: program.id + '_offline', name: 'Tham gia trực tiếp', attendanceMode: 'Offline', timeRange: 'Theo lịch chương trình', quota: offline, confirmedCount: offlineCount },
+    { id: program.id + '_online', name: 'Tham gia online', attendanceMode: 'Online', timeRange: 'Theo lịch chương trình', quota: program.quota - offline, confirmedCount: program.confirmedCount - offlineCount },
+  ];
+  for (const reg of seedProgramRegistrations.filter(r => r.programId === program.id)) {
+    reg.slotId = program.slots[0].id; reg.slotName = program.slots[0].name; reg.programMode = 'Offline';
+  }
 }

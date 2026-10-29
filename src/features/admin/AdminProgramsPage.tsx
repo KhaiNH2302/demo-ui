@@ -22,7 +22,7 @@ export default function AdminProgramsPage() {
   });
   const programs = (programsQuery.data || []).filter(program => (program.title + ' ' + program.organizer.fullName).toLowerCase().includes(search.toLowerCase()));
   return <div className="space-y-6">
-    <PageHeader title="Chương trình cộng đồng" description="Theo dõi chương trình công khai. Event Manager xét duyệt đề xuất và trực tiếp tổ chức chương trình."
+    <PageHeader title="Chương trình cộng đồng" description="Theo dõi chương trình công khai. Manager xét duyệt đề xuất và trực tiếp tổ chức chương trình."
       actions={isManager ? <div className="flex flex-wrap gap-2"><Link to="/programs/proposals/review"><Button>Xét duyệt đề xuất</Button></Link><Link to="/programs?tab=organizing"><Button variant="secondary">Chương trình tôi quản lý</Button></Link></div> : undefined} />
     <SearchInput placeholder="Tìm tên chương trình hoặc người tổ chức..." value={search} onChange={setSearch} />
     <QueryBoundary queries={[programsQuery]}>

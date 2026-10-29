@@ -36,6 +36,7 @@ export interface ActivityCardProps {
   capacity?: number | null;
   benefitBadge?: string | null;
   actionSlot?: React.ReactNode;
+  mediaSlot?: React.ReactNode;
   density?: 'default' | 'compact';
   className?: string;
 }
@@ -63,6 +64,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   capacity,
   benefitBadge,
   actionSlot,
+  mediaSlot,
   density = 'default',
   className,
 }) => {
@@ -77,7 +79,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
       )}
     >
       <div>
-        <Link
+        {mediaSlot || <Link
           to={href}
           className={cn(
             'block relative bg-neutral-100 overflow-hidden',
@@ -128,7 +130,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
               <span>{galleryCount}</span>
             </div>
           )}
-        </Link>
+        </Link>}
 
         <div className={cn(isCompact ? 'p-3.5 space-y-2' : 'p-4 space-y-2.5')}>
           <div className="flex items-start gap-3">

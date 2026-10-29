@@ -1,5 +1,8 @@
+import { HybridQuotaFields } from './HybridQuotaFields';
+import { ActivityContentField } from './ActivityContentFields';
+import { ActivityNavigation } from './ActivityNavigation';
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, CheckCircle2, Plus, Trash2, XCircle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -55,9 +58,12 @@ export const ProgramFormPage: React.FC = () => {
       setStep(requestedStep);
     }
   }, [searchParams]);
-  const [type, setType] = useState<ProgramType>('Event');
-  const [isClubEvent, setIsClubEvent] = useState(false);
-  const [clubId, setClubId] = useState('');
+  const [type, setType] = useState<ProgramType>(user?.roles.includes('club_rep') ? 'Event' : 'Workshop');
+  
+  const [clubId, setClubId] = useState(representedClubs[0]?.clubId || '');
+  const [onlineLink, setOnlineLink] = useState('');
+  const [offlineQuota, setOfflineQuota] = useState(30);
+  const [onlineQuota, setOnlineQuota] = useState(100);
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [description, setDescription] = useState('');
@@ -66,8 +72,8 @@ export const ProgramFormPage: React.FC = () => {
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [gallery, setGallery] = useState<MediaImageItem[]>([]);
 
-  const [startAt, setStartAt] = useState('2026-10-18T08:00');
-  const [endAt, setEndAt] = useState('2026-10-18T16:30');
+  const [startAt, setStartAt] = useState(upcomingProgramDateTime(8, 0));
+  const [endAt, setEndAt] = useState(upcomingProgramDateTime(16, 30));
   const [mode, setMode] = useState<'Offline' | 'Online' | 'Hybrid'>('Offline');
   const [locationOrLink, setLocationOrLink] = useState('Hội trường Gamma, ĐH FPT Hà Nội');
   const [gatheringPoint, setGatheringPoint] = useState('Sảnh Tòa Alpha lúc 07:45');
@@ -75,7 +81,6 @@ export const ProgramFormPage: React.FC = () => {
   const [safetyNotes, setSafetyNotes] = useState(
     'Tuân thủ hướng dẫn điều phối của BTC và quy tắc an toàn chung.'
   );
-  const [costInfo, setCostInfo] = useState('Free');
   const [slots, setSlots] = useState<ProgramSlot[]>([
     {
       id: 'slot_1',
@@ -93,7 +98,7 @@ export const ProgramFormPage: React.FC = () => {
 
   const [confirmMode, setConfirmMode] = useState<'Instant' | 'Approval'>('Instant');
   const [quota, setQuota] = useState(40);
-  const [registrationDeadline, setRegistrationDeadline] = useState('2026-10-16');
+  const [registrationDeadline, setRegistrationDeadline] = useState(toLocalDateTime(new Date(Date.now() + 5 * 86400000).toISOString()));
   const [questions, setQuestions] = useState<FormQuestion[]>([
     {
       id: 'q_prog_1',
@@ -117,8 +122,10 @@ export const ProgramFormPage: React.FC = () => {
 
   useEffect(() => {
     if (existingProg) {
-      setType(existingProg.type === 'Volunteer' ? 'Volunteer' : 'Workshop');
-      setIsClubEvent(false);
+      setType(existingProg.type);
+      setOnlineLink(existingProg.onlineLink || '');
+      setOfflineQuota(existingProg.slots?.find(s => s.attendanceMode === 'Offline')?.quota || 30);
+      setOnlineQuota(existingProg.slots?.find(s => s.attendanceMode === 'Online')?.quota || 100);
       setClubId((existingProg as ProgramChannel & { clubId?: string }).clubId || '');
       setTitle(existingProg.title);
       setSummary(existingProg.summary);
@@ -132,7 +139,6 @@ export const ProgramFormPage: React.FC = () => {
       setGatheringPoint(existingProg.gatheringPoint || '');
       setBeneficiaryAndGoal(existingProg.beneficiaryAndGoal || '');
       setSafetyNotes(existingProg.safetyNotes || '');
-      setCostInfo(existingProg.costInfo);
       if (existingProg.slots) setSlots(existingProg.slots);
       if (existingProg.speakerInfo) {
         setSpeakerName(existingProg.speakerInfo.name);
@@ -154,8 +160,8 @@ export const ProgramFormPage: React.FC = () => {
     mutationFn: (status: 'Draft' | 'Published') => {
       const payload = {
         type,
-        isClubEvent: type === 'Event' ? isClubEvent : false,
-        clubId: type === 'Event' && isClubEvent ? clubId : undefined,
+        isClubEvent: type === 'Event',
+        clubId: type === 'Event' ? clubId : undefined,
         title,
         summary,
         description,
@@ -168,14 +174,14 @@ export const ProgramFormPage: React.FC = () => {
         endAt: new Date(endAt).toISOString(),
         mode,
         locationOrLink,
+        onlineLink: mode === 'Hybrid' ? onlineLink : undefined,
         gatheringPoint: type === 'Volunteer' ? gatheringPoint : undefined,
         beneficiaryAndGoal: type === 'Volunteer' ? beneficiaryAndGoal : undefined,
-        slots: type === 'Volunteer' ? slots : undefined,
+        slots: mode === 'Hybrid' ? ['Offline','Online'].map((m,i) => ({ id: existingProg?.slots?.find(s => s.attendanceMode === m)?.id || 'hybrid_'+m.toLowerCase(), attendanceMode: m, name: m === 'Offline' ? 'Tham gia trực tiếp' : 'Tham gia online', timeRange: 'Theo lịch chương trình', quota: i === 0 ? offlineQuota : onlineQuota, confirmedCount: existingProg?.slots?.find(s => s.attendanceMode === m)?.confirmedCount || 0 })) : type === 'Volunteer' ? slots : [],
         safetyNotes,
         coverUrl: coverImageUrl || undefined,
         coverImageUrl,
         gallery,
-        costInfo,
         speakerInfo:
           type === 'Workshop'
             ? {
@@ -186,7 +192,7 @@ export const ProgramFormPage: React.FC = () => {
             : undefined,
         targetAudience,
         confirmMode,
-        quota: Number(quota),
+        quota: mode === 'Hybrid' ? offlineQuota + onlineQuota : Number(quota),
         registrationDeadline: new Date(registrationDeadline).toISOString(),
         questions,
         status,
@@ -208,7 +214,8 @@ export const ProgramFormPage: React.FC = () => {
     },
   });
 
-  if (!user?.roles.includes('event_manager')) return <ErrorState title="Cần quyền Event Manager" message="Student gửi ý tưởng tại mục Đề xuất của tôi." />;
+  if (user?.roles.includes('club_rep') && !user.roles.includes('event_manager')) return <Navigate to="/programs/proposals" replace/>;
+  if (!user?.roles.includes('event_manager')) return <ErrorState title="Cần quyền Manager" message="Student gửi ý tưởng tại mục Đề xuất của tôi." />;
   if (isEdit && isLoading) return <Card className="h-72 animate-pulse" />;
   if (isEdit && (isError || !existingProg)) return <ErrorState title="Không thể mở chương trình" onRetry={() => refetch()} />;
   if (existingProg && existingProg.organizer.userId !== user.id) return <ErrorState title="Không có quyền quản lý chương trình này" />;
@@ -222,6 +229,7 @@ export const ProgramFormPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      <ActivityNavigation />
       <Link
         to="/programs"
         className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900"
@@ -237,7 +245,7 @@ export const ProgramFormPage: React.FC = () => {
             : 'Mở kênh đăng ký Tình nguyện / Workshop'}
         </h1>
         <p className="text-meta text-neutral-500 mt-1">
-          Event Manager trực tiếp tổ chức và công bố chương trình. Student gửi ý tưởng ở mục Đề xuất của tôi.
+          Manager trực tiếp tổ chức và công bố chương trình. Student và Club Rep gửi ý tưởng ở mục Đề xuất của tôi để Manager duyệt.
         </p>
       </div>
 
@@ -294,8 +302,8 @@ export const ProgramFormPage: React.FC = () => {
                 onChange={(e) => setType(e.target.value as ProgramType)}
               >
 
-                <option value="Volunteer">Hoạt động Tình nguyện</option>
-                <option value="Workshop">Workshop chia sẻ kỹ năng / học thuật</option>
+                {(user?.roles.includes('club_rep') || existingProg?.type === 'Event') && <option value="Event">Sự kiện CLB</option>}<option disabled={!user?.roles.includes('event_manager')} value="Volunteer">Hoạt động Tình nguyện</option>
+                <option disabled={!user?.roles.includes('event_manager')} value="Workshop">Workshop chia sẻ kỹ năng / học thuật</option>
               </Select>
             </div>
             <div>
@@ -310,22 +318,6 @@ export const ProgramFormPage: React.FC = () => {
             </div>
             {type === 'Event' && (
               <div className="md:col-span-2 rounded-lg border border-brand-100 bg-brand-50/40 px-3.5 py-2.5">
-                <div className="flex items-center justify-between gap-4">
-                  <label className="flex items-center gap-2.5 cursor-pointer min-w-0">
-                    <input
-                      type="checkbox"
-                      checked={isClubEvent}
-                      onChange={(e) => {
-                        setIsClubEvent(e.target.checked);
-                        if (e.target.checked && !clubId) setClubId(representedClubs[0]?.clubId || '');
-                      }}
-                      className="rounded border-neutral-300 text-brand-600 focus:ring-brand-500"
-                    />
-                    <span className="text-sm font-semibold text-neutral-900">Đây là sự kiện CLB</span>
-                  </label>
-                  <span className="hidden sm:block text-xs text-neutral-500 text-right">Sự kiện do CLB đứng tên tổ chức</span>
-                </div>
-                {isClubEvent && (
                   <div className="mt-2.5">
                     <label className="block text-xs font-medium text-neutral-700 mb-1">CLB đại diện</label>
                     <Select value={clubId} onChange={(e) => setClubId(e.target.value)}>
@@ -334,24 +326,11 @@ export const ProgramFormPage: React.FC = () => {
                       )) : <option value="">Chưa có CLB được xác minh</option>}
                     </Select>
                   </div>
-                )}
               </div>
             )}
           </div>
 
-          <div>
-                  <label className="block text-sm font-medium text-neutral-800 mb-1">
-                    {type === 'Event' ? 'Tên sự kiện' : 'Tên kênh chương trình'}{' '}
-                    <span className="text-tier-danger-text">*</span>
-            </label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={type === 'Event'
-                ? 'VD: Ngày hội công nghệ sinh viên 2026'
-                : 'VD: Chiến dịch Thu gom pin cũ & Đổi cây xanh tại Hòa Lạc'}
-            />
-          </div>
+          <ActivityContentField label="Tên hoạt động" value={title} onChange={setTitle} />
 
           <div>
             <label className="block text-sm font-medium text-neutral-800 mb-1">
@@ -367,19 +346,7 @@ export const ProgramFormPage: React.FC = () => {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-neutral-800 mb-1">
-              Mô tả chi tiết hoạt động <span className="text-tier-danger-text">*</span>
-            </label>
-            <Textarea
-              rows={5}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={type === 'Event'
-                ? 'Trình bày nội dung, lịch trình và quyền lợi người tham gia...'
-                : 'Trình bày lịch trình, nhiệm vụ cụ thể và giá trị mang lại cho cộng đồng...'}
-            />
-          </div>
+          <ActivityContentField label="Mô tả chi tiết hoạt động" value={description} onChange={setDescription} multiline rows={5}/>
 
           <div className="flex justify-end pt-2">
             <Button
@@ -395,6 +362,7 @@ export const ProgramFormPage: React.FC = () => {
 
       {step === 2 && (
         <Card className="p-6 space-y-4">
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-neutral-800 mb-1">
@@ -425,6 +393,8 @@ export const ProgramFormPage: React.FC = () => {
                 <option value="Online">Online trực tuyến</option>
                 <option value="Hybrid">Hybrid kết hợp</option>
               </Select>
+              {mode === 'Hybrid' && <div className="mt-4 space-y-3"><HybridQuotaFields offline={offlineQuota} online={onlineQuota} onOffline={setOfflineQuota} onOnline={setOnlineQuota}/><label className="block text-sm">Link tham gia online<Input aria-label="Link tham gia online" type="url" value={onlineLink} onChange={e => setOnlineLink(e.target.value)} placeholder="https://meet.google.com/..."/></label></div>}
+
             </div>
           </div>
 
@@ -450,7 +420,7 @@ export const ProgramFormPage: React.FC = () => {
                 />
               </div>
 
-              <div className="space-y-2.5 pt-2 border-t border-neutral-100">
+              <div className={mode === 'Hybrid' ? 'hidden' : 'space-y-2.5 pt-2 border-t border-neutral-100'}>
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-semibold text-neutral-900">
                     Các ca / Nhóm công việc tình nguyện
@@ -551,16 +521,7 @@ export const ProgramFormPage: React.FC = () => {
           ) : null}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-            <div>
-              <label className="block text-sm font-medium text-neutral-800 mb-1">
-                Thông tin chi phí (Minh bạch 100%)
-              </label>
-              <Input
-                value={costInfo}
-                onChange={(e) => setCostInfo(e.target.value)}
-                placeholder="Ghi 'Free' nếu miễn phí, hoặc mô tả rõ khoản tự túc"
-              />
-            </div>
+
             <div>
               <label className="block text-sm font-medium text-neutral-800 mb-1">
                 Lưu ý an toàn bắt buộc
@@ -608,6 +569,7 @@ export const ProgramFormPage: React.FC = () => {
 
       {step === 3 && (
         <Card className="p-6 space-y-4">
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-neutral-800 mb-1">
@@ -617,7 +579,8 @@ export const ProgramFormPage: React.FC = () => {
                 type="number"
                 min={5}
                 max={500}
-                value={quota}
+                disabled={mode === 'Hybrid'}
+                value={mode === 'Hybrid' ? offlineQuota + onlineQuota : quota}
                 onChange={(e) => setQuota(Number(e.target.value))}
               />
             </div>
@@ -677,7 +640,7 @@ export const ProgramFormPage: React.FC = () => {
             <h2 className="text-section-title text-neutral-900">{title}</h2>
             <p className="text-meta text-neutral-600">{summary}</p>
             <div className="text-caption text-neutral-500 pt-1">
-              Chỉ tiêu: <strong>{quota} chỗ</strong> · Chi phí: <strong>{costInfo}</strong>
+              Chỉ tiêu: <strong>{mode === 'Hybrid' ? `${offlineQuota} trực tiếp + ${onlineQuota} online` : `${quota} chỗ`}</strong>
             </div>
           </div>
 
@@ -689,7 +652,7 @@ export const ProgramFormPage: React.FC = () => {
               className="mt-1 rounded border-neutral-300 text-brand-600 focus:ring-brand-500"
             />
             <span>
-              <strong>Cam kết của sinh viên tổ chức:</strong> Tôi cam kết hoạt động này hoàn toàn phi thương mại, minh bạch về chi phí, tuân thủ quy tắc an toàn học đường và chịu trách nhiệm điều phối người tham gia đúng như nội dung đã đăng ký với nhà trường.
+              <strong>Cam kết của sinh viên tổ chức:</strong> Tôi cam kết hoạt động này hoàn toàn phi thương mại, tuân thủ quy tắc an toàn học đường và chịu trách nhiệm điều phối người tham gia đúng như nội dung đã đăng ký với nhà trường.
             </span>
           </label>
 

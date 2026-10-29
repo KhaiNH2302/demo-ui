@@ -1,3 +1,4 @@
+import { ActivityNavigation } from './ActivityNavigation';
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -22,10 +23,7 @@ import { cn } from '@/lib/cn';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PROGRAM_TYPE_LABELS } from '@/components/shared/ProgramCard';
-import {
-  CoParticipantsPanel,
-  type CoParticipantItem,
-} from '@/components/shared/CoParticipantsPanel';
+import type { CoParticipantItem } from '@/components/shared/CoParticipantsPanel';
 import { ImageGallery } from '@/components/shared/ImageGallery';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { ReportDialog } from '@/components/shared/ReportDialog';
@@ -68,7 +66,7 @@ export const ProgramDetailPage: React.FC = () => {
     {
       id: 'faq-2',
       question: 'Nếu đến ngày diễn ra có lịch thi đột xuất thì có được hủy hoặc đổi ca không?',
-      answer: 'Bạn có thể rút đơn trước 24 giờ qua trang "Đăng ký của tôi". Nếu đổi ca, hãy liên hệ trực tiếp cho Event Manager phụ trách qua nút Nhắn tin.',
+      answer: 'Bạn có thể rút đơn trước 24 giờ qua trang "Đăng ký của tôi". Nếu đổi ca, hãy liên hệ trực tiếp cho Manager phụ trách qua nút Nhắn tin.',
       author: 'Sinh viên K19',
     },
   ]);
@@ -95,18 +93,7 @@ export const ProgramDetailPage: React.FC = () => {
     enabled: !!id,
   });
 
-  const toggleVisMutation = useMutation({
-    mutationFn: (visible: boolean) =>
-      apiClient.put(`/programs/registrations/${prog?.myRegistration?.id}`, {
-        action: 'toggleVisibility',
-        visibleToCoParticipants: visible,
-      }),
-    onError: (error: Error) => toast.error(error.message),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['program', id] });
-      toast.success('Đã cập nhật tùy chọn hiển thị danh sách');
-    },
-  });
+
 
   if (isError || (!isLoading && !prog)) return <ErrorState title="Không thể tải chương trình" onRetry={() => refetch()} />;
   if (isLoading || !prog) {
@@ -132,6 +119,9 @@ export const ProgramDetailPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <ActivityNavigation />
+      {prog.mode === 'Hybrid' && <Card className="p-4 space-y-3"><h2 className="font-semibold">Hai hình thức tham gia</h2><div className="grid sm:grid-cols-2 gap-3">{prog.slots?.map(s => <div key={s.id} className="rounded-lg border border-neutral-200 p-3"><strong>{s.attendanceMode === 'Online' ? 'Online' : 'Trực tiếp'}</strong><p className="text-sm">{s.confirmedCount}/{s.quota} đã xác nhận · Còn {Math.max(0,s.quota-s.confirmedCount)} chỗ</p></div>)}</div>{prog.onlineLink ? <a href={prog.onlineLink} target="_blank" rel="noopener noreferrer" className="text-brand-600 underline">Mở phòng online</a> : <p className="text-sm text-neutral-500">Link online được cung cấp cho người đã xác nhận nhóm Online.</p>}</Card>}
+
       <div className="flex items-center justify-between gap-3">
         <Link
           to="/programs"
@@ -165,15 +155,7 @@ export const ProgramDetailPage: React.FC = () => {
       </div>
 
       {/* Cover Banner if available */}
-      {prog.coverUrl && (
-        <div className="h-48 md:h-60 w-full rounded-xl overflow-hidden border border-neutral-200 bg-neutral-100">
-          <img
-            src={prog.coverUrl}
-            alt={prog.title}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
+      {(prog.coverImageUrl || prog.coverUrl) && <img src={prog.coverImageUrl || prog.coverUrl || ''} alt={prog.title} className="w-full max-h-96 rounded-xl object-cover"/>}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Left 2 Columns */}
@@ -192,7 +174,7 @@ export const ProgramDetailPage: React.FC = () => {
             {/* Organizer & Co-Organizers Card */}
             <div className="p-4 rounded-lg bg-neutral-50 border border-neutral-200 space-y-3">
               <div className="text-caption font-semibold text-neutral-500">
-                Event Manager phụ trách
+                Manager phụ trách
               </div>
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2.5">
@@ -304,17 +286,11 @@ export const ProgramDetailPage: React.FC = () => {
                   </div>
                 </div>
 
-                {prog.gallery && prog.gallery.length > 0 && (
-                  <div className="pt-2">
-                    <ImageGallery
-                      title="Hình ảnh hoạt động / tiền trạm"
-                      images={prog.gallery}
-                    />
-                  </div>
-                )}
 
+
+                {prog.gallery && prog.gallery.length > 0 && <ImageGallery title="Hình ảnh hoạt động" images={prog.gallery}/>}
                 {/* Volunteer Slots Table */}
-                {prog.type === 'Volunteer' && prog.slots && prog.slots.length > 0 && (
+                {(prog.type === 'Volunteer' || prog.mode === 'Hybrid') && prog.slots && prog.slots.length > 0 && (
                   <div className="space-y-2.5 pt-2">
                     <h3 className="text-card-title text-neutral-900">
                       Các ca / Nhóm công việc tình nguyện
@@ -365,19 +341,14 @@ export const ProgramDetailPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Safety & Cost Transparency Box */}
+                {/* Safety notes */}
                 <div className="p-4 rounded-lg bg-tier-attention-bg/50 border border-tier-attention-border space-y-2">
                   <div className="flex items-center gap-2 text-sm font-semibold text-tier-attention-text">
                     <ShieldAlert className="h-4 w-4 shrink-0" />
-                    <span>Lưu ý an toàn &amp; Minh bạch chi phí</span>
+                    <span>Lưu ý an toàn</span>
                   </div>
                   <div className="text-caption text-neutral-700 space-y-1">
-                    <p>
-                      <strong>Chi phí tham gia:</strong>{' '}
-                      {prog.costInfo === 'Free'
-                        ? 'Miễn phí 100% (Không thu bất kỳ khoản phí nào)'
-                        : prog.costInfo}
-                    </p>
+
                     {prog.safetyNotes && (
                       <p>
                         <strong>An toàn:</strong> {prog.safetyNotes}
@@ -468,16 +439,7 @@ export const ProgramDetailPage: React.FC = () => {
             </form>
           </Card>
 
-          {myReg?.status === 'Confirmed' && (
-            <CoParticipantsPanel
-              sourceType="program"
-              sourceId={prog.id}
-              sourceTitle={prog.title}
-              participants={prog.coParticipants || []}
-              visibleToOthers={myReg.visibleToCoParticipants}
-              onToggleVisibility={(val) => toggleVisMutation.mutate(val)}
-            />
-          )}
+
         </div>
 
         {/* Right Sticky Action Card */}
@@ -567,7 +529,7 @@ export const ProgramDetailPage: React.FC = () => {
                     {myReg.feedbackNote}
                   </p>
                 )}
-                <Link to="/programs?tab=registered" className="block">
+                <Link to="/programs?tab=registrations" className="block">
                   <Button variant="primary" size="sm" className="w-full">
                     Xem hồ sơ đăng ký của tôi
                   </Button>

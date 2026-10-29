@@ -34,3 +34,8 @@ export function clubRegistrationUnavailable(opportunity: ClubOpportunity, existi
   }
   return null;
 }
+
+export function proposalHybridError(p: {mode?: string; offlineQuota?: number; onlineQuota?: number}): string | null {
+  if (p.mode !== 'Hybrid') return null;
+  return !Number.isSafeInteger(p.offlineQuota) || !Number.isSafeInteger(p.onlineQuota) || (p.offlineQuota || 0) < 1 || (p.onlineQuota || 0) < 1 ? 'Nhập số nguyên dương cho cả nhóm trực tiếp và online.' : null;
+}

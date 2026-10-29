@@ -1,3 +1,4 @@
+import { ActivityNavigation } from './ActivityNavigation';
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -9,15 +10,12 @@ import {
   Search,
   Settings,
   Users,
-  QrCode,
-  CalendarPlus,
   MessageSquare,
   CheckCircle2,
   Clock,
   AlertCircle,
   ExternalLink,
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -43,16 +41,15 @@ export const ProgramsExplorePage: React.FC = () => {
   const activeTab = selectedTab === 'organizing' && !isManager ? 'explore' : selectedTab;
 
   const [q, setQ] = useState('');
+  const [onlyOpen, setOnlyOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState('all');
   const [modeFilter, setModeFilter] = useState('all');
-  const [costFilter, setCostFilter] = useState('all');
-  const [selectedQrReg, setSelectedQrReg] = useState<ProgramRegistration | null>(null);
 
   const { data: programs = [], isLoading } = useQuery<ProgramChannel[]>({
-    queryKey: ['programs', typeFilter, modeFilter, costFilter, q],
+    queryKey: ['programs', typeFilter, modeFilter, q],
     queryFn: () =>
       apiClient.get(
-        `/programs?type=${typeFilter}&mode=${modeFilter}&cost=${costFilter}&q=${encodeURIComponent(q)}`
+        `/programs?type=${typeFilter}&mode=${modeFilter}&q=${encodeURIComponent(q)}`
       ),
   });
 
@@ -86,17 +83,18 @@ export const ProgramsExplorePage: React.FC = () => {
       .map((r) => [r.programId, r])
   );
 
-  const displayedPrograms = programs;
+  const displayedPrograms = programs.filter(p => !onlyOpen || (p.status === 'Published' && Date.parse(p.registrationDeadline) > Date.now() && p.confirmedCount < p.quota));
 
   return (
     <div className="space-y-6">
+      <ActivityNavigation />
       <PageHeader
         variant="band"
         icon={HeartHandshake}
         title="Hoạt động"
-        description="Các chiến dịch tình nguyện vì cộng đồng và buổi chia sẻ kỹ năng do chính sinh viên trong trường khởi xướng, đã được Admin xác minh."
+        description="Tìm hoạt động phù hợp với bạn. Chọn ca, kiểm tra điều kiện và theo dõi kết quả tại một nơi."
         actions={
-          <div className="flex gap-2">{!isGuest && <Link to={isManager ? '/programs/new' : '/programs/proposals'}><Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>{isManager ? 'Tạo chương trình' : 'Đề xuất của tôi'}</Button></Link>}{isManager && <Link to="/programs/proposals/review"><Button variant="secondary">Xét duyệt đề xuất</Button></Link>}</div>
+          <div className="flex gap-2">{!isGuest && <Link to={isManager ? '/programs/new' : '/programs/proposals'}><Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>{isManager ? 'Tạo chương trình' : 'Đề xuất của tôi'}</Button></Link>}{user?.roles.includes('event_manager') && <Link to="/programs/proposals/review"><Button variant="secondary">Xét duyệt đề xuất</Button></Link>}</div>
         }
       />
 
@@ -116,7 +114,10 @@ export const ProgramsExplorePage: React.FC = () => {
           </TabsList>
         )}
 
-        {/* TAB 1: KHÁM PHÁ (PG1) */}
+        {/* Activity discovery and capacity overview */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-5">
+          {[['Hoạt động đang hiển thị', programs.length], ['Đã xác nhận tham gia', myRegistrations.filter(r => r.status === 'Confirmed').length], ['Hồ sơ chờ xét', myRegistrations.filter(r => r.status === 'Submitted').length]].map(([label, value]) => <Card key={String(label)} className="p-4"><p className="text-sm text-neutral-500">{label}</p><p className="mt-1 text-2xl font-bold text-neutral-900">{value}</p></Card>)}
+        </div>
         <TabsContent value="explore" className="space-y-5">
           <Card className="p-4 flex flex-col md:flex-row items-stretch md:items-center gap-3">
             <div className="relative flex-1">
@@ -137,7 +138,7 @@ export const ProgramsExplorePage: React.FC = () => {
               >
                 <option value="all">Tất cả loại kênh</option>
 
-                        <option value="Volunteer">Tình nguyện</option>
+                        <option value="Event">Sự kiện CLB</option><option value="Volunteer">Tình nguyện</option>
                 <option value="Workshop">Workshop</option>
               </Select>
 
@@ -151,18 +152,13 @@ export const ProgramsExplorePage: React.FC = () => {
                 <option value="Online">Online</option>
                 <option value="Hybrid">Hybrid</option>
               </Select>
-
-              <Select
-                value={costFilter}
-                onChange={(e) => setCostFilter(e.target.value)}
-                className="w-44"
-              >
-                <option value="all">Tất cả chi phí</option>
-                <option value="free">Miễn phí 100%</option>
-              </Select>
             </div>
           </Card>
 
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={onlyOpen} onChange={e => setOnlyOpen(e.target.checked)} />Chỉ hiện hoạt động còn chỗ và chưa hết hạn</label>
+            <button className="text-brand-600 underline" onClick={() => { setQ(''); setTypeFilter('all'); setModeFilter('all'); setOnlyOpen(false); }}>Xóa bộ lọc</button>
+          </div>
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[1, 2, 3, 4].map((i) => (
@@ -296,7 +292,7 @@ export const ProgramsExplorePage: React.FC = () => {
                     {isConfirmed && (
                       <div className="p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between gap-2">
                         <span>
-                          ✅ <strong>Ca đã chốt:</strong> {reg.slotName || 'Toàn thời gian'}. Vui lòng có mặt đúng giờ và xuất trình mã QR tại bàn điểm danh.
+                          ✅ <strong>Ca đã chốt:</strong> {reg.slotName || 'Toàn thời gian'}. Vui lòng có mặt đúng giờ và làm theo hướng dẫn của Ban tổ chức.
                         </span>
                       </div>
                     )}
@@ -363,26 +359,7 @@ export const ProgramsExplorePage: React.FC = () => {
                           </>
                         )}
 
-                        {isConfirmed && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => toast.success('Đã tạo tệp lịch .ics và thêm vào lịch cá nhân!')}
-                              leftIcon={<CalendarPlus size={14} />}
-                            >
-                              Thêm vào lịch
-                            </Button>
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={() => setSelectedQrReg(reg)}
-                              leftIcon={<QrCode size={14} />}
-                            >
-                              Mã QR điểm danh theo ca
-                            </Button>
-                          </>
-                        )}
+
                       </div>
                     </div>
                   </Card>
@@ -399,7 +376,7 @@ export const ProgramsExplorePage: React.FC = () => {
                   Chương trình do bạn phụ trách
                 </h3>
                 <p className="text-caption text-neutral-500">
-                  Event Manager trực tiếp tạo, công bố và quản lý chương trình.
+                  Manager trực tiếp tạo, công bố và quản lý chương trình.
                 </p>
               </div>
               <Link to="/programs/new">
@@ -429,7 +406,7 @@ export const ProgramsExplorePage: React.FC = () => {
                         </span>
                         <span className="text-neutral-300">·</span>
                         <span className="text-caption text-neutral-500">
-                          Event Manager phụ trách
+                          Manager phụ trách
                         </span>
                       </div>
                       <Link
@@ -477,89 +454,7 @@ export const ProgramsExplorePage: React.FC = () => {
           </TabsContent>
       </Tabs>
 
-      {/* QR Code điểm danh modal */}
-      <Dialog open={!!selectedQrReg} onOpenChange={(open) => !open && setSelectedQrReg(null)}>
-        <DialogContent size="sm" className="text-center">
-          <DialogHeader>
-            <DialogTitle className="text-center">Mã QR điểm danh theo ca</DialogTitle>
-          </DialogHeader>
-          {selectedQrReg && (
-            <div className="py-2 space-y-4">
-              <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-150 text-left text-body-sm space-y-1">
-                <p className="font-semibold text-neutral-900 truncate">
-                  {selectedQrReg.programTitle ?? 'Chương trình tình nguyện / Workshop'}
-                </p>
-                <p className="text-caption text-neutral-600">
-                  <span className="font-medium text-brand-600">Ca tham gia:</span>{' '}
-                  {selectedQrReg.slotName ?? 'Ca sáng (07:30 - 11:30)'}
-                </p>
-                <p className="text-caption text-neutral-500">
-                  Mã check-in: <code className="font-mono font-bold text-neutral-800">SCS-2026-REG{selectedQrReg.id.slice(-6).toUpperCase()}</code>
-                </p>
-              </div>
 
-              {/* Render dynamic SVG QR Code mockup */}
-              <div className="flex flex-col items-center justify-center p-4 bg-white rounded-xl border border-neutral-200 shadow-inner w-56 h-56 mx-auto">
-                <svg viewBox="0 0 100 100" className="w-full h-full text-neutral-900" fill="currentColor">
-                  {/* Outer positioning squares */}
-                  <rect x="5" y="5" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="6" rx="3" />
-                  <rect x="11" y="11" width="16" height="16" rx="2" />
-                  <rect x="67" y="5" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="6" rx="3" />
-                  <rect x="73" y="11" width="16" height="16" rx="2" />
-                  <rect x="5" y="67" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="6" rx="3" />
-                  <rect x="11" y="73" width="16" height="16" rx="2" />
-                  {/* Internal data modules */}
-                  <rect x="38" y="10" width="8" height="8" />
-                  <rect x="50" y="10" width="8" height="8" />
-                  <rect x="38" y="24" width="8" height="8" />
-                  <rect x="52" y="24" width="6" height="6" />
-                  <rect x="10" y="40" width="6" height="6" />
-                  <rect x="22" y="42" width="6" height="6" />
-                  <rect x="36" y="38" width="8" height="8" />
-                  <rect x="48" y="40" width="8" height="8" />
-                  <rect x="60" y="38" width="6" height="6" />
-                  <rect x="72" y="42" width="8" height="8" />
-                  <rect x="86" y="40" width="6" height="6" />
-                  <rect x="38" y="52" width="8" height="8" />
-                  <rect x="52" y="54" width="6" height="6" />
-                  <rect x="68" y="52" width="8" height="8" />
-                  <rect x="82" y="54" width="6" height="6" />
-                  <rect x="38" y="68" width="8" height="8" />
-                  <rect x="52" y="70" width="8" height="8" />
-                  <rect x="68" y="68" width="8" height="8" />
-                  <rect x="80" y="72" width="8" height="8" />
-                  <rect x="42" y="84" width="6" height="6" />
-                  <rect x="56" y="86" width="6" height="6" />
-                  <rect x="70" y="84" width="8" height="8" />
-                  <rect x="84" y="84" width="8" height="8" />
-                </svg>
-              </div>
-
-              <div className="text-caption text-neutral-500 space-y-1">
-                <p>Xuất trình mã này cho Ban tổ chức tại bàn check-in của ca.</p>
-                <p className="text-xs text-amber-700 bg-amber-50 rounded py-1 px-2">
-                  Lưu ý: Mỗi mã chỉ có hiệu lực điểm danh 01 lần cho ca đăng ký.
-                </p>
-              </div>
-            </div>
-          )}
-          <DialogFooter className="sm:justify-center">
-            <Button variant="outline" size="sm" onClick={() => setSelectedQrReg(null)}>
-              Đóng
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                toast.success('Đã tải ảnh mã QR check-in về máy!');
-                setSelectedQrReg(null);
-              }}
-            >
-              Tải ảnh QR
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

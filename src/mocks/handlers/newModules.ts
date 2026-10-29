@@ -693,7 +693,7 @@ export const newModulesHandlers = [
     return HttpResponse.json({ data: newReport });
   }),
 
-  // FE-06: Event Manager programs and Student proposals.
+  // FE-06: Manager programs and Student proposals.
   ...programHandlers,
 
   // 9. Requests Management (GET /requests — C13)

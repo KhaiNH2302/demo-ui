@@ -1,3 +1,4 @@
+import { ActivityNavigation } from './ActivityNavigation';
 import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -117,7 +118,7 @@ export const ProgramManagePage: React.FC = () => {
     return <Card className="h-72 animate-pulse bg-neutral-100" />;
   }
 
-  if (!user?.roles.includes('event_manager') || prog.organizer.userId !== user.id) return <ErrorState title="Không có quyền quản lý chương trình này" />;
+  if (!user?.roles.includes('event_manager') || prog.organizer.userId !== user?.id) return <ErrorState title="Không có quyền quản lý chương trình này" />;
   const registrations = prog.registrations || [];
   const confirmedRegs = registrations.filter((r) => r.status === 'Confirmed');
   const offeredRegs = registrations.filter((r) => (r.status as string) === 'Offered');
@@ -212,6 +213,7 @@ export const ProgramManagePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <ActivityNavigation />
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <Link
           to="/programs?tab=organizing"

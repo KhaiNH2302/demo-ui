@@ -152,3 +152,61 @@ test('maximum three pending proposals applies to new and draft submission and wi
   assert.equal((await request('/programs/proposals/'+draft.data.id,other,'PUT',{...payload,status:'PendingReview'})).status,200);
   assert.equal((await request('/programs/proposals',other,'POST',payload)).status,409);
 });
+
+test('club representatives propose, only Manager approves and publishes', async () => {
+  const rep = 'usr_student_01';
+  const payload = { type: 'Event', clubId: 'club_01', title: 'Club event', description: 'Student club activity', goal: 'Learn together', targetAudience: 'Students', expectedParticipants: 20, suggestedStartAt: future(10), location: 'Room A', safetyNotes: 'Follow instructions', mode: 'Offline', contactInfo: 'club@example.com', acknowledgedTerms: true, status: 'PendingReview' };
+  assert.equal((await request('/programs', rep, 'POST', { ...programPayload, type: 'Event', clubId: 'club_01' })).status, 403);
+  assert.equal((await request('/programs/proposals', student, 'POST', payload)).status, 403);
+  assert.equal((await request('/programs/proposals', rep, 'POST', { ...payload, clubId: 'not-owned' })).status, 403);
+  const proposed = await request('/programs/proposals', rep, 'POST', payload);
+  assert.equal(proposed.status, 201); assert.equal(proposed.data.status, 'PendingReview');
+  assert.equal(proposed.data.programId, undefined);
+  assert.equal((await request(`/programs/proposals/${proposed.data.id}`, rep, 'PUT', { status: 'Approved', reviewReason: 'Self approve' })).status, 403);
+  const approved = await request(`/programs/proposals/${proposed.data.id}`, manager, 'PUT', { status: 'Approved', reviewReason: 'Approved by Manager' });
+  assert.equal(approved.status, 200);
+  const id = approved.data.programId;
+  assert.equal(seedProgramChannels.find(p => p.id === id).status, 'Draft');
+  assert.equal((await request(`/programs/${id}`, rep, 'PUT', { status: 'Published' })).status, 403);
+  assert.equal((await request(`/programs/${id}`, manager, 'PUT', { status: 'Published' })).status, 200);
+  assert.equal((await request('/programs', manager, 'POST', { ...programPayload, confirmMode: 'Instant' })).status, 201);
+});
+
+test('Hybrid separates capacity, selected mode, approval and withdrawal by group', async () => {
+  const payload = { ...programPayload, mode: 'Hybrid', quota: 2, onlineLink: 'https://meet.google.com/test-room', slots: [
+    { id: 'off', name: 'Trực tiếp', attendanceMode: 'Offline', quota: 1, confirmedCount: 0 },
+    { id: 'on', name: 'Online', attendanceMode: 'Online', quota: 1, confirmedCount: 0 }
+  ] };
+  assert.equal((await request('/programs', manager, 'POST', { ...payload, onlineLink: '' })).status, 400);
+  const result = await request('/programs', manager, 'POST', payload);
+  assert.equal(result.status, 201);
+  const id = result.data.id;
+  const register = (user, slotId) => request(`/programs/${id}/register`, user, 'POST', { slotId, answers: [], acknowledgedTerms: true });
+  assert.equal((await register(student, '')).status, 409);
+  const off = await register(student, 'off');
+  assert.equal(off.data.programMode, 'Offline');
+  assert.equal((await request(`/programs/registrations/${off.data.id}`, manager, 'PUT', { status: 'Confirmed' })).status, 200);
+  assert.equal((await register(other, 'off')).status, 409);
+  const on = await register(other, 'on');
+  assert.equal(on.status, 201); assert.equal(on.data.programMode, 'Online');
+  assert.equal((await request(`/programs/${id}`, other)).data.onlineLink, undefined);
+  assert.equal((await request(`/programs/registrations/${on.data.id}`, manager, 'PUT', { status: 'Confirmed' })).status, 200);
+  assert.equal((await request(`/programs/${id}`, other)).data.onlineLink, payload.onlineLink);
+  assert.equal((await request(`/programs/registrations/${off.data.id}`, student, 'PUT', { action: 'withdraw' })).status, 200);
+  const p = seedProgramChannels.find(p => p.id === id);
+  assert.deepEqual(p.slots.map(s => s.confirmedCount), [0, 1]);
+});
+
+test('Hybrid proposal preserves separate capacities through draft editing and Manager approval', async () => {
+  const payload = { type: 'Volunteer', title: 'Hybrid proposal capacity', description: 'Two attendance groups', goal: 'Community', targetAudience: 'Students', expectedParticipants: 999, offlineQuota: 12, onlineQuota: 40, suggestedStartAt: future(10), location: 'Hall A', safetyNotes: 'Follow instructions', mode: 'Hybrid', contactInfo: 'student@example.com', acknowledgedTerms: true, status: 'Draft' };
+  assert.equal((await request('/programs/proposals', student, 'POST', {...payload, onlineQuota: 0})).status, 400);
+  const draft = await request('/programs/proposals', student, 'POST', payload);
+  assert.equal(draft.status, 201); assert.equal(draft.data.expectedParticipants, 52);
+  const sent = await request(`/programs/proposals/${draft.data.id}`, student, 'PUT', {...payload, offlineQuota: 15, status: 'PendingReview'});
+  assert.equal(sent.status, 200); assert.equal(sent.data.expectedParticipants, 55);
+  const approved = await request(`/programs/proposals/${draft.data.id}`, manager, 'PUT', {status: 'Approved', reviewReason: 'Suitable'});
+  assert.equal(approved.status, 200);
+  const program = seedProgramChannels.find(p => p.id === approved.data.programId);
+  assert.equal(program.quota, 55);
+  assert.deepEqual(program.slots.map(s => [s.attendanceMode,s.quota]), [['Offline',15],['Online',40]]);
+});

@@ -32,7 +32,7 @@ export const programAdapter: ActivityAdapter<ProgramChannel> = {
     locationOrMode: [item.mode, item.locationOrLink].filter(Boolean).join(' · '),
     registeredCount: item.confirmedCount,
     capacity: item.quota,
-    benefitBadge: item.costInfo === 'Free' ? 'Miễn phí' : null,
+    benefitBadge: null,
     status: item.status,
   }),
   getQuestions: (item) => item.questions || [],
