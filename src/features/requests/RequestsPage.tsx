@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Inbox,
-  Repeat2,
   UsersRound,
   GraduationCap,
   Building2,
@@ -58,7 +57,6 @@ export const RequestsPage: React.FC = () => {
     if (module.startsWith('club')) return <Building2 size={15} />;
     if (module.startsWith('program') || module === 'co_organizer') return <HeartHandshake size={15} />;
     if (module === 'follow' || module === 'connection_invite') return <UserPlus size={15} />;
-    if (module === 'swap') return <Repeat2 size={15} />;
     if (module === 'group') return <UsersRound size={15} />;
     if (module === 'mentoring' || module === 'mentor_apply') return <GraduationCap size={15} />;
     return <Inbox size={15} />;
@@ -69,7 +67,6 @@ export const RequestsPage: React.FC = () => {
     { key: 'club', label: 'Câu lạc bộ' },
     { key: 'program', label: 'Hoạt động' },
     { key: 'social', label: 'Theo dõi & Kết nối' },
-    { key: 'swap', label: 'Đổi lớp' },
     { key: 'group', label: 'Nhóm kết nối' },
     { key: 'mentoring', label: 'Mentoring' },
   ];

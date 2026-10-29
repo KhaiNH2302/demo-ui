@@ -7,6 +7,11 @@ import {
   Check,
   SearchX,
   HelpCircle,
+  FileText,
+  Sparkles,
+  Layers,
+  GraduationCap,
+  BookOpen,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
@@ -40,6 +45,7 @@ const CATEGORY_OPTIONS = [
 
 const SUBJECT_OPTIONS = [
   { value: 'all', label: 'Tất cả môn học' },
+  { value: 'PRF192', label: 'PRF192 · C Programming' },
   { value: 'CSD201', label: 'CSD201 · Cấu trúc dữ liệu & Giải thuật' },
   { value: 'PRJ301', label: 'PRJ301 · Java Web Applications' },
   { value: 'SWP391', label: 'SWP391 · Software Project' },
@@ -47,6 +53,39 @@ const SUBJECT_OPTIONS = [
   { value: 'MAS291', label: 'MAS291 · Statistics & Probability' },
   { value: 'PRN231', label: 'PRN231 · .NET & Web API' },
 ];
+
+const MAJOR_OPTIONS = [
+  { value: 'all', label: 'Tất cả ngành học' },
+  { value: 'SE', label: 'Kỹ thuật phần mềm (SE)' },
+  { value: 'IA', label: 'An toàn thông tin (IA)' },
+  { value: 'AI', label: 'Trí tuệ nhân tạo (AI)' },
+];
+
+const MAJOR_SUBJECTS_MAP: Record<string, { value: string; label: string }[]> = {
+  all: SUBJECT_OPTIONS,
+  SE: [
+    { value: 'all', label: 'Tất cả môn SE' },
+    { value: 'PRF192', label: 'PRF192 · C Programming' },
+    { value: 'CSD201', label: 'CSD201 · Cấu trúc dữ liệu & GT' },
+    { value: 'PRJ301', label: 'PRJ301 · Java Web' },
+    { value: 'SWP391', label: 'SWP391 · Software Project' },
+    { value: 'DBI202', label: 'DBI202 · Database Systems' },
+    { value: 'PRN231', label: 'PRN231 · .NET & Web API' },
+  ],
+  IA: [
+    { value: 'all', label: 'Tất cả môn IA' },
+    { value: 'PRF192', label: 'PRF192 · C Programming' },
+    { value: 'CSD201', label: 'CSD201 · Cấu trúc dữ liệu' },
+    { value: 'IAP301', label: 'IAP301 · Information Assurance' },
+    { value: 'IAA202', label: 'IAA202 · Information Security' },
+  ],
+  AI: [
+    { value: 'all', label: 'Tất cả môn AI' },
+    { value: 'MAS291', label: 'MAS291 · Xác suất thống kê' },
+    { value: 'AIP391', label: 'AIP391 · AI Project' },
+    { value: 'DPL302m', label: 'DPL302m · Deep Learning' },
+  ],
+};
 
 const SORT_OPTIONS = [
   { value: 'new', label: 'Mới nhất' },
@@ -66,11 +105,14 @@ export const KnowledgeHubPage: React.FC = () => {
 
   const activeTab = searchParams.get('tab') || 'discover';
   const myPostsSubTab = searchParams.get('subTab') || 'published';
+  const selectedMajor = searchParams.get('major') || 'all';
   const selectedCategory = searchParams.get('category') || 'all';
   const selectedSubject = searchParams.get('subject') || 'all';
   const sort = searchParams.get('sort') || 'new';
   const searchQuery = searchParams.get('q') || '';
   const hasFile = searchParams.get('hasFile') === 'true';
+
+  const availableSubjectOptions = MAJOR_SUBJECTS_MAP[selectedMajor] || SUBJECT_OPTIONS;
 
   const [composerOpen, setComposerOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<KnowledgePost | null>(null);
@@ -243,6 +285,36 @@ export const KnowledgeHubPage: React.FC = () => {
         </div>
       )}
 
+      {/* 4 Content-Type Tabs with Icons */}
+      {canBrowse && activeTab !== 'mine' && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1">
+          {[
+            { key: 'all', label: 'Tất cả', icon: Layers },
+            { key: 'qa', label: 'Hỏi đáp', icon: HelpCircle },
+            { key: 'document', label: 'Tài liệu học tập', icon: FileText },
+            { key: 'study_experience', label: 'Kinh nghiệm qua môn', icon: Sparkles },
+          ].map((item) => {
+            const Icon = item.icon;
+            const isSelected = (selectedCategory === item.key) || (item.key === 'all' && selectedCategory === 'all');
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setParam('category', item.key === 'all' ? null : item.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-neutral-900 text-white shadow-xs'
+                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900'
+                }`}
+              >
+                <Icon size={14} className={isSelected ? 'text-white' : 'text-neutral-500'} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Sub-tabs if activeTab === 'mine' */}
       {canBrowse && activeTab === 'mine' && (
         <div className="flex items-center gap-2 bg-neutral-100 p-1 rounded-lg w-fit text-xs font-semibold">
@@ -281,21 +353,36 @@ export const KnowledgeHubPage: React.FC = () => {
             />
           </div>
 
-          {/* Category Select */}
+          {/* Major Select (Ngành học) */}
           <div className="w-48 shrink-0">
+            <Select
+              options={MAJOR_OPTIONS}
+              value={selectedMajor}
+              onValueChange={(val) => {
+                const next = new URLSearchParams(searchParams);
+                if (val === 'all') next.delete('major');
+                else next.set('major', val);
+                next.delete('subject');
+                setSearchParams(next);
+              }}
+            />
+          </div>
+
+          {/* Subject Select (Mã môn học theo ngành) */}
+          <div className="w-48 shrink-0">
+            <Select
+              options={availableSubjectOptions}
+              value={selectedSubject}
+              onValueChange={(val) => setParam('subject', val)}
+            />
+          </div>
+
+          {/* Category Select */}
+          <div className="w-44 shrink-0">
             <Select
               options={CATEGORY_OPTIONS}
               value={selectedCategory}
               onValueChange={(val) => setParam('category', val)}
-            />
-          </div>
-
-          {/* Subject Select */}
-          <div className="w-44 shrink-0">
-            <Select
-              options={SUBJECT_OPTIONS}
-              value={selectedSubject}
-              onValueChange={(val) => setParam('subject', val)}
             />
           </div>
 

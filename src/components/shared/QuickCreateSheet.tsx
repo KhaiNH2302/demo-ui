@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeftRight,
   BookOpen,
   Building2,
   Camera,
@@ -55,16 +54,6 @@ export const QuickCreateSheet: React.FC<QuickCreateSheetProps> = ({
       onClick: () => {
         onOpenChange(false);
         navigate('/knowledge/new');
-      },
-    },
-    {
-      key: 'swap',
-      title: 'Tạo yêu cầu đổi lớp',
-      description: 'Đăng lớp hiện tại và ca học mong muốn để hệ thống gợi ý ghép đôi',
-      icon: ArrowLeftRight,
-      onClick: () => {
-        onOpenChange(false);
-        navigate('/swap/new');
       },
     },
     {

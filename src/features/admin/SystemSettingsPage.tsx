@@ -203,27 +203,6 @@ export const SystemSettingsPage: React.FC = () => {
                 <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-200">
                   <div>
                     <div className="font-semibold text-sm text-neutral-900">
-                      Gợi ý hoán đổi lịch học (Swap AI Match)
-                    </div>
-                    <span className="text-xs text-neutral-500">
-                      Tự động tìm kiếm và so sánh lịch rảnh lớp học phần
-                    </span>
-                  </div>
-                  <Switch
-                    checked={settings.aiFeatures.swapMatching}
-                    onCheckedChange={(c) =>
-                      setSettings({
-                        ...settings,
-                        aiFeatures: { ...settings.aiFeatures, swapMatching: c },
-                      })
-                    }
-                    disabled={!isAdmin}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-200">
-                  <div>
-                    <div className="font-semibold text-sm text-neutral-900">
                       Gợi ý thành viên & nhóm kết nối (Group AI Match)
                     </div>
                     <span className="text-xs text-neutral-500">

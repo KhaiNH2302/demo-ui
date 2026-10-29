@@ -103,6 +103,8 @@ export interface User {
   roles: Role[];
   /** Các khu vực Admin Portal mà Manager được phép xem. Admin duy nhất mặc định toàn quyền. */
   adminPermissions?: string[];
+  /** Trường đại học duy nhất mà School Admin được phép xác minh. */
+  assignedSchool?: string;
   status: UserAccountStatus;
   accountStatus?: UserAccountStatus;
   isMentorAvailable?: boolean;
@@ -1143,4 +1145,23 @@ export interface SystemSettings {
   autoModerationThreshold: number;
   moderationThreshold?: number;
   autoHideReportThreshold?: number;
+}
+
+export interface SchoolAffiliationRequest {
+  id: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  avatarUrl?: string;
+  studentCode: string;
+  school: string;
+  major: string;
+  cohort: string;
+  evidenceUrl?: string;
+  evidenceType?: 'student_card' | 'portal_screenshot' | 'enrollment_cert';
+  status: import('./status').SchoolAffiliationStatus;
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reason?: string;
 }

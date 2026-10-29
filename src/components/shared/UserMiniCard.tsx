@@ -37,10 +37,15 @@ export const UserMiniCard: React.FC<UserMiniCardProps> = ({
     subtitle ||
     (showMajor ? targetUser?.major || 'Kỹ thuật phần mềm' : targetUser?.school || 'FPT University');
 
+  // Đảm bảo không để avatar null cho Mentor/User từ API
+  const avatarUrl =
+    targetUser?.avatarUrl ||
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(targetUser?.id || fullName)}`;
+
   const content = (
     <div className={cn('flex items-center gap-3', className)}>
       <Avatar
-        src={targetUser?.avatarUrl}
+        src={avatarUrl}
         name={fullName}
         size={size === 'lg' ? 'lg' : size === 'sm' ? 'sm' : 'md'}
       />

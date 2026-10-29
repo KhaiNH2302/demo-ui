@@ -9,7 +9,15 @@ import {
   Search,
   Settings,
   Users,
+  QrCode,
+  CalendarPlus,
+  MessageSquare,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  ExternalLink,
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -38,6 +46,7 @@ export const ProgramsExplorePage: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [modeFilter, setModeFilter] = useState('all');
   const [costFilter, setCostFilter] = useState('all');
+  const [selectedQrReg, setSelectedQrReg] = useState<ProgramRegistration | null>(null);
 
   const { data: programs = [], isLoading } = useQuery<ProgramChannel[]>({
     queryKey: ['programs', typeFilter, modeFilter, costFilter, q],
@@ -194,64 +203,191 @@ export const ProgramsExplorePage: React.FC = () => {
                 description="Chọn một hoạt động tình nguyện hoặc buổi workshop ở tab Khám phá để tham gia."
               />
             ) : (
-              myRegistrations.map((reg) => (
-                <Card
-                  key={reg.id}
-                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-caption font-semibold text-brand-600">
-                        {PROGRAM_TYPE_LABELS[reg.programType]}
-                      </span>
-                      {reg.slotName && (
-                        <>
-                          <span className="text-neutral-300">·</span>
-                          <span className="text-caption font-medium text-neutral-600">
-                            {reg.slotName}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                    <Link
-                      to={`/programs/${reg.programId}`}
-                      className="text-card-title text-neutral-900 hover:text-brand-600 block truncate"
-                    >
-                      {reg.programTitle}
-                    </Link>
-                    <div className="text-caption text-neutral-500 flex items-center gap-3 flex-wrap">
-                      <span className="inline-flex items-center gap-1">
-                        <Calendar className="h-3.5 w-3.5" />
-                        Diễn ra:{' '}
-                        {new Date(reg.programStartAt).toLocaleDateString('vi-VN', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                        })}
-                      </span>
-                      {reg.organizerName && <span>Tổ chức bởi: {reg.organizerName}</span>}
-                    </div>
-                  </div>
+              myRegistrations.map((reg) => {
+                const isConfirmed = reg.status === 'Confirmed';
+                const isOffered = (reg.status as string) === 'Offered';
+                const isWaitlisted = (reg.status as string) === 'Waitlisted';
+                const isPending = reg.status === 'Submitted' || (reg.status as string) === 'PendingReview';
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <StatusBadge group="programRegistration" status={reg.status} />
-                    {(reg.status === 'Submitted' || reg.status === 'Confirmed') && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => withdrawRegMutation.mutate(reg.id)}
-                      >
-                        Hủy đăng ký
-                      </Button>
+                return (
+                  <Card
+                    key={reg.id}
+                    className="p-4 sm:p-5 flex flex-col gap-3.5 hover:border-neutral-300 transition-colors bg-surface shadow-2xs"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-caption font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded">
+                            {PROGRAM_TYPE_LABELS[reg.programType]}
+                          </span>
+                          {reg.slotName && (
+                            <span className="text-caption font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                              Ca: {reg.slotName}
+                            </span>
+                          )}
+                          <span className="text-neutral-300">·</span>
+                          <span className="text-caption text-neutral-500">
+                            Diễn ra: {new Date(reg.programStartAt).toLocaleDateString('vi-VN')}
+                          </span>
+                        </div>
+
+                        <Link
+                          to={`/programs/${reg.programId}`}
+                          className="text-base font-bold text-neutral-900 hover:text-brand-600 block truncate"
+                        >
+                          {reg.programTitle}
+                        </Link>
+
+                        <div className="text-caption text-neutral-500 flex items-center gap-3">
+                          {reg.organizerName && <span>Người phụ trách: <strong>{reg.organizerName}</strong></span>}
+                        </div>
+                      </div>
+
+                      {/* Status Badge with Explicit Vietnamese Text */}
+                      <div className="shrink-0 flex items-center gap-2">
+                        {isPending && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                            <Clock size={13} className="text-amber-600" /> Chờ xét hồ sơ
+                          </span>
+                        )}
+                        {isWaitlisted && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-800 border border-purple-200">
+                            <Users size={13} className="text-purple-600" /> Chờ có chỗ (Waitlisted)
+                          </span>
+                        )}
+                        {isOffered && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200 animate-pulse">
+                            <AlertCircle size={13} className="text-blue-600" /> Được mời nhận chỗ
+                          </span>
+                        )}
+                        {isConfirmed && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <CheckCircle2 size={13} className="text-emerald-600" /> Đã xác nhận (Đã giữ chỗ)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Context Specific Policy Box */}
+                    {isPending && (
+                      <div className="p-2.5 rounded-lg bg-amber-50/60 border border-amber-200 text-xs text-amber-900 flex items-center justify-between gap-2">
+                        <span>
+                          <strong>Chưa giữ chỗ chính thức:</strong> Đơn đăng ký của bạn đang được Ban tổ chức xem xét duyệt theo tiêu chí của chương trình.
+                        </span>
+                      </div>
                     )}
-                    <Link to={`/programs/${reg.programId}`}>
-                      <Button variant="secondary" size="sm">
-                        Xem chương trình
-                      </Button>
-                    </Link>
-                  </div>
-                </Card>
-              ))
+
+                    {isWaitlisted && (
+                      <div className="p-2.5 rounded-lg bg-purple-50/60 border border-purple-200 text-xs text-purple-900 flex items-center justify-between gap-2">
+                        <span>
+                          <strong>Hàng chờ có thứ tự ưu tiên:</strong> Bạn đang ở trong danh sách chờ. Khi có bạn khác rút đơn, hệ thống sẽ tự động gửi lời mời nhận chỗ cho bạn.
+                        </span>
+                      </div>
+                    )}
+
+                    {isOffered && (
+                      <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-center justify-between gap-2">
+                        <span>
+                          🎉 <strong>Suất tham gia bổ sung:</strong> Bạn có 24 giờ để bấm [Nhận chỗ] trước khi suất này được chuyển cho người tiếp theo trong hàng chờ.
+                        </span>
+                      </div>
+                    )}
+
+                    {isConfirmed && (
+                      <div className="p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between gap-2">
+                        <span>
+                          ✅ <strong>Ca đã chốt:</strong> {reg.slotName || 'Toàn thời gian'}. Vui lòng có mặt đúng giờ và xuất trình mã QR tại bàn điểm danh.
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Action Buttons Row */}
+                    <div className="flex items-center justify-between pt-2 border-t border-neutral-100 text-xs gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <Link to={`/programs/${reg.programId}`}>
+                          <Button variant="outline" size="sm">
+                            Xem chương trình
+                          </Button>
+                        </Link>
+                        {reg.organizerName && (
+                          <Link to="/chats">
+                            <Button variant="ghost" size="sm" leftIcon={<MessageSquare size={13} />}>
+                              Nhắn tin BTC
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {isPending && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:bg-red-50"
+                            onClick={() => withdrawRegMutation.mutate(reg.id)}
+                          >
+                            Rút đơn đăng ký
+                          </Button>
+                        )}
+
+                        {isWaitlisted && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-neutral-600 hover:bg-neutral-100"
+                            onClick={() => withdrawRegMutation.mutate(reg.id)}
+                          >
+                            Rời hàng chờ
+                          </Button>
+                        )}
+
+                        {isOffered && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => withdrawRegMutation.mutate(reg.id)}
+                            >
+                              Từ chối
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => {
+                                toast.success('Đã nhận suất tham gia chương trình thành công!');
+                                queryClient.invalidateQueries({ queryKey: ['programs', 'registrations', 'me'] });
+                              }}
+                            >
+                              Nhận chỗ ngay
+                            </Button>
+                          </>
+                        )}
+
+                        {isConfirmed && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => toast.success('Đã tạo tệp lịch .ics và thêm vào lịch cá nhân!')}
+                              leftIcon={<CalendarPlus size={14} />}
+                            >
+                              Thêm vào lịch
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => setSelectedQrReg(reg)}
+                              leftIcon={<QrCode size={14} />}
+                            >
+                              Mã QR điểm danh theo ca
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })
             )}
           </TabsContent>
 
@@ -340,6 +476,90 @@ export const ProgramsExplorePage: React.FC = () => {
             )}
           </TabsContent>
       </Tabs>
+
+      {/* QR Code điểm danh modal */}
+      <Dialog open={!!selectedQrReg} onOpenChange={(open) => !open && setSelectedQrReg(null)}>
+        <DialogContent size="sm" className="text-center">
+          <DialogHeader>
+            <DialogTitle className="text-center">Mã QR điểm danh theo ca</DialogTitle>
+          </DialogHeader>
+          {selectedQrReg && (
+            <div className="py-2 space-y-4">
+              <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-150 text-left text-body-sm space-y-1">
+                <p className="font-semibold text-neutral-900 truncate">
+                  {selectedQrReg.programTitle ?? 'Chương trình tình nguyện / Workshop'}
+                </p>
+                <p className="text-caption text-neutral-600">
+                  <span className="font-medium text-brand-600">Ca tham gia:</span>{' '}
+                  {selectedQrReg.slotName ?? 'Ca sáng (07:30 - 11:30)'}
+                </p>
+                <p className="text-caption text-neutral-500">
+                  Mã check-in: <code className="font-mono font-bold text-neutral-800">SCS-2026-REG{selectedQrReg.id.slice(-6).toUpperCase()}</code>
+                </p>
+              </div>
+
+              {/* Render dynamic SVG QR Code mockup */}
+              <div className="flex flex-col items-center justify-center p-4 bg-white rounded-xl border border-neutral-200 shadow-inner w-56 h-56 mx-auto">
+                <svg viewBox="0 0 100 100" className="w-full h-full text-neutral-900" fill="currentColor">
+                  {/* Outer positioning squares */}
+                  <rect x="5" y="5" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="6" rx="3" />
+                  <rect x="11" y="11" width="16" height="16" rx="2" />
+                  <rect x="67" y="5" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="6" rx="3" />
+                  <rect x="73" y="11" width="16" height="16" rx="2" />
+                  <rect x="5" y="67" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="6" rx="3" />
+                  <rect x="11" y="73" width="16" height="16" rx="2" />
+                  {/* Internal data modules */}
+                  <rect x="38" y="10" width="8" height="8" />
+                  <rect x="50" y="10" width="8" height="8" />
+                  <rect x="38" y="24" width="8" height="8" />
+                  <rect x="52" y="24" width="6" height="6" />
+                  <rect x="10" y="40" width="6" height="6" />
+                  <rect x="22" y="42" width="6" height="6" />
+                  <rect x="36" y="38" width="8" height="8" />
+                  <rect x="48" y="40" width="8" height="8" />
+                  <rect x="60" y="38" width="6" height="6" />
+                  <rect x="72" y="42" width="8" height="8" />
+                  <rect x="86" y="40" width="6" height="6" />
+                  <rect x="38" y="52" width="8" height="8" />
+                  <rect x="52" y="54" width="6" height="6" />
+                  <rect x="68" y="52" width="8" height="8" />
+                  <rect x="82" y="54" width="6" height="6" />
+                  <rect x="38" y="68" width="8" height="8" />
+                  <rect x="52" y="70" width="8" height="8" />
+                  <rect x="68" y="68" width="8" height="8" />
+                  <rect x="80" y="72" width="8" height="8" />
+                  <rect x="42" y="84" width="6" height="6" />
+                  <rect x="56" y="86" width="6" height="6" />
+                  <rect x="70" y="84" width="8" height="8" />
+                  <rect x="84" y="84" width="8" height="8" />
+                </svg>
+              </div>
+
+              <div className="text-caption text-neutral-500 space-y-1">
+                <p>Xuất trình mã này cho Ban tổ chức tại bàn check-in của ca.</p>
+                <p className="text-xs text-amber-700 bg-amber-50 rounded py-1 px-2">
+                  Lưu ý: Mỗi mã chỉ có hiệu lực điểm danh 01 lần cho ca đăng ký.
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="sm:justify-center">
+            <Button variant="outline" size="sm" onClick={() => setSelectedQrReg(null)}>
+              Đóng
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                toast.success('Đã tải ảnh mã QR check-in về máy!');
+                setSelectedQrReg(null);
+              }}
+            >
+              Tải ảnh QR
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

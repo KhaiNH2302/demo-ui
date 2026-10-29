@@ -998,18 +998,6 @@ export default function OnboardingPage() {
                     <div className="flex items-center justify-between p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-surface">
                       <div className="space-y-0.5">
                         <span className="text-xs font-medium text-neutral-800 dark:text-neutral-200 block">
-                          Tự động gợi ý đổi lớp học phần
-                        </span>
-                        <span className="text-[11px] text-neutral-400 block">
-                          Nhận thông báo khi có người muốn đổi lớp môn bạn đang tìm
-                        </span>
-                      </div>
-                      <Switch checked={swapMatching} onCheckedChange={setSwapMatching} />
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-surface">
-                      <div className="space-y-0.5">
-                        <span className="text-xs font-medium text-neutral-800 dark:text-neutral-200 block">
                           Gợi ý nhóm đồ án phù hợp
                         </span>
                         <span className="text-[11px] text-neutral-400 block">

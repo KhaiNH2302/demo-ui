@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
+import { useAuthStore } from '@/store/authStore';
 
 const MentorDetailRedirect: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -10,9 +11,14 @@ const AdminOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <ProtectedRoute requireRoles={['admin', 'Admin']}>{children}</ProtectedRoute>
 );
 
-const SwapMatchRedirect: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  return <Navigate to={`/swap/${id}`} replace />;
+const OperationsOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <ProtectedRoute requireRoles={['admin', 'manager', 'Admin', 'Manager']}>{children}</ProtectedRoute>
+);
+
+const AdminLanding: React.FC = () => {
+  const user = useAuthStore((state) => state.user);
+  return user?.roles.includes('school_admin') || user?.roles.includes('SchoolAdmin')
+    ? <Navigate to="school-affiliations" replace /> : <AdminDashboardPage />;
 };
 
 // Layouts
@@ -40,15 +46,11 @@ const PeoplePage = React.lazy(() => import('@/features/people/PeoplePage'));
 
 // Profile (Unified C7 + C8)
 const ProfilePage = React.lazy(() => import('@/features/profile/ProfilePage'));
+const SchoolVerificationPage = React.lazy(() => import('@/features/school/SchoolVerificationPage'));
 
 // Notifications & Chat
 const NotificationsPage = React.lazy(() => import('@/features/notifications/NotificationsPage'));
 const ChatsPage = React.lazy(() => import('@/features/chat/ChatsPage'));
-
-// FE-01: Class Swap
-const SwapListPage = React.lazy(() => import('@/features/swap/SwapListPage'));
-const SwapDetailPage = React.lazy(() => import('@/features/swap/SwapDetailPage'));
-const SwapConnectionsPage = React.lazy(() => import('@/features/swap/SwapConnectionsPage'));
 
 // FE-02: Knowledge Sharing
 const KnowledgeHubPage = React.lazy(() => import('@/features/knowledge/KnowledgeHubPage'));
@@ -111,7 +113,9 @@ const AdminMentorApplicationDetailPage = React.lazy(() => import('@/features/adm
 const MasterDataPage = React.lazy(() => import('@/features/admin/MasterDataPage'));
 const SystemSettingsPage = React.lazy(() => import('@/features/admin/SystemSettingsPage'));
 const AdminManagementPage = React.lazy(() => import('@/features/admin/AdminManagementPage'));
+const AdminSchoolAffiliationsPage = React.lazy(() => import('@/features/admin/AdminSchoolAffiliationsPage'));
 const AuditLogsPage = React.lazy(() => import('@/features/admin/AuditLogsPage'));
+const SchoolAffiliationQueuePage = React.lazy(() => import('@/features/school/SchoolAffiliationQueuePage'));
 
 // Dev / Showcase
 const KitchenSinkPage = React.lazy(() => import('@/features/dev/KitchenSinkPage'));
@@ -154,18 +158,16 @@ export const router = createBrowserRouter([
       { path: 'events/:id', element: <Navigate to="/events" replace /> },
       { path: 'people', element: <PeoplePage /> },
       { path: 'settings', element: <SettingsPage /> },
+      { path: 'profile/school-verification', element: <ProtectedRoute requireRoles={['student', 'Student']}><SchoolVerificationPage /></ProtectedRoute> },
       { path: 'profile/me', element: <ProfilePage /> },
       { path: 'users/:id', element: <ProfilePage /> },
       { path: 'notifications', element: <NotificationsPage /> },
       { path: 'chats', element: <ChatsPage /> },
       { path: 'chats/:id', element: <ChatsPage /> },
 
-      // FE-01: Swap
-      { path: 'swap', element: <SwapListPage /> },
-      { path: 'swap/new', element: <Navigate to="/swap?create=1" replace /> },
-      { path: 'swap/:id', element: <SwapDetailPage /> },
-      { path: 'swap/:id/match', element: <SwapMatchRedirect /> },
-      { path: 'swap/connections', element: <SwapConnectionsPage /> },
+      // Removed: Class Swap flow (redirected to home)
+      { path: 'swap/*', element: <Navigate to="/" replace /> },
+      { path: 'swap', element: <Navigate to="/" replace /> },
 
       // FE-02: Knowledge
       { path: 'knowledge', element: <KnowledgeHubPage /> },
@@ -250,21 +252,22 @@ export const router = createBrowserRouter([
   {
     path: '/admin',
     element: (
-      <ProtectedRoute requireRoles={['admin', 'manager', 'Admin', 'Manager']}>
+      <ProtectedRoute requireRoles={['admin', 'manager', 'school_admin', 'Admin', 'Manager', 'SchoolAdmin']}>
         <AdminShell />
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <AdminDashboardPage /> },
+      { index: true, element: <AdminLanding /> },
+      { path: 'school-affiliations', element: <ProtectedRoute requireRoles={['school_admin', 'SchoolAdmin']}><SchoolAffiliationQueuePage /></ProtectedRoute> },
       // Quản lý người dùng, cấu hình, phân quyền, nhật ký: chỉ Admin duy nhất (Manager → /403)
       { path: 'users', element: <AdminOnly><AdminUsersPage /></AdminOnly> },
       { path: 'users/:id', element: <AdminOnly><AdminUserDetailPage /></AdminOnly> },
-      { path: 'moderation', element: <ModerationPage /> },
-      { path: 'clubs', element: <AdminClubsPage /> },
-      { path: 'programs', element: <AdminProgramsPage /> },
-      { path: 'mentor-applications', element: <AdminMentorApplicationsPage /> },
-      { path: 'mentor-applications/:id', element: <AdminMentorApplicationDetailPage /> },
-      { path: 'master-data', element: <MasterDataPage /> },
+      { path: 'moderation', element: <OperationsOnly><ModerationPage /></OperationsOnly> },
+      { path: 'clubs', element: <OperationsOnly><AdminClubsPage /></OperationsOnly> },
+      { path: 'programs', element: <OperationsOnly><AdminProgramsPage /></OperationsOnly> },
+      { path: 'mentor-applications', element: <OperationsOnly><AdminMentorApplicationsPage /></OperationsOnly> },
+      { path: 'mentor-applications/:id', element: <OperationsOnly><AdminMentorApplicationDetailPage /></OperationsOnly> },
+      { path: 'master-data', element: <OperationsOnly><MasterDataPage /></OperationsOnly> },
       { path: 'settings', element: <AdminOnly><SystemSettingsPage /></AdminOnly> },
       { path: 'admins', element: <AdminOnly><AdminManagementPage /></AdminOnly> },
       { path: 'audit-logs', element: <AdminOnly><AuditLogsPage /></AdminOnly> },

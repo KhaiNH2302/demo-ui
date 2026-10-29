@@ -5,7 +5,6 @@ import {
   HeartHandshake,
   UsersRound,
   GraduationCap,
-  ArrowLeftRight,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -14,8 +13,7 @@ export type FeedInsertKind =
   | 'opportunity'
   | 'program'
   | 'group'
-  | 'mentoring_post'
-  | 'swap_match';
+  | 'mentoring_post';
 
 const KIND_META: Record<
   FeedInsertKind,
@@ -40,11 +38,6 @@ const KIND_META: Record<
     icon: GraduationCap,
     defaultLabel: 'Mentoring',
     defaultHref: '/mentoring',
-  },
-  swap_match: {
-    icon: ArrowLeftRight,
-    defaultLabel: 'Đổi lớp',
-    defaultHref: '/swap',
   },
 };
 

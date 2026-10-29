@@ -64,6 +64,7 @@ export const AdminUsersPage: React.FC = () => {
               { label: 'Sinh viên (Student)', value: 'student' },
               { label: 'Mentor', value: 'mentor' },
               { label: 'Quản lý nghiệp vụ (Manager)', value: 'manager' },
+              { label: 'Quản trị trường (School Admin)', value: 'school_admin' },
               { label: 'Quản trị viên (Admin)', value: 'admin' },
             ]}
           />

@@ -221,6 +221,31 @@ export const GroupManagePage: React.FC = () => {
                 </div>
               )}
 
+              {isFull && (
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-emerald-950 shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-emerald-200 flex items-center justify-center text-emerald-800 shrink-0 font-bold">
+                      ✓
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold">🎉 Nhóm đã đủ thành viên ({group.memberCount}/{group.memberLimit})</h4>
+                      <p className="text-xs text-emerald-800">
+                        Hệ thống đã tự động khóa tuyển thành viên mới và kích hoạt kênh Chat nhóm.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => navigate(`/chats`)}
+                    leftIcon={<MessageSquare size={14} />}
+                    className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    Mở kênh Chat nhóm
+                  </Button>
+                </div>
+              )}
+
               <QueryBoundary queries={[requestsQuery]}>
                 {requestsQuery.data && requestsQuery.data.length === 0 ? (
                   <EmptyState
@@ -255,11 +280,12 @@ export const GroupManagePage: React.FC = () => {
                             </Button>
                             <Button
                               size="sm"
+                              variant="primary"
                               onClick={() => approveRejectMutation.mutate({ reqId: req.id, decision: 'approve' })}
                               disabled={isFull || isClosed}
                               loading={approveRejectMutation.isPending}
                             >
-                              <Check className="w-4 h-4 mr-1" /> Duyệt tham gia
+                              <Check className="w-4 h-4 mr-1" /> Chấp nhận
                             </Button>
                           </div>
                         </CardContent>

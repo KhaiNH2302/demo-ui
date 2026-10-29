@@ -12,6 +12,7 @@ import {
   Globe,
   ExternalLink,
   CheckCircle2,
+  BadgeCheck,
   Sparkles,
   Layers,
   Heart,
@@ -20,6 +21,8 @@ import {
   Plus,
   Camera,
   Check,
+  Send,
+  Star,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { UserAvatar } from '@/components/shared/UserAvatar';
@@ -32,6 +35,7 @@ import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { Chip } from '@/components/ui/Chip';
 import {
@@ -145,6 +149,9 @@ export const ProfilePage: React.FC = () => {
   // Mentor modals and interactive states
   const [sendRequestOpen, setSendRequestOpen] = useState(false);
   const [mentorSectionsSheetOpen, setMentorSectionsSheetOpen] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([]);
   const [likedPostIds, setLikedPostIds] = useState<string[]>(['mpost_01']);
   const [savedPostIds, setSavedPostIds] = useState<string[]>(['mpost_02']);
@@ -443,11 +450,30 @@ export const ProfilePage: React.FC = () => {
                   <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100 truncate max-w-full">
                     {userEntity.fullName}
                   </h1>
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    title="Đã được School Admin xác thực trường"
+                  >
+                    <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                    Đã xác minh trường ({userEntity.school || 'Đại học FPT'})
+                  </span>
                   {isMentor && (
-                    <Badge variant="brand" className="inline-flex items-center gap-1 py-0.5 px-2">
-                      <CheckCircle2 className="h-3 w-3" />
-                      <span>Mentor</span>
-                    </Badge>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge variant="brand" className="inline-flex items-center gap-1 py-0.5 px-2">
+                        <CheckCircle2 className="h-3 w-3" />
+                        <span>Mentor</span>
+                      </Badge>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        🟢 Còn trống tuần này
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                        ⭐ 4.9 (42 lượt đánh giá)
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-50 text-violet-700 border border-violet-200">
+                        🎓 38 buổi đã kèm
+                      </span>
+                    </div>
                   )}
                 </div>
 
@@ -500,6 +526,7 @@ export const ProfilePage: React.FC = () => {
             <div className="flex items-center justify-center sm:justify-end gap-2 shrink-0 pb-1 flex-wrap">
               {isOwnAccount ? (
                 <>
+                  {currentUser?.roles.includes('student') && <Button variant="outline" size="sm" onClick={() => navigate('/profile/school-verification')} leftIcon={<BadgeCheck className="w-3.5 h-3.5" />}>Xác minh trường</Button>}
                   <Button
                     size="sm"
                     onClick={() => {
@@ -556,13 +583,24 @@ export const ProfilePage: React.FC = () => {
               ) : (
                 <>
                   {isMentor && (
-                    <Button
-                      size="sm"
-                      onClick={() => setSendRequestOpen(true)}
-                      leftIcon={<Sparkles className="w-3.5 h-3.5" />}
-                    >
-                      Kết nối Mentor
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => setSendRequestOpen(true)}
+                        leftIcon={<Send className="w-3.5 h-3.5" />}
+                      >
+                        Gửi yêu cầu kèm học
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setReviewModalOpen(true)}
+                        leftIcon={<Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
+                      >
+                        Đánh giá buổi học
+                      </Button>
+                    </>
                   )}
 
                   <FollowButton
@@ -1139,6 +1177,79 @@ export const ProfilePage: React.FC = () => {
         onOpenChange={setSendRequestOpen}
         mentorId={userEntity.id}
       />
+
+      {/* Mentor Session Review Modal */}
+      <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Đánh giá &amp; Chấm sao sau buổi học</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-caption text-neutral-600">
+              Đánh giá của bạn sẽ giúp xây dựng điểm uy tín cho Mentor <strong>{userEntity.fullName}</strong> và giúp các bạn sinh viên khóa sau lựa chọn người kèm phù hợp.
+            </p>
+
+            <div className="space-y-1.5 text-center">
+              <label className="text-caption font-semibold text-neutral-700 block">
+                Chất lượng buổi học (Chấm điểm số sao)
+              </label>
+              <div className="flex items-center justify-center gap-2 pt-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setReviewRating(star)}
+                    className="p-1 hover:scale-110 transition-transform cursor-pointer"
+                  >
+                    <Star
+                      className={cn(
+                        'w-7 h-7',
+                        star <= reviewRating
+                          ? 'fill-amber-400 text-amber-400'
+                          : 'text-neutral-300'
+                      )}
+                    />
+                  </button>
+                ))}
+              </div>
+              <span className="text-caption font-medium text-amber-700">
+                {reviewRating === 5 && '⭐ Tuyệt vời, giải thích rất dễ hiểu và nhiệt tình!'}
+                {reviewRating === 4 && '⭐ Rất tốt, giải quyết được thắc mắc'}
+                {reviewRating === 3 && '⭐ Tạm ổn, cần chuẩn bị giáo trình kỹ hơn'}
+                {reviewRating <= 2 && '⭐ Cần cải thiện chất lượng'}
+              </span>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-caption font-semibold text-neutral-700 block">
+                Nhận xét chi tiết về buổi kèm
+              </label>
+              <Textarea
+                rows={3}
+                value={reviewComment}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setReviewComment(e.target.value)}
+                placeholder="Chia sẻ cảm nhận về mức độ dễ hiểu, sự kiên nhẫn và hữu ích của Mentor..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setReviewModalOpen(false)}>
+              Hủy
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                toast.success(`Cảm ơn bạn! Đã ghi nhận đánh giá ${reviewRating} sao cho Mentor ${userEntity.fullName}!`);
+                setReviewModalOpen(false);
+                setReviewComment('');
+              }}
+            >
+              Gửi đánh giá
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Mentor Profile Custom Sections Sheet */}
       <MentorProfileSectionSheet

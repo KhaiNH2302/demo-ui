@@ -141,7 +141,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   // =========================================================================
   const isMentor = user?.roles?.some((r) => r.toLowerCase() === 'mentor');
   const isAdmin = user?.roles?.some((r) =>
-    ['manager', 'admin'].includes(r.toLowerCase()),
+    ['manager', 'admin', 'school_admin', 'schooladmin'].includes(r.toLowerCase()),
   );
   const unreadMessagesCount =
     (counters?.unreadMessages || 0) + (counters?.pendingMessageRequests || 0);
@@ -435,7 +435,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               {isAdmin && (
                 <DropdownMenuItem onClick={() => navigate('/admin')} className="cursor-pointer">
                   <ShieldCheck size={16} className="mr-2 text-brand-600" />
-                  <span className="text-brand-700 font-medium">Quản trị hệ thống</span>
+                  <span className="text-brand-700 font-medium">{user?.roles.some((role) => ['school_admin', 'SchoolAdmin'].includes(role)) ? 'Xác minh sinh viên' : 'Quản trị hệ thống'}</span>
                 </DropdownMenuItem>
               )}
 

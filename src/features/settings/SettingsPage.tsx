@@ -37,13 +37,11 @@ export const SettingsPage: React.FC = () => {
 
   // Privacy State (C14)
   const [privacy, setPrivacy] = useState<{
-    swapMatching: boolean;
     groupMatching: boolean;
     mentoringMatching: boolean;
     profileVisibility: ProfileVisibility;
     whoCanMessage: 'everyone' | 'followers';
   }>({
-    swapMatching: true,
     groupMatching: true,
     mentoringMatching: true,
     profileVisibility: 'members',
@@ -52,7 +50,6 @@ export const SettingsPage: React.FC = () => {
 
   // Notification Preferences
   const [notificationPrefs, setNotificationPrefs] = useState({
-    swap: { inApp: true, email: true },
     group: { inApp: true, email: true },
     club: { inApp: true, email: false },
     program: { inApp: true, email: true },
@@ -269,21 +266,6 @@ export const SettingsPage: React.FC = () => {
                   <div className="flex items-center justify-between pt-1">
                     <div className="space-y-0.5 pr-4">
                       <p className="text-xs font-semibold text-neutral-800">
-                        Cho phép dùng dữ liệu cho Đổi lớp học phần (Class Swap)
-                      </p>
-                      <p className="text-xs text-neutral-500">
-                        Dùng mã lớp và lịch rảnh để tính điểm đối ứng với các bạn học khác.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={privacy.swapMatching}
-                      onCheckedChange={(checked) => handleTogglePrivacy('swapMatching', checked)}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between pt-4">
-                    <div className="space-y-0.5 pr-4">
-                      <p className="text-xs font-semibold text-neutral-800">
                         Cho phép gợi ý tham gia Nhóm kết nối (Group Matching)
                       </p>
                       <p className="text-xs text-neutral-500">
@@ -410,7 +392,6 @@ export const SettingsPage: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-neutral-100">
                       {[
-                        { key: 'swap', label: 'Lời mời đổi lớp & xác nhận' },
                         { key: 'group', label: 'Yêu cầu tham gia nhóm kết nối' },
                         { key: 'club', label: 'Phản hồi đơn đăng ký cơ hội Câu lạc bộ' },
                         { key: 'program', label: 'Thông báo từ kênh Tình nguyện & Workshop' },

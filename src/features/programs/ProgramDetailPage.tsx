@@ -4,16 +4,21 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   Calendar,
+  CheckCircle,
   Flag,
+  HelpCircle,
   MapPin,
   Megaphone,
   MessageSquare,
+  Send,
   Settings,
   ShieldAlert,
   Users,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { cn } from '@/lib/cn';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PROGRAM_TYPE_LABELS } from '@/components/shared/ProgramCard';
@@ -52,6 +57,37 @@ export const ProgramDetailPage: React.FC = () => {
   const canOpenProfile = viewer.can('profile.open');
   const guard = useGuardedAction();
   const [reportOpen, setReportOpen] = useState(false);
+  const [newFaqQuestion, setNewFaqQuestion] = useState('');
+  const [faqs, setFaqs] = useState([
+    {
+      id: 'faq-1',
+      question: 'Chương trình có cấp Giấy chứng nhận (Certificate) hoặc cộng điểm rèn luyện không?',
+      answer: 'Có. Tất cả sinh viên tham gia đầy đủ ca đã đăng ký và quét QR check-in sẽ được cấp Certificate điện tử sau 3 ngày làm việc.',
+      author: 'Sinh viên K18',
+    },
+    {
+      id: 'faq-2',
+      question: 'Nếu đến ngày diễn ra có lịch thi đột xuất thì có được hủy hoặc đổi ca không?',
+      answer: 'Bạn có thể rút đơn trước 24 giờ qua trang "Đăng ký của tôi". Nếu đổi ca, hãy liên hệ trực tiếp cho Event Manager phụ trách qua nút Nhắn tin.',
+      author: 'Sinh viên K19',
+    },
+  ]);
+
+  const handleAskFaq = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFaqQuestion.trim()) return;
+    setFaqs((prev) => [
+      ...prev,
+      {
+        id: `faq-${Date.now()}`,
+        question: newFaqQuestion.trim(),
+        answer: 'Cảm ơn bạn đã đặt câu hỏi. Ban tổ chức đã nhận được và sẽ phản hồi sớm nhất!',
+        author: user?.fullName || 'Tôi',
+      },
+    ]);
+    setNewFaqQuestion('');
+    toast.success('Đã gửi câu hỏi tới Ban tổ chức chương trình!');
+  };
 
   const { data: prog, isLoading, isError, refetch } = useQuery<ProgramDetailData>({
     queryKey: ['program', id],
@@ -384,6 +420,54 @@ export const ProgramDetailPage: React.FC = () => {
             </Tabs>
           </Card>
 
+          {/* Cột trái: Mục Hỏi đáp chung trước khi đăng ký */}
+          <Card className="p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <HelpCircle className="h-5 w-5 text-brand-600" />
+                <h3 className="text-section-title text-neutral-900">
+                  Hỏi đáp chung trước khi đăng ký
+                </h3>
+              </div>
+              <span className="text-caption text-neutral-500">
+                {faqs.length} câu hỏi
+              </span>
+            </div>
+            <p className="text-caption text-neutral-600">
+              Sinh viên có thể đặt câu hỏi để làm rõ yêu cầu công việc, địa điểm hoặc chính sách cấp chứng nhận trước khi nộp đơn.
+            </p>
+
+            <div className="space-y-3">
+              {faqs.map((faq) => (
+                <div key={faq.id} className="p-3.5 rounded-lg border border-neutral-200 bg-neutral-50 space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-semibold text-neutral-900">
+                      Q: {faq.question}
+                    </span>
+                    <span className="text-caption text-neutral-400 shrink-0">{faq.author}</span>
+                  </div>
+                  <p className="text-body-sm text-neutral-700 bg-white p-2.5 rounded border border-neutral-150">
+                    <span className="font-semibold text-brand-600">BTC trả lời: </span>
+                    {faq.answer}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Input to ask a question */}
+            <form onSubmit={handleAskFaq} className="pt-2 flex gap-2">
+              <Input
+                placeholder="Đặt câu hỏi của bạn cho Ban tổ chức..."
+                value={newFaqQuestion}
+                onChange={(e) => setNewFaqQuestion(e.target.value)}
+                className="flex-1"
+              />
+              <Button type="submit" variant="secondary" size="sm" leftIcon={<Send className="h-3.5 w-3.5" />}>
+                Gửi câu hỏi
+              </Button>
+            </form>
+          </Card>
+
           {myReg?.status === 'Confirmed' && (
             <CoParticipantsPanel
               sourceType="program"
@@ -419,17 +503,63 @@ export const ProgramDetailPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Cột phải: Danh sách chọn Ca (Shift) */}
+            {prog.slots && prog.slots.length > 0 && (
+              <div className="space-y-2.5 pt-2 border-t border-neutral-200">
+                <div className="flex items-center justify-between text-caption font-semibold text-neutral-700">
+                  <span>Danh sách Ca hoạt động ({prog.slots.length})</span>
+                  <span>Chỗ trống</span>
+                </div>
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {prog.slots.map((s) => {
+                    const remaining = Math.max(0, s.quota - s.confirmedCount);
+                    const isFull = remaining === 0;
+                    return (
+                      <div
+                        key={s.id}
+                        className={cn(
+                          'p-2.5 rounded-lg border text-caption flex items-center justify-between transition-colors',
+                          isFull
+                            ? 'border-neutral-200 bg-neutral-50 text-neutral-400'
+                            : 'border-brand-200 bg-brand-50/40 text-neutral-800'
+                        )}
+                      >
+                        <div className="min-w-0 pr-2">
+                          <div className="font-semibold truncate">{s.name}</div>
+                          {s.description && (
+                            <div className="text-neutral-500 text-xs truncate">{s.description}</div>
+                          )}
+                        </div>
+                        <div className="shrink-0 text-right">
+                          {isFull ? (
+                            <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-neutral-200 text-neutral-600">
+                              Hết chỗ
+                            </span>
+                          ) : (
+                            <span className="font-semibold text-emerald-700">
+                              Còn {remaining}/{s.quota}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Trạng thái đơn hiện tại và 1 nút hành động chính duy nhất */}
             {myReg && !['Withdrawn', 'Cancelled'].includes(myReg.status) ? (
               <div className="p-3.5 rounded-lg bg-neutral-50 border border-neutral-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-caption font-semibold text-neutral-600">
-                    Đăng ký của bạn
+                    Trạng thái đơn hiện tại
                   </span>
                   <StatusBadge group="programRegistration" status={myReg.status} />
                 </div>
                 {myReg.slotName && (
                   <div className="text-caption text-neutral-700">
-                    Ca đã chọn: <strong>{myReg.slotName}</strong>
+                    Ca đã chốt: <strong>{myReg.slotName}</strong>
                   </div>
                 )}
                 {myReg.feedbackNote && (
@@ -437,16 +567,23 @@ export const ProgramDetailPage: React.FC = () => {
                     {myReg.feedbackNote}
                   </p>
                 )}
-                {myReg.status === 'Confirmed' && <Link to="/chats" className="block">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="w-full"
-                    leftIcon={<MessageSquare className="h-4 w-4" />}
-                  >
-                    Nhắn tin cho người tổ chức
+                <Link to="/programs?tab=registered" className="block">
+                  <Button variant="primary" size="sm" className="w-full">
+                    Xem hồ sơ đăng ký của tôi
                   </Button>
-                </Link>}
+                </Link>
+                {myReg.status === 'Confirmed' && (
+                  <Link to="/chats" className="block">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="w-full"
+                      leftIcon={<MessageSquare className="h-4 w-4" />}
+                    >
+                      Nhắn tin cho người tổ chức
+                    </Button>
+                  </Link>
+                )}
               </div>
             ) : (
               <div className="space-y-2.5">

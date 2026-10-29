@@ -6,14 +6,17 @@ import {
   Calendar,
   Clock,
   Flag,
+  HelpCircle,
   Info,
   MapPin,
   MessageSquare,
+  Send,
   Settings,
   Users,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { OPPORTUNITY_TYPE_LABELS } from '@/components/shared/OpportunityCard';
 import {
@@ -42,6 +45,37 @@ export const ClubOpportunityDetailPage: React.FC = () => {
   const { isRepresentativeOf } = useAuthStore();
   const guard = useGuardedAction();
   const [reportOpen, setReportOpen] = useState(false);
+  const [newFaqQuestion, setNewFaqQuestion] = useState('');
+  const [faqs, setFaqs] = useState([
+    {
+      id: 'faq-1',
+      question: 'Sinh viên năm nhất (K19/K20) chưa có kinh nghiệm thực tế có ứng tuyển được không?',
+      answer: 'Hoàn toàn được! CLB chú trọng vào tinh thần trách nhiệm, ham học hỏi và thời gian cam kết. Các bạn sẽ được training bài bản trong 2 tuần onboarding đầu tiên.',
+      author: 'Trưởng ban Tuyển dụng CLB',
+    },
+    {
+      id: 'faq-2',
+      question: 'Làm Cộng tác viên (CTV) khác gì so với Thành viên chính thức?',
+      answer: 'Cộng tác viên tham gia hỗ trợ ngắn hạn theo từng chiến dịch/sự kiện (thường 2-4 tuần), phù hợp với bạn muốn trải nghiệm mà không bị gò bó cam kết cả kỳ. Thành viên chính thức gắn bó dài hạn và tham gia ban điều hành.',
+      author: 'Ban Nhân sự CLB',
+    },
+  ]);
+
+  const handleAskFaq = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFaqQuestion.trim()) return;
+    setFaqs((prev) => [
+      ...prev,
+      {
+        id: `faq-${Date.now()}`,
+        question: newFaqQuestion.trim(),
+        answer: 'Câu hỏi của bạn đã được ghi nhận. Ban chủ nhiệm CLB sẽ trả lời và hiển thị công khai tại đây sớm nhất!',
+        author: 'Tôi',
+      },
+    ]);
+    setNewFaqQuestion('');
+    toast.success('Đã gửi câu hỏi tới Ban chủ nhiệm CLB!');
+  };
 
   const { data: opp, isLoading, isError, refetch } = useQuery<OpportunityDetailData>({
     queryKey: ['club-opportunity', oppId],
@@ -294,6 +328,53 @@ export const ClubOpportunityDetailPage: React.FC = () => {
                   : 'Khi bạn gửi đăng ký, hồ sơ sinh viên và câu trả lời của bạn sẽ được chuyển trực tiếp tới Đại diện CLB để xem xét, trao đổi qua kênh chat hoặc phản hồi kết quả trên hệ thống.'}
               </p>
             </div>
+          </Card>
+
+          {/* Mục "Hỏi đáp trước khi ứng tuyển" */}
+          <Card className="p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <HelpCircle className="h-5 w-5 text-brand-600" />
+                <h3 className="text-section-title text-neutral-900">
+                  Hỏi đáp trước khi ứng tuyển
+                </h3>
+              </div>
+              <span className="text-caption text-neutral-500">
+                {faqs.length} câu hỏi thường gặp
+              </span>
+            </div>
+            <p className="text-caption text-neutral-600">
+              Đặt câu hỏi làm rõ yêu cầu tuyển dụng, cam kết thời gian hoặc lộ trình đào tạo trước khi gửi đơn để CLB giải đáp trực tiếp.
+            </p>
+
+            <div className="space-y-3">
+              {faqs.map((faq) => (
+                <div key={faq.id} className="p-3.5 rounded-lg border border-neutral-200 bg-neutral-50 space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-semibold text-neutral-900">
+                      Q: {faq.question}
+                    </span>
+                    <span className="text-caption text-neutral-400 shrink-0">{faq.author}</span>
+                  </div>
+                  <p className="text-body-sm text-neutral-700 bg-white p-2.5 rounded border border-neutral-150">
+                    <span className="font-semibold text-brand-600">CLB trả lời: </span>
+                    {faq.answer}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <form onSubmit={handleAskFaq} className="pt-2 flex gap-2">
+              <Input
+                placeholder="Đặt câu hỏi của bạn cho Ban nhân sự CLB..."
+                value={newFaqQuestion}
+                onChange={(e) => setNewFaqQuestion(e.target.value)}
+                className="flex-1"
+              />
+              <Button type="submit" variant="secondary" size="sm" leftIcon={<Send className="h-3.5 w-3.5" />}>
+                Gửi câu hỏi
+              </Button>
+            </form>
           </Card>
 
           {/* CoParticipantsPanel (CL11) shown when Confirmed / Accepted */}

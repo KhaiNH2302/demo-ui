@@ -3,7 +3,6 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   UsersRound,
-  ArrowLeftRight,
   AlertCircle,
   GraduationCap,
   HelpCircle,
@@ -39,7 +38,6 @@ export interface TodayTaskItem {
   kind:
     | 'event_today'
     | 'group_join_request'
-    | 'swap_proposal'
     | 'supplement_needed'
     | 'mentoring_session'
     | 'deadline_soon';
@@ -69,14 +67,6 @@ const DEFAULT_TODAY_ITEMS: TodayTaskItem[] = [
     subtitle: 'Trưởng nhóm · Gửi 2 giờ trước',
     actionLabel: 'Xét duyệt',
     href: '/groups/grp_01/manage',
-  },
-  {
-    id: 'td_2',
-    kind: 'swap_proposal',
-    title: 'Phản hồi lời mời đổi lớp PRN231 (SE1702 ↔ SE1705)',
-    subtitle: 'Từ Trần Minh Cường · Khớp lịch 100%',
-    actionLabel: 'Phản hồi',
-    href: '/swap/connections',
   },
   {
     id: 'td_3',
@@ -201,22 +191,6 @@ const HOME_FEED_INSERTS: HomeFeedInsertEntry[] = [
       tags: ['SWP391', 'Spring Boot', 'Database'],
       slotsRemaining: 2,
       href: '/mentoring/posts/mp_01',
-    },
-  },
-  {
-    id: 'ins_swap_01',
-    kind: 'swap_match',
-    contextLabel: 'Đổi lớp · Khớp với yêu cầu Open của bạn',
-    actionHref: '/swap',
-    data: {
-      id: 'sw_01',
-      subjectCode: 'PRN231',
-      currentClassCode: 'SE1702',
-      targetClassCode: 'SE1705',
-      partnerName: 'Trần Minh Cường',
-      scheduleSummary: 'Ca 2 (09:15–11:45) Thứ 2, 4, 6',
-      matchNote: 'Khớp 2 chiều',
-      href: '/swap/sw_01/match',
     },
   },
 ];
@@ -364,11 +338,9 @@ export const DashboardPage: React.FC = () => {
     const Icon =
       item.kind === 'group_join_request'
         ? UsersRound
-        : item.kind === 'swap_proposal'
-          ? ArrowLeftRight
-          : item.kind === 'mentoring_session'
-            ? GraduationCap
-            : AlertCircle;
+        : item.kind === 'mentoring_session'
+          ? GraduationCap
+          : AlertCircle;
 
     return (
       <div className="h-10 w-10 rounded-md bg-neutral-100 text-neutral-600 flex items-center justify-center shrink-0">

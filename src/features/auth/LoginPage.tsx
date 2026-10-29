@@ -86,7 +86,7 @@ export default function LoginPage() {
       });
     }
     const isAdmin = loggedUser.roles.some((r) =>
-      ['admin', 'manager', 'Admin', 'Manager'].includes(r),
+      ['admin', 'manager', 'school_admin', 'Admin', 'Manager', 'SchoolAdmin'].includes(r),
     );
 
     navigate(isAdmin ? '/admin' : '/', { replace: true });
@@ -187,9 +187,19 @@ export default function LoginPage() {
       roleLabel: 'Admin · Quản trị hệ thống',
     },
     {
+      email: 'schooladmin@fpt.edu.vn',
+      name: 'ThS. Trần Thị Lan',
+      roleLabel: 'School Admin · Xác thực sinh viên',
+    },
+    {
       email: 'manager@fpt.edu.vn',
       name: 'Đỗ Hải Phong',
       roleLabel: 'Event Manager · Tổ chức chương trình',
+    },
+    {
+      email: 'schooladmin@fpt.edu.vn',
+      name: 'Nguyễn Thị Mai',
+      roleLabel: 'School Admin · Xác minh sinh viên',
     },
   ];
 

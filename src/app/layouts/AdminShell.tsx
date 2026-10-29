@@ -18,6 +18,7 @@ import {
   LogOut,
   Sun,
   Moon,
+  School,
 } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { IconButton } from '@/components/ui/IconButton';
@@ -34,13 +35,14 @@ export const AdminShell: React.FC = () => {
   const navigate = useNavigate();
 
   const isAdmin = hasRole('admin') || hasRole('Admin');
+  const isSchoolAdmin = hasRole('school_admin') || hasRole('SchoolAdmin');
   const { resolvedTheme, toggleTheme } = useThemeStore();
 
-  // Manager chỉ thấy module được cấp; Admin duy nhất thấy toàn bộ cổng quản trị.
-  // Các phiên demo Manager được lưu từ trước khi có adminPermissions vẫn phải vào được Dashboard.
+  // Manager chỉ thấy module được cấp; School Admin chỉ thấy Dashboard & Xác thực SV trường; Admin duy nhất thấy toàn bộ.
   const managerPermissions = user?.adminPermissions?.length ? user.adminPermissions : ['dashboard'];
-  const navItems = [
+  const operationsNavItems = [
     { to: '/admin', label: 'Tổng quan', icon: LayoutDashboard, end: true, permission: 'dashboard' },
+    { to: '/admin/school-affiliations', label: 'Xác thực SV trường', icon: UserCheck, schoolAdmin: true, permission: 'school_affiliations' },
     { to: '/admin/users', label: 'Quản lý người dùng', icon: Users, systemOnly: true, permission: 'users' },
     { to: '/admin/moderation', label: 'Kiểm duyệt nội dung', icon: CheckSquare, permission: 'moderation' },
     { to: '/admin/clubs', label: 'Quyền đại diện CLB', icon: Building2, permission: 'clubs' },
@@ -48,10 +50,13 @@ export const AdminShell: React.FC = () => {
     { to: '/admin/mentor-applications', label: 'Duyệt Mentor', icon: GraduationCap, permission: 'mentoring' },
     { to: '/admin/master-data', label: 'Dữ liệu danh mục', icon: Database, permission: 'master_data' },
     { to: '/admin/settings', label: 'Cấu hình hệ thống', icon: Sliders, systemOnly: true, permission: 'settings' },
-    { to: '/admin/admins', label: 'Phân quyền quản trị', icon: UserCheck, systemOnly: true, permission: 'admins' },
+    { to: '/admin/admins', label: 'Phân quyền quản trị', icon: ShieldCheck, systemOnly: true, permission: 'admins' },
     { to: '/admin/audit-logs', label: 'Nhật ký kiểm toán', icon: FileText, systemOnly: true, permission: 'reports' },
   ].filter((item) => isAdmin || (!item.systemOnly && managerPermissions.includes(item.permission)));
-  const roleLabel = isAdmin ? 'Admin' : 'Manager';
+  const navItems = isSchoolAdmin && !isAdmin
+    ? [{ to: '/admin/school-affiliations', label: 'Xác minh sinh viên', icon: School, end: true }]
+    : operationsNavItems;
+  const roleLabel = isAdmin ? 'System Admin' : isSchoolAdmin ? 'School Admin' : 'Manager';
 
   return (
     <div className="min-h-screen bg-neutral-100 flex flex-col antialiased">
@@ -74,7 +79,7 @@ export const AdminShell: React.FC = () => {
             </div>
             <span className="tracking-tight">SCS Admin Portal</span>
             <span className="hidden sm:inline rounded-md bg-neutral-800 border border-neutral-700 px-2 py-0.5 text-[11px] font-semibold text-neutral-200">
-              {roleLabel}
+              {roleLabel}{isSchoolAdmin && user?.school ? ` · ${user.school}` : ''}
             </span>
           </Link>
         </div>
@@ -94,7 +99,7 @@ export const AdminShell: React.FC = () => {
             )}
           </button>
 
-          <Link
+          {!isSchoolAdmin && <Link
             to="/"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white text-xs font-semibold border border-neutral-700 transition-colors"
             title="Quay lại giao diện sinh viên"
@@ -102,7 +107,7 @@ export const AdminShell: React.FC = () => {
             <ArrowLeft size={14} className="text-brand-400" />
             <span className="hidden sm:inline">Về ứng dụng SCS</span>
             <span className="sm:hidden">Thoát</span>
-          </Link>
+          </Link>}
 
           <div className="flex items-center gap-2 pl-2 border-l border-neutral-800">
             <Avatar src={user?.avatarUrl} name={user?.fullName} size="sm" />
@@ -151,7 +156,7 @@ export const AdminShell: React.FC = () => {
           </nav>
 
           {/* Persistent Return to Social Surface Link */}
-          <div className="pt-4 border-t border-neutral-200">
+          {!isSchoolAdmin && <div className="pt-4 border-t border-neutral-200">
             <Link
               to="/"
               className="flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 transition-colors"
@@ -159,7 +164,7 @@ export const AdminShell: React.FC = () => {
               <ArrowLeft size={16} />
               <span>Về ứng dụng SCS</span>
             </Link>
-          </div>
+          </div>}
         </aside>
 
         {/* Drawer Mobile */}
@@ -169,7 +174,7 @@ export const AdminShell: React.FC = () => {
             <div className="relative w-64 max-w-xs bg-surface p-4 flex flex-col justify-between shadow-xl z-50">
               <div>
                 <div className="flex items-center justify-between pb-3 border-b border-neutral-200 mb-3">
-                  <span className="font-bold text-sm text-neutral-900">Quản trị hệ thống</span>
+                  <span className="font-bold text-sm text-neutral-900">{isSchoolAdmin ? 'School Admin' : 'Quản trị hệ thống'}</span>
                   <IconButton variant="ghost" size="sm" aria-label="Đóng" onClick={() => setMobileOpen(false)}>
                     <X size={18} />
                   </IconButton>
@@ -200,7 +205,7 @@ export const AdminShell: React.FC = () => {
                 </nav>
               </div>
 
-              <div className="pt-4 border-t border-neutral-200">
+              {!isSchoolAdmin && <div className="pt-4 border-t border-neutral-200">
                 <Link
                   to="/"
                   onClick={() => setMobileOpen(false)}
@@ -209,7 +214,7 @@ export const AdminShell: React.FC = () => {
                   <ArrowLeft size={16} />
                   <span>Về ứng dụng SCS</span>
                 </Link>
-              </div>
+              </div>}
             </div>
           </div>
         )}

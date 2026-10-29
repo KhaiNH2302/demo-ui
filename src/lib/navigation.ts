@@ -2,7 +2,6 @@ import {
   BookOpen,
   UsersRound,
   GraduationCap,
-  ArrowLeftRight,
   Flag,
   HeartHandshake,
   Calendar,
@@ -73,15 +72,6 @@ export const NAV_SECTIONS: NavSection[] = [
           icon: BadgeCheck,
           badge: (c) => (c.pendingMentoringRequests || 0) > 0,
         },
-      },
-      {
-        key: 'swap',
-        label: 'Đổi lớp',
-        href: '/swap',
-        to: '/swap',
-        icon: ArrowLeftRight,
-        badgeType: 'dot',
-        badge: (c) => (c.pendingSwapInvites || 0) > 0,
       },
     ],
   },
@@ -183,7 +173,6 @@ export function getActiveNavKey(pathname: string): string {
   if (pathname.startsWith('/knowledge')) return 'knowledge';
   if (pathname.startsWith('/groups')) return 'groups';
   if (pathname.startsWith('/mentoring') || pathname.startsWith('/mentor')) return 'mentoring';
-  if (pathname.startsWith('/swap')) return 'swap';
   if (pathname.startsWith('/clubs') || pathname.startsWith('/opportunities/')) return 'clubs';
   if (pathname.startsWith('/programs')) return 'programs';
   if (pathname.startsWith('/events')) return 'events';

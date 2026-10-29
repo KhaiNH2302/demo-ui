@@ -5,14 +5,12 @@ import { clubFeed, type ClubFeedItem } from '@/features/clubs/feed';
 import { programFeed, type ProgramFeedItem } from '@/features/programs/feed';
 import { groupFeed, type GroupFeedItem } from '@/features/groups/feed';
 import { mentoringFeed, type MentoringFeedItem } from '@/features/mentoring/feed';
-import { swapFeed, type SwapFeedItem } from '@/features/swap/feed';
 
 export type FeedInsertItemMap = {
   opportunity: ClubFeedItem;
   program: ProgramFeedItem;
   group: GroupFeedItem;
   mentoring_post: MentoringFeedItem;
-  swap_match: SwapFeedItem;
 };
 
 export type HomeFeedInsertEntry = {
@@ -30,7 +28,6 @@ export const feedRenderers = {
   program: programFeed.render,
   group: groupFeed.render,
   mentoring_post: mentoringFeed.render,
-  swap_match: swapFeed.render,
 } satisfies {
   [K in FeedInsertKind]: (item: FeedInsertItemMap[K]) => React.ReactNode;
 };
@@ -45,7 +42,5 @@ export function renderHomeFeedInsertItem(entry: HomeFeedInsertEntry): React.Reac
       return feedRenderers.group(entry.data);
     case 'mentoring_post':
       return feedRenderers.mentoring_post(entry.data);
-    case 'swap_match':
-      return feedRenderers.swap_match(entry.data);
   }
 }

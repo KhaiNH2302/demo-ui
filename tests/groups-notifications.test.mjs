@@ -4,6 +4,7 @@ import { setupServer } from 'msw/node';
 import { http } from 'msw';
 import { groupHandlers } from '../src/mocks/handlers/groups.ts';
 import { notificationHandlers } from '../src/mocks/handlers/notifications.ts';
+import { seedNotifications } from '../src/mocks/data/notifications.ts';
 import { seedGroups, seedGroupMembers, seedJoinRequests, seedGroupInvitations } from '../src/mocks/data/groups.ts';
 import { seedConversations, seedMessages } from '../src/mocks/data/conversations.ts';
 import { seedFollows } from '../src/mocks/data/users.ts';
@@ -120,7 +121,9 @@ test('message invitations create a real direct request and reject duplicates', a
 test('notifications and follow decisions belong to the authenticated recipient', async () => {
   const notifications = await api('/notifications', 'usr_student_01');
   assert.equal(notifications.data.every((item) => item.userId === 'usr_student_01'), true);
-  assert.equal((await api('/notifications/notif_04/read', 'usr_student_01', 'POST')).status, 403);
+  const foreignNotification = seedNotifications.find((item) => item.userId !== 'usr_student_01');
+  assert.ok(foreignNotification);
+  assert.equal((await api(`/notifications/${foreignNotification.id}/read`, 'usr_student_01', 'POST')).status, 403);
   assert.equal((await api('/notifications/notif_01/read', null, 'POST')).status, 401);
   assert.equal((await api('/notifications/notif_01/read', 'usr_student_01', 'POST')).status, 200);
   const requests = await api('/follow-requests');

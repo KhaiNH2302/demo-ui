@@ -3,11 +3,16 @@ import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowLeft,
+  Bell,
+  CalendarPlus,
   CheckCircle2,
   Clock,
   Edit3,
+  Mail,
   MessageSquare,
+  User,
   XCircle,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -101,6 +106,11 @@ export const ClubRegistrationDetailPage: React.FC = () => {
   const isConfirmedOrAccepted =
     resp.status === 'Confirmed' || resp.status === 'Accepted';
 
+  // Hạn trả kết quả dự kiến và kiểm tra quá hạn
+  const expectedResultDeadline = (resp.opportunity as unknown as { resultDeadline?: string })?.resultDeadline || '2026-10-14';
+  const isPastResultDeadline = new Date(expectedResultDeadline).getTime() < Date.now();
+  const isUnreviewedOverdue = isPastResultDeadline && (resp.status === 'Submitted' || resp.status === 'UnderReview');
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between gap-3">
@@ -148,9 +158,102 @@ export const ClubRegistrationDetailPage: React.FC = () => {
             >
               {resp.opportunityTitle}
             </Link>
+            <div className="text-caption text-neutral-500 mt-1 flex items-center gap-2">
+              <span>Ngày nộp: {new Date(resp.submittedAt || Date.now()).toLocaleDateString('vi-VN')}</span>
+              <span>·</span>
+              <span>
+                Hạn trả kết quả dự kiến:{' '}
+                <strong>{new Date(expectedResultDeadline).toLocaleDateString('vi-VN')}</strong>
+              </span>
+            </div>
           </div>
-          <StatusBadge group="opportunityResponse" status={resp.status} size="md" />
+          <div className="flex flex-col items-end gap-1.5">
+            <StatusBadge group="opportunityResponse" status={resp.status} size="md" />
+            {isUnreviewedOverdue && (
+              <span className="px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                CLB chưa phản hồi đúng hạn
+              </span>
+            )}
+          </div>
         </div>
+
+        {/* Xử lý đơn quá hạn: Cảnh báo "CLB chưa phản hồi đúng hạn" */}
+        {isUnreviewedOverdue && (
+          <div className="p-4 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5 text-sm">
+              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-bold text-amber-900">
+                  CLB chưa phản hồi đúng hạn (Hạn dự kiến: {new Date(expectedResultDeadline).toLocaleDateString('vi-VN')})
+                </div>
+                <p className="mt-1 text-caption text-amber-800 leading-relaxed">
+                  Đã quá hạn thông báo kết quả nhưng CLB chưa hoàn tất duyệt hồ sơ. Đây là sự chậm trễ từ phía ban tuyển dụng CLB, hoàn toàn không phải lỗi của bạn. Hệ thống đã tự động gửi thông báo nhắc nhở tới đại diện CLB.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toast.success('Đã gửi thêm lời nhắc ưu tiên tới Ban chủ nhiệm CLB!')}
+              leftIcon={<Bell className="h-3.5 w-3.5 text-amber-700" />}
+              className="shrink-0 border-amber-300 bg-white hover:bg-amber-100 text-amber-900"
+            >
+              Gửi nhắc nhở CLB
+            </Button>
+          </div>
+        )}
+
+        {/* Khi trạng thái chuyển sang [Được nhận] / [Confirmed]: Hiển thị Người phụ trách và Onboarding */}
+        {isConfirmedOrAccepted && (
+          <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50/80 to-brand-50/50 border border-emerald-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-bold text-emerald-800">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                <span>Chúc mừng! Bạn đã trúng tuyển vào {resp.clubName}</span>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full text-caption font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                Tiếp nhận thành công
+              </span>
+            </div>
+
+            <div className="p-3.5 bg-white rounded-lg border border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-sm shrink-0">
+                  <User className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-neutral-900">
+                    Người phụ trách: Nguyễn Hoàng Nam
+                  </div>
+                  <div className="text-caption text-neutral-500">
+                    Trưởng ban Tuyển dụng &amp; Onboarding · {resp.clubName}
+                  </div>
+                  <div className="text-caption text-neutral-600 flex items-center gap-3 mt-1">
+                    <span className="inline-flex items-center gap-1">
+                      <Mail className="h-3 w-3 text-neutral-400" /> namnh.fu@fpt.edu.vn
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Link to={resp.conversationId ? `/chats/${resp.conversationId}` : '/chats'}>
+                  <Button variant="primary" size="sm" leftIcon={<MessageSquare className="h-4 w-4" />}>
+                    Nhắn tin trao đổi
+                  </Button>
+                </Link>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toast.success('Đã thêm lịch Onboarding & Buổi gặp mặt đầu tiên vào Lịch cá nhân!')}
+                  leftIcon={<CalendarPlus className="h-4 w-4" />}
+                >
+                  Thêm lịch onboarding vào lịch
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Feedback Alert Banner */}
         {resp.status === 'NeedsMoreInfo' && (

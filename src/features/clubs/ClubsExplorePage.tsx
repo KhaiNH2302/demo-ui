@@ -10,6 +10,10 @@ import {
   Users,
   Calendar,
   FileText,
+  Bell,
+  Bookmark,
+  Check,
+  Filter,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card } from '@/components/ui/Card';
@@ -23,6 +27,7 @@ import { LimitNotice } from '@/components/shared/LimitNotice';
 import { OpportunityCard, OPPORTUNITY_TYPE_LABELS } from '@/components/shared/OpportunityCard';
 import { apiClient } from '@/lib/apiClient';
 import { useAuthStore } from '@/store/authStore';
+import { toast } from '@/components/ui/Toast';
 import type {
   Club,
   ClubOpportunity,
@@ -49,6 +54,23 @@ export const ClubsExplorePage: React.FC = () => {
   const [q, setQ] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [deptFilter, setDeptFilter] = useState<string>('all');
+  const [durationFilter, setDurationFilter] = useState<string>('all');
+  const [followedClubs, setFollowedClubs] = useState<Set<string>>(new Set(['club_01']));
+
+  const toggleFollowClub = (clubId: string, clubName: string) => {
+    setFollowedClubs((prev) => {
+      const next = new Set(prev);
+      if (next.has(clubId)) {
+        next.delete(clubId);
+        toast.info(`Đã hủy theo dõi CLB "${clubName}"`);
+      } else {
+        next.add(clubId);
+        toast.success(`🎉 Đã theo dõi CLB "${clubName}". Bạn sẽ nhận thông báo khi CLB mở đợt tuyển mới!`);
+      }
+      return next;
+    });
+  };
 
   const { data: opportunities = [], isLoading: loadingOpps } = useQuery<ClubOpportunity[]>({
     queryKey: ['clubs', 'opportunities', typeFilter, categoryFilter, q],
@@ -81,6 +103,22 @@ export const ClubsExplorePage: React.FC = () => {
       .filter((r) => r.status !== 'Withdrawn')
       .map((r) => [r.opportunityId, r])
   );
+
+  const filteredOpportunities = opportunities.filter((opp) => {
+    if (deptFilter !== 'all') {
+      const oppText = (opp.title + ' ' + (opp.summary || '') + ' ' + (opp.description || '')).toLowerCase();
+      if (deptFilter === 'media' && !oppText.includes('truyền thông') && !oppText.includes('media') && !oppText.includes('content') && !oppText.includes('ảnh')) return false;
+      if (deptFilter === 'tech' && !oppText.includes('kỹ thuật') && !oppText.includes('tech') && !oppText.includes('code') && !oppText.includes('lập trình')) return false;
+      if (deptFilter === 'logistics' && !oppText.includes('hậu cần') && !oppText.includes('đối ngoại') && !oppText.includes('logistics')) return false;
+      if (deptFilter === 'events' && !oppText.includes('sự kiện') && !oppText.includes('văn nghệ') && !oppText.includes('event')) return false;
+    }
+    if (durationFilter === 'short') {
+      if (opp.type === 'MemberRecruitment') return false;
+    } else if (durationFilter === 'long') {
+      if (opp.type === 'CollaboratorRecruitment') return false;
+    }
+    return true;
+  });
 
   const handleTabChange = (val: string) => {
     setSearchParams({ tab: val });
@@ -132,34 +170,72 @@ export const ClubsExplorePage: React.FC = () => {
 
         {/* TAB 1: KHÁM PHÁ CƠ HỘI (CL1) */}
         <TabsContent value="opportunities" className="space-y-5">
-          {/* Filter Bar */}
-          <Card className="p-4 flex flex-col md:flex-row items-stretch md:items-center gap-3">
-            <div className="flex-1 min-w-0">
+          {/* Bộ lọc trực quan trên đầu trang */}
+          <Card className="p-4 space-y-3.5">
+            {/* Quick Pills: Loại cơ hội [Tuyển Thành viên chính thức] / [Tuyển Cộng tác viên (CTV)] */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-caption font-semibold text-neutral-600">Loại cơ hội ứng tuyển:</span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { value: 'all', label: 'Tất cả cơ hội' },
+                  { value: 'MemberRecruitment', label: '⭐ Tuyển Thành viên chính thức' },
+                  { value: 'CollaboratorRecruitment', label: '🤝 Tuyển Cộng tác viên (CTV)' },
+                  { value: 'Event', label: '🎪 Sự kiện CLB' },
+                ].map((pill) => (
+                  <button
+                    key={pill.value}
+                    type="button"
+                    onClick={() => setTypeFilter(pill.value)}
+                    className={`px-3 py-1.5 rounded-full text-caption font-medium transition-all cursor-pointer ${
+                      typeFilter === pill.value
+                        ? 'bg-brand-600 text-white shadow-xs font-semibold'
+                        : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                    }`}
+                  >
+                    {pill.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Row 2: Search + Ban chuyên môn/Kỹ năng + Thời gian tham gia + Lĩnh vực */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2 border-t border-neutral-150">
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Tìm kiếm sự kiện, tuyển thành viên, tên CLB..."
+                placeholder="Tìm cơ hội, tên CLB, kỹ năng..."
                 leftIcon={<Search className="h-4 w-4" />}
+                className="w-full"
               />
-            </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+
               <Select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-full sm:w-48"
+                value={deptFilter}
+                onChange={(e) => setDeptFilter(e.target.value)}
+                className="w-full text-caption"
               >
-                <option value="all">Tất cả loại hoạt động</option>
-                <option value="Event">Sự kiện CLB</option>
-                <option value="MemberRecruitment">Tuyển thành viên</option>
-                <option value="CollaboratorRecruitment">Tuyển cộng tác viên</option>
+                <option value="all">Tất cả Ban / Kỹ năng</option>
+                <option value="media">Truyền thông &amp; Content (Media)</option>
+                <option value="tech">Kỹ thuật &amp; Lập trình (Tech)</option>
+                <option value="logistics">Hậu cần &amp; Đối ngoại (Logistics)</option>
+                <option value="events">Sự kiện &amp; Văn nghệ (Events)</option>
+              </Select>
+
+              <Select
+                value={durationFilter}
+                onChange={(e) => setDurationFilter(e.target.value)}
+                className="w-full text-caption"
+              >
+                <option value="all">Tất cả Thời gian tham gia</option>
+                <option value="short">Ngắn hạn / CTV (1 - 3 tuần / sự kiện)</option>
+                <option value="long">Dài hạn / Thành viên (1 - 2 kỳ học)</option>
               </Select>
 
               <Select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="w-full sm:w-52"
+                className="w-full text-caption"
               >
-                <option value="all">Tất cả lĩnh vực</option>
+                <option value="all">Tất cả lĩnh vực CLB</option>
                 {Object.entries(CATEGORY_LABELS).map(([k, label]) => (
                   <option key={k} value={k}>
                     {label}
@@ -218,16 +294,16 @@ export const ClubsExplorePage: React.FC = () => {
                 <Card key={i} className="h-56 animate-pulse bg-neutral-100" />
               ))}
             </div>
-          ) : opportunities.length === 0 ? (
+          ) : filteredOpportunities.length === 0 ? (
             <EmptyState
               icon={Building2}
               title="Không tìm thấy hoạt động phù hợp"
-              description="Thử thay đổi bộ lọc loại hoạt động hoặc từ khóa tìm kiếm của bạn."
+              description="Thử thay đổi bộ lọc loại cơ hội, Ban kỹ năng hoặc từ khóa tìm kiếm của bạn."
             />
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {opportunities.map((opp) => {
+                {filteredOpportunities.map((opp) => {
                   const myResp = myResponseMap.get(opp.id);
                   return (
                     <OpportunityCard
@@ -239,7 +315,7 @@ export const ClubsExplorePage: React.FC = () => {
                   );
                 })}
               </div>
-              <LimitNotice noun="hoạt động" count={Math.min(opportunities.length, 6)} />
+              <LimitNotice noun="hoạt động" count={Math.min(filteredOpportunities.length, 6)} />
             </>
           )}
         </TabsContent>
@@ -330,11 +406,21 @@ export const ClubsExplorePage: React.FC = () => {
                         {club.representatives?.length ?? 1} đại diện xác thực
                       </span>
                     </div>
-                    <Link to={`/clubs/${club.id}`}>
-                      <Button variant="secondary" size="sm">
-                        Xem hồ sơ CLB
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={followedClubs.has(club.id) ? 'outline' : 'primary'}
+                        size="sm"
+                        onClick={() => toggleFollowClub(club.id, club.name)}
+                        leftIcon={<Bell className={`h-3.5 w-3.5 ${followedClubs.has(club.id) ? 'fill-brand-600 text-brand-600' : ''}`} />}
+                      >
+                        {followedClubs.has(club.id) ? 'Đang theo dõi' : 'Theo dõi CLB'}
                       </Button>
-                    </Link>
+                      <Link to={`/clubs/${club.id}`}>
+                        <Button variant="secondary" size="sm">
+                          Xem hồ sơ CLB
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </Card>
               ))

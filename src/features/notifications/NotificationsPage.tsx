@@ -29,13 +29,13 @@ interface FollowRequestItem {
 
 const sourceOptions = [
   { value: '', label: 'Tất cả nguồn' },
-  { value: 'Swap', label: 'Đổi lớp' },
   { value: 'GroupJoin', label: 'Nhóm học tập' },
   { value: 'ClubApplication', label: 'Đơn CLB' },
   { value: 'ClubEvent', label: 'Sự kiện CLB' },
   { value: 'ClubRole', label: 'Vai trò CLB' },
   { value: 'ClubFinance', label: 'Quỹ CLB' },
   { value: 'Mentoring', label: 'Mentoring' },
+  { value: 'Program', label: 'Chương trình & Dự án' },
   { value: 'Moderation', label: 'Kiểm duyệt' },
 ];
 
@@ -133,7 +133,7 @@ export default function NotificationsPage() {
   };
 
   const grouped = useMemo(() => {
-    const items = notificationsQuery.data ?? [];
+    const items = (notificationsQuery.data ?? []).filter((item) => item.source !== 'Swap');
     const buckets: Record<TimeBucket, Notification[]> = {
       Mới: [],
       'Hôm nay': [],
@@ -152,7 +152,7 @@ export default function NotificationsPage() {
     <div className="space-y-6 max-w-4xl mx-auto">
       <PageHeader
         title="Thông báo của bạn"
-        description="Theo dõi cập nhật từ các yêu cầu đổi lớp, cơ hội CLB, nhóm học tập và hoạt động Mentoring"
+        description="Theo dõi cập nhật từ cơ hội CLB, nhóm học tập và hoạt động Mentoring"
       />
 
       {/* Dòng Yêu cầu theo dõi đầu danh sách (05-social-patterns #8) */}
@@ -278,7 +278,7 @@ export default function NotificationsPage() {
                       const needsAction =
                         !item.read &&
                         (item.source === 'GroupJoin' ||
-                          item.source === 'Swap' ||
+                          item.source === 'Program' ||
                           item.source === 'Mentoring');
                       return (
                         <NotificationItem

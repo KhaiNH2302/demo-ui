@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Copy, FileText, Plus, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -115,6 +115,114 @@ export const ClubOpportunityFormPage: React.FC = () => {
 
   const hasResponses = Boolean(existingOpp?.hasResponses);
 
+  const handleApplyTemplate = (tplType: 'member' | 'ctv') => {
+    if (tplType === 'member') {
+      setType('MemberRecruitment');
+      setTitle('Đợt Tuyển Thành viên Chính thức - Học kỳ Fall 2026');
+      setSummary('Gia nhập đại gia đình CLB, phát triển kỹ năng chuyên môn, kỹ năng mềm và tham gia điều hành các sự kiện lớn.');
+      setDescription(`Chào đón các bạn sinh viên nhiệt huyết gia nhập đại gia đình CLB!\n\n1. Quyền lợi thành viên:\n- Được đào tạo chuyên sâu về kỹ năng chuyên môn.\n- Tham gia trực tiếp ban tổ chức các sự kiện lớn của trường.\n- Được cấp chứng nhận hoạt động và cộng điểm rèn luyện theo quy chế.\n\n2. Cam kết:\n- Tham gia sinh hoạt định kỳ tối thiểu 1 kỳ học.\n- Hoàn thành trách nhiệm được giao trong ban.`);
+      setTagsInput('Tuyển thành viên, Sinh viên FPT, Hoạt động CLB, Đào tạo kỹ năng');
+      setExpectedCommitment('4–6 giờ/tuần trong suốt học kỳ');
+      setQuota(25);
+      setQuestions([
+        {
+          id: 'q_tpl_1',
+          label: 'Tại sao bạn muốn trở thành Thành viên chính thức của CLB chúng mình?',
+          kind: 'long',
+          required: true,
+        },
+        {
+          id: 'q_tpl_2',
+          label: 'Bạn quan tâm hoặc có thế mạnh ở ban chuyên môn nào nhất?',
+          kind: 'single',
+          required: true,
+          options: ['Ban Chuyên môn & Kỹ thuật', 'Ban Truyền thông & Báo chí', 'Ban Hậu cần & Kỹ thuật', 'Ban Sự kiện & Lễ tân'],
+        },
+        {
+          id: 'q_tpl_3',
+          label: 'Bạn có thể cam kết tham gia sinh hoạt định kỳ tối thiểu 1 kỳ học không?',
+          kind: 'single',
+          required: true,
+          options: ['Chắc chắn cam kết', 'Cần trao đổi thêm về lịch thi'],
+        },
+      ]);
+      toast.success('Đã áp dụng mẫu [Tuyển Thành viên chính thức]!');
+    } else {
+      setType('CollaboratorRecruitment');
+      setTitle('Tuyển Cộng tác viên (CTV) Hỗ trợ Chiến dịch Kỷ niệm CLB');
+      setSummary('Cơ hội thử sức làm CTV ngắn hạn theo dự án/sự kiện, tích lũy kinh nghiệm và làm quen bạn mới mà không bị gò bó cam kết dài hạn.');
+      setDescription(`CLB mở đợt tuyển CTV ngắn hạn hỗ trợ chuỗi sự kiện sắp tới.\n\nThời gian hoạt động: 2-3 tuần.\n\nQuyền lợi:\n- Giấy chứng nhận CTV đóng góp cho sự kiện.\n- Teambuilding và ăn mừng sau sự kiện.\n- Ưu tiên xét tuyển thành viên chính thức đợt sau.`);
+      setTagsInput('Tuyển CTV, Ngắn hạn, Trải nghiệm sự kiện, Cơ hội giao lưu');
+      setExpectedCommitment('Linh hoạt theo ca trực trong 2–3 tuần');
+      setQuota(15);
+      setPositions([
+        {
+          id: 'pos_tpl_1',
+          name: 'Ban Truyền thông & Media',
+          quota: 5,
+          registeredCount: 0,
+          description: 'Hỗ trợ chụp ảnh, quay video ngắn và trực page truyền thông',
+        },
+        {
+          id: 'pos_tpl_2',
+          name: 'Ban Hậu cần & Check-in',
+          quota: 6,
+          registeredCount: 0,
+          description: 'Hỗ trợ setup hội trường, điều phối khách và quét mã check-in',
+        },
+        {
+          id: 'pos_tpl_3',
+          name: 'Ban Sự kiện & MC',
+          quota: 4,
+          registeredCount: 0,
+          description: 'Điều phối sân khấu, hỗ trợ diễn giả và dẫn hoạt náo',
+        },
+      ]);
+      setQuestions([
+        {
+          id: 'q_tpl_ctv_1',
+          label: 'Kinh nghiệm hoặc lý do bạn muốn làm CTV trong sự kiện này?',
+          kind: 'long',
+          required: true,
+        },
+        {
+          id: 'q_tpl_ctv_2',
+          label: 'Khung giờ trong tuần bạn có thể có mặt trực tiếp tại trường?',
+          kind: 'multi',
+          required: true,
+          options: ['Sáng T2 - T4 - T6', 'Chiều T3 - T5', 'Cuối tuần (Thứ 7 / Chủ Nhật)'],
+        },
+      ]);
+      toast.success('Đã áp dụng mẫu [Tuyển Cộng tác viên (CTV)]!');
+    }
+  };
+
+  const handleReusePreviousOpportunity = () => {
+    setType('MemberRecruitment');
+    setTitle('Đợt Tuyển Thành viên CLB - Mùa Mới (Đồng bộ nội dung)');
+    setSummary('Kế thừa toàn bộ tiêu chuẩn tuyển dụng, cơ cấu ban và câu hỏi phỏng vấn chuẩn hóa của CLB.');
+    setDescription(`Kế thừa nội dung tuyển dụng từ đợt gần nhất:\n- Đào tạo chuyên môn & kỹ năng làm việc nhóm.\n- Tham gia quản trị các sự kiện thường niên của trường.\n- Môi trường cởi mở, tôn trọng sáng tạo.`);
+    setTagsInput('Tuyển thành viên, Đồng bộ nội dung, Mùa mới');
+    setExpectedCommitment('4–6 giờ/tuần');
+    setQuota(20);
+    setQuestions([
+      {
+        id: 'q_reused_1',
+        label: 'Giới thiệu bản thân và lý do bạn muốn đồng hành cùng CLB?',
+        kind: 'long',
+        required: true,
+      },
+      {
+        id: 'q_reused_2',
+        label: 'Ban chuyên môn bạn đăng ký xét tuyển?',
+        kind: 'single',
+        required: true,
+        options: ['Ban Chuyên môn & Lập trình', 'Ban Truyền thông', 'Ban Hậu cần'],
+      },
+    ]);
+    toast.success('Đã nạp lại nội dung và câu hỏi từ đợt tuyển trước thành công!');
+  };
+
   const saveMutation = useMutation({
     mutationFn: (status: 'Draft' | 'Published') => {
       const payload: Partial<ClubOpportunity> = {
@@ -204,6 +312,52 @@ export const ClubOpportunityFormPage: React.FC = () => {
       {/* STEP 1 */}
       {step === 1 && (
         <Card className="p-6 space-y-4">
+          {/* Mẫu biểu mẫu Template & Tái sử dụng nội dung */}
+          {!isEdit && (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-brand-50/60 to-neutral-50 border border-brand-200/80 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-brand-600" />
+                  <span className="text-sm font-semibold text-neutral-900">
+                    Khởi tạo nhanh từ Mẫu mẫu chuẩn hoặc đợt tuyển trước
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReusePreviousOpportunity}
+                  leftIcon={<RefreshCw className="h-3.5 w-3.5 text-brand-600" />}
+                  className="bg-white hover:bg-neutral-50 text-neutral-800"
+                >
+                  Tái sử dụng nội dung đợt tuyển trước
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-caption text-neutral-600">Chọn mẫu nhanh:</span>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleApplyTemplate('member')}
+                  leftIcon={<FileText className="h-3.5 w-3.5 text-brand-600" />}
+                >
+                  Mẫu Tuyển Thành viên chính thức
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleApplyTemplate('ctv')}
+                  leftIcon={<Copy className="h-3.5 w-3.5 text-brand-600" />}
+                >
+                  Mẫu Tuyển Cộng tác viên (CTV)
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-neutral-800 mb-1">

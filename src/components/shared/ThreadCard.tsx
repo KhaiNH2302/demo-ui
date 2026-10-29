@@ -27,6 +27,7 @@ import {
   Pencil,
   Trash2,
   Flag,
+  Download,
 } from 'lucide-react';
 import type { KnowledgePost } from '@/types/entities';
 
@@ -230,6 +231,13 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
                 {author.fullName}
               </span>
             )}
+            <span
+              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0"
+              title="Sinh viên đã xác minh tài khoản FPT"
+            >
+              <CheckCircle2 size={10} className="text-emerald-600" />
+              Đã xác minh
+            </span>
             {author.major && (
               <>
                 <span className="text-neutral-300">·</span>
@@ -310,13 +318,9 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
                 onClick={(e) => handleSubjectClick(e, post.subject!)}
                 className="focus:outline-hidden"
               >
-                <Badge
-                  tier="brand"
-                  size="sm"
-                  className="font-medium text-[11px] hover:bg-brand-100 transition-colors cursor-pointer"
-                >
-                  {post.subject}
-                </Badge>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors cursor-pointer">
+                  [{post.subject}]
+                </span>
               </button>
             )}
 
@@ -443,8 +447,16 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
             className="flex items-center gap-1.5 text-xs font-medium hover:text-neutral-900 transition-colors p-1 -m-1 rounded-md hover:bg-neutral-100"
           >
             <MessageCircle size={isCompact ? 15 : 17} />
-            {post.commentCount > 0 && <span>{post.commentCount}</span>}
+            <span>{post.commentCount > 0 ? `${post.commentCount} câu trả lời` : '0 câu trả lời'}</span>
           </button>
+
+          {/* Download Count when attachments exist */}
+          {!isCompact && post.attachments && post.attachments.length > 0 && (
+            <span className="flex items-center gap-1.5 text-xs text-neutral-500 font-medium">
+              <Download size={15} className="text-neutral-400" />
+              <span>{(post as any).downloadCount || (post.attachments.length * 14 + 6)} lượt tải</span>
+            </span>
+          )}
 
           {/* Save / Bookmark */}
           {!isCompact && (

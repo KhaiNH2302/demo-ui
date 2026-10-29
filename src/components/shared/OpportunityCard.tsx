@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Bookmark } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { ActivityCard } from '@/components/shared/ActivityCard';
+import { toast } from '@/components/ui/Toast';
+import { cn } from '@/lib/cn';
 import type { ClubOpportunity } from '@/types/entities';
 import type { OpportunityResponseStatus } from '@/types/status';
 
@@ -23,6 +26,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
   myResponseStatus,
   myResponseId,
 }) => {
+  const [isSaved, setIsSaved] = useState(false);
   const isFull = opportunity.used >= opportunity.quota;
   const href = `/clubs/opportunities/${opportunity.id}`;
   const coverUrl =
@@ -57,33 +61,55 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
       registeredCount={opportunity.used}
       capacity={opportunity.quota}
       actionSlot={
-        myResponseStatus ? (
-          <div className="flex items-center gap-2">
-            <StatusBadge group="opportunityResponse" status={myResponseStatus} />
-            {myResponseId && (
-              <Link to={`/clubs/registrations/${myResponseId}`}>
-                <Button variant="secondary" size="sm">
-                  Xem đơn
-                </Button>
-              </Link>
-            )}
-          </div>
-        ) : myResponseId ? (
-          <Link to={`/clubs/registrations/${myResponseId}`}>
-            <Button variant="secondary" size="sm">
-              Xem đơn
-            </Button>
-          </Link>
-        ) : (
-          <Link to={href}>
-            <Button
-              variant={opportunity.status === 'Published' && !isFull ? 'primary' : 'secondary'}
-              size="sm"
-            >
-              {opportunity.status === 'Published' && !isFull ? 'Xem & Đăng ký' : 'Xem chi tiết'}
-            </Button>
-          </Link>
-        )
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const nextState = !isSaved;
+              setIsSaved(nextState);
+              if (nextState) {
+                toast.success(`Đã lưu cơ hội "${opportunity.title}" vào danh sách theo dõi`);
+              } else {
+                toast.info(`Đã bỏ lưu cơ hội "${opportunity.title}"`);
+              }
+            }}
+            className={cn('text-caption', isSaved ? 'text-amber-600 bg-amber-50 hover:bg-amber-100' : 'text-neutral-500')}
+            leftIcon={<Bookmark className={cn('h-3.5 w-3.5', isSaved && 'fill-amber-500 text-amber-500')} />}
+          >
+            {isSaved ? 'Đã lưu' : 'Lưu'}
+          </Button>
+
+          {myResponseStatus ? (
+            <div className="flex items-center gap-2">
+              <StatusBadge group="opportunityResponse" status={myResponseStatus} />
+              {myResponseId && (
+                <Link to={`/clubs/registrations/${myResponseId}`}>
+                  <Button variant="secondary" size="sm">
+                    Xem đơn
+                  </Button>
+                </Link>
+              )}
+            </div>
+          ) : myResponseId ? (
+            <Link to={`/clubs/registrations/${myResponseId}`}>
+              <Button variant="secondary" size="sm">
+                Xem đơn
+              </Button>
+            </Link>
+          ) : (
+            <Link to={href}>
+              <Button
+                variant={opportunity.status === 'Published' && !isFull ? 'primary' : 'secondary'}
+                size="sm"
+              >
+                {opportunity.status === 'Published' && !isFull ? 'Xem & Đăng ký' : 'Xem chi tiết'}
+              </Button>
+            </Link>
+          )}
+        </div>
       }
     />
   );

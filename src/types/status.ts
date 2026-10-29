@@ -11,16 +11,26 @@ export type Role =
   | 'treasurer'
   // Quản lý nghiệp vụ (business admin): kiểm duyệt, duyệt CLB/chương trình/Mentor, danh mục
   | 'manager'
+  | 'school_admin'
   | 'event_manager'
+  | 'school_admin'
   | 'admin'
   | 'Student'
   | 'Mentor'
   | 'ClubManager'
   | 'ClubTreasurer'
   | 'Manager'
+  | 'SchoolAdmin'
   | 'Admin';
 
 export type UserRole = Role;
+
+export type SchoolAffiliationStatus =
+  | 'Pending'
+  | 'Verified'
+  | 'NeedsMoreInfo'
+  | 'Rejected'
+  | 'Revoked';
 
 export type UserAccountStatus =
   | 'active'
@@ -159,6 +169,7 @@ export type MentoringRequestStatus =
 export type SupportMode = 'online' | 'offline' | 'chat' | 'Online' | 'Offline' | 'Chat';
 
 export type NotificationSource =
+  | 'SchoolAffiliation'
   | 'Swap'
   | 'GroupJoin'
   | 'ClubApplication'

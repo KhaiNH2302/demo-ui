@@ -2,12 +2,11 @@ export interface FaqItem {
   id: string;
   question: string;
   answer: string;
-  category: 'account' | 'swap' | 'knowledge' | 'groups' | 'clubs' | 'mentoring';
+  category: 'account' | 'knowledge' | 'groups' | 'clubs' | 'mentoring';
 }
 
 export const faqCategories = [
   { key: 'account', label: 'Tài khoản & Xác minh' },
-  { key: 'swap', label: 'Đổi lớp học phần' },
   { key: 'knowledge', label: 'Chia sẻ kiến thức' },
   { key: 'groups', label: 'Tìm nhóm kết nối' },
   { key: 'clubs', label: 'Câu lạc bộ' },
@@ -28,26 +27,10 @@ export const faqList: FaqItem[] = [
     category: 'account',
     question: 'Dữ liệu cá nhân và tiêu chí matching của tôi được bảo mật như thế nào?',
     answer:
-      'Dữ liệu hồ sơ và lịch rảnh chỉ được dùng để tính toán điểm tương thích matching. Bạn có toàn quyền bật/tắt quyền dùng dữ liệu cho từng tính năng (Đổi lớp, Tìm nhóm, Mentor) trong phần Cài đặt quyền riêng tư.',
+      'Dữ liệu hồ sơ và lịch rảnh chỉ được dùng để tính toán điểm tương thích matching. Bạn có toàn quyền bật/tắt quyền dùng dữ liệu cho từng tính năng (Tìm nhóm, Mentor) trong phần Cài đặt quyền riêng tư.',
   },
 
-  // 2. Đổi lớp
-  {
-    id: 'swap-gia-tri-hoc-vu',
-    category: 'swap',
-    question: 'Kết nối đổi lớp trên SCS có thay thế thủ tục chính thức của phòng đào tạo không?',
-    answer:
-      'Không. SCS chỉ đóng vai trò là nền tảng kết nối thông tin và tìm đối tác có nhu cầu hoán đổi lớp học phần tương ứng. Sau khi hai bên xác nhận kết nối thành công, bạn và đối tác vẫn phải tự thực hiện thủ tục chuyển lớp theo đúng quy định của Nhà trường.',
-  },
-  {
-    id: 'swap-ai-matching',
-    category: 'swap',
-    question: 'Điểm tương thích AI trong tìm kiếm đối tác đổi lớp được tính như thế nào?',
-    answer:
-      'Hệ thống đối chiếu mã lớp hiện tại, mã lớp mong muốn và sự trùng khớp trong lịch rảnh tự khai giữa hai sinh viên để đưa ra % phù hợp và lý do gợi ý cụ thể.',
-  },
-
-  // 3. Kiến thức
+  // 2. Kiến thức
   {
     id: 'pending-review',
     category: 'knowledge',

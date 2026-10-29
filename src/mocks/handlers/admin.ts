@@ -5,8 +5,15 @@ import { seedClubs, seedClubRepresentativeRequests } from '../data/clubs';
 import { seedProgramChannels } from '../data/programs';
 import { seedCourseOfferings } from '../data/courseOfferings';
 import { seedAuditLogs, seedSystemSettings, seedTags } from '../data/admin';
+import { seedSchoolAffiliations } from '../data/schoolAffiliations';
 import { mockDelay, isScenarioActive } from '../utils';
 import type { SystemSettings } from '@/types/entities';
+import { UNIVERSITIES } from '@/features/profile/profileConstants';
+
+const systemAdminFrom = (request: Request) => {
+  const id = request.headers.get('authorization')?.replace(/^Bearer mock_jwt_token_/, '');
+  return seedUsers.find((user) => user.id === id && user.roles.includes('admin'));
+};
 
 export const adminHandlers = [
   // A1 Dashboard
@@ -30,7 +37,7 @@ export const adminHandlers = [
           { module: 'Câu lạc bộ (FE-04)', count: 64 },
           { module: 'Tình nguyện & Workshop (FE-06)', count: 48 },
           { module: 'Mentoring (FE-05)', count: 56 },
-          { module: 'Đổi lớp & Nhóm học tập', count: 77 },
+          { module: 'Nhóm học tập (FE-02)', count: 77 },
         ],
       },
     });
@@ -432,33 +439,69 @@ export const adminHandlers = [
   }),
 
   // A7 Admins
-  http.get('/api/v1/admin/admins', async () => {
+  http.get('/api/v1/admin/admins', async ({ request }) => {
     await mockDelay();
+    if (!systemAdminFrom(request)) return HttpResponse.json({ error: { code: 'FORBIDDEN', message: 'Chỉ System Admin được phân quyền.' } }, { status: 403 });
     const admins = seedUsers.filter(
-      (u) => u.roles.includes('admin') || u.roles.includes('manager')
+      (u) => u.roles.includes('admin') || u.roles.includes('manager') || u.roles.includes('school_admin')
     );
     const safe = admins.map(({ password: _, ...u }) => u);
     return HttpResponse.json({ data: safe });
   }),
 
+  // School Affiliations (UC-64 Review Student School Affiliation)
+  http.get('/api/v1/admin/school-affiliations', async () => {
+    await mockDelay();
+    return HttpResponse.json({ data: seedSchoolAffiliations });
+  }),
+
+  http.put('/api/v1/admin/school-affiliations/:id', async ({ params, request }) => {
+    await mockDelay();
+    const body = (await request.json()) as { status: string; reason?: string; reviewedBy?: string };
+    const item = seedSchoolAffiliations.find((a) => a.id === params.id);
+    if (!item) {
+      return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Hồ sơ không tồn tại' } }, { status: 404 });
+    }
+    item.status = body.status as any;
+    item.reviewedAt = new Date().toISOString();
+    if (body.reason) item.reason = body.reason;
+    if (body.reviewedBy) item.reviewedBy = body.reviewedBy;
+    return HttpResponse.json({ data: item });
+  }),
+
   http.post('/api/v1/admin/admins', async ({ request }) => {
     await mockDelay();
+    const admin = systemAdminFrom(request);
+    if (!admin) return HttpResponse.json({ error: { code: 'FORBIDDEN', message: 'Chỉ System Admin được phân quyền.' } }, { status: 403 });
     const body = (await request.json()) as {
       userId: string;
-      role: 'manager';
+      role: 'manager' | 'school_admin';
+      school?: string;
       adminPermissions?: string[];
+      assignedSchool?: string;
+      reason?: string;
     };
     const user = seedUsers.find((u) => u.id === body.userId);
+    if (!user) return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Không tìm thấy tài khoản.' } }, { status: 404 });
+    if (!body.reason?.trim()) return HttpResponse.json({ error: { code: 'REASON_REQUIRED', message: 'Cần nêu lý do cấp quyền.' } }, { status: 400 });
+    if (body.role === 'school_admin' && !UNIVERSITIES.includes(body.assignedSchool || '')) return HttpResponse.json({ error: { code: 'INVALID_SCOPE', message: 'Cần chọn một trường hợp lệ.' } }, { status: 400 });
     if (user && !user.roles.includes(body.role)) {
       user.roles.push(body.role);
     }
     if (user && body.role === 'manager') user.adminPermissions = body.adminPermissions || [];
+    if (user && body.role === 'school_admin') {
+      if (body.school) user.school = body.school;
+      user.adminPermissions = ['dashboard', 'school_affiliations'];
+    }
+    if (body.role === 'school_admin') user.assignedSchool = body.assignedSchool;
+    seedAuditLogs.unshift({ id: `log_role_${Date.now()}`, actorId: admin.id, action: `Cấp quyền ${body.role}`, targetType: 'User', targetId: user.id, reason: body.reason.trim(), createdAt: new Date().toISOString() });
     const { password: _, ...safeUser } = user || ({} as any);
     return HttpResponse.json({ data: safeUser });
   }),
 
   http.put('/api/v1/admin/admins/:id/permissions', async ({ params, request }) => {
     await mockDelay();
+    if (!systemAdminFrom(request)) return HttpResponse.json({ error: { code: 'FORBIDDEN', message: 'Chỉ System Admin được phân quyền.' } }, { status: 403 });
     const body = (await request.json()) as { adminPermissions?: string[] };
     const user = seedUsers.find((u) => u.id === params.id);
     if (!user) return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Không tìm thấy quản trị viên' } }, { status: 404 });
@@ -467,8 +510,27 @@ export const adminHandlers = [
     return HttpResponse.json({ data: safeUser });
   }),
 
-  http.delete('/api/v1/admin/admins/:id', async ({ params }) => {
+  http.put('/api/v1/admin/admins/:id/scope', async ({ params, request }) => {
     await mockDelay();
+    const admin = systemAdminFrom(request);
+    if (!admin) return HttpResponse.json({ error: { code: 'FORBIDDEN', message: 'Chỉ System Admin được phân quyền.' } }, { status: 403 });
+    const body = await request.json() as { assignedSchool?: string; reason?: string };
+    const user = seedUsers.find((item) => item.id === params.id && item.roles.includes('school_admin'));
+    if (!user) return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Không tìm thấy School Admin.' } }, { status: 404 });
+    if (!UNIVERSITIES.includes(body.assignedSchool || '')) return HttpResponse.json({ error: { code: 'INVALID_SCOPE', message: 'Cần chọn một trường hợp lệ.' } }, { status: 400 });
+    if (!body.reason?.trim()) return HttpResponse.json({ error: { code: 'REASON_REQUIRED', message: 'Cần nêu lý do đổi phạm vi.' } }, { status: 400 });
+    user.assignedSchool = body.assignedSchool;
+    seedAuditLogs.unshift({ id: `log_scope_${Date.now()}`, actorId: admin.id, action: 'Đổi phạm vi School Admin', targetType: 'User', targetId: user.id, reason: body.reason.trim(), createdAt: new Date().toISOString() });
+    const { password: _, ...safeUser } = user;
+    return HttpResponse.json({ data: safeUser });
+  }),
+
+  http.delete('/api/v1/admin/admins/:id', async ({ params, request }) => {
+    await mockDelay();
+    const admin = systemAdminFrom(request);
+    if (!admin) return HttpResponse.json({ error: { code: 'FORBIDDEN', message: 'Chỉ System Admin được phân quyền.' } }, { status: 403 });
+    const body = await request.json().catch(() => ({})) as { reason?: string };
+    if (!body.reason?.trim()) return HttpResponse.json({ error: { code: 'REASON_REQUIRED', message: 'Cần nêu lý do thu hồi quyền.' } }, { status: 400 });
     const targetUser = seedUsers.find((u) => u.id === params.id);
 
     if (targetUser?.roles.includes('admin') || isScenarioActive('admin_protected')) {
@@ -484,9 +546,10 @@ export const adminHandlers = [
     }
 
     if (targetUser) {
-      targetUser.roles = targetUser.roles.filter(
-        (r) => r !== 'manager'
-      );
+      const revokedRole = targetUser.roles.includes('school_admin') ? 'school_admin' : 'manager';
+      targetUser.roles = targetUser.roles.filter((r) => r !== revokedRole);
+      if (revokedRole === 'school_admin') targetUser.assignedSchool = undefined;
+      seedAuditLogs.unshift({ id: `log_revoke_${Date.now()}`, actorId: admin.id, action: `Thu hồi quyền ${revokedRole}`, targetType: 'User', targetId: targetUser.id, reason: body.reason.trim(), createdAt: new Date().toISOString() });
     }
 
     return HttpResponse.json({ data: { success: true } });

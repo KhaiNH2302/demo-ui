@@ -28,8 +28,11 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   const { can } = useViewer();
   const openGate = useLoginGateStore((s) => s.openGate);
 
-  const resolvedSrc = user?.avatarUrl || src;
   const resolvedName = user?.fullName || name || 'User';
+  const resolvedSrc =
+    user?.avatarUrl ||
+    src ||
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user?.id || resolvedName)}`;
 
   const avatar = (
     <Avatar

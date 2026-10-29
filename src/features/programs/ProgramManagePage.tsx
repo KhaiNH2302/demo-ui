@@ -4,16 +4,23 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   Check,
+  CheckCircle2,
   Download,
   Edit3,
+  Filter,
   Megaphone,
   MessageSquare,
   Plus,
+  QrCode,
+  ScanLine,
+  ShieldCheck,
+  UserCheck,
   X,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import {
@@ -47,6 +54,15 @@ export const ProgramManagePage: React.FC = () => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const [reviewReason, setReviewReason] = useState('');
+  const [filterSlot, setFilterSlot] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+
+  const [checkInSlot, setCheckInSlot] = useState('all');
+  const [checkInInput, setCheckInInput] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [checkedInRecords, setCheckedInRecords] = useState<Record<string, string>>({
+    'pr-1': '08:15:30',
+  });
 
   const [annOpen, setAnnOpen] = useState(false);
   const [annTitle, setAnnTitle] = useState('');
@@ -104,7 +120,79 @@ export const ProgramManagePage: React.FC = () => {
   if (!user?.roles.includes('event_manager') || prog.organizer.userId !== user.id) return <ErrorState title="Không có quyền quản lý chương trình này" />;
   const registrations = prog.registrations || [];
   const confirmedRegs = registrations.filter((r) => r.status === 'Confirmed');
+  const offeredRegs = registrations.filter((r) => (r.status as string) === 'Offered');
   const announcements = prog.announcements || [];
+
+  // Công thức: Available = Quota - Confirmed - Offered (còn hiệu lực)
+  const availableSlotsTotal = Math.max(0, prog.quota - confirmedRegs.length - offeredRegs.length);
+
+  const filteredRegs = registrations.filter((r) => {
+    if (filterSlot !== 'all' && r.slotId !== filterSlot) return false;
+    if (filterStatus !== 'all' && r.status !== filterStatus) return false;
+    return true;
+  });
+
+  const handlePerformCheckIn = (reg: ProgramRegistration) => {
+    if (checkedInRecords[reg.id]) {
+      toast.error(`⚠️ Cảnh báo chống quét trùng: Mã của ${reg.profileSnapshot.fullName} đã điểm danh lúc ${checkedInRecords[reg.id]}! Không thể quét trùng.`);
+      return;
+    }
+    const nowTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setCheckedInRecords((prev) => ({ ...prev, [reg.id]: nowTime }));
+    toast.success(`🎉 Điểm danh thành công: ${reg.profileSnapshot.fullName} (${reg.profileSnapshot.studentCode}) - Ca: ${reg.slotName || 'Mặc định'}`);
+  };
+
+  const handleManualCodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanCode = checkInInput.trim().toUpperCase();
+    if (!cleanCode) return;
+
+    const match = confirmedRegs.find(
+      (r) =>
+        r.id.toUpperCase() === cleanCode ||
+        `SCS-2026-REG${r.id.slice(-6).toUpperCase()}` === cleanCode ||
+        r.profileSnapshot.studentCode.toUpperCase() === cleanCode ||
+        cleanCode.endsWith(r.id.slice(-6).toUpperCase())
+    );
+
+    if (!match) {
+      toast.error(`Không tìm thấy đăng ký nào khớp với mã "${checkInInput}". Vui lòng kiểm tra lại.`);
+      return;
+    }
+
+    if (checkedInRecords[match.id]) {
+      toast.error(`⚠️ Cảnh báo quét trùng: Mã này đã điểm danh lúc ${checkedInRecords[match.id]}!`);
+      return;
+    }
+
+    handlePerformCheckIn(match);
+    setCheckInInput('');
+  };
+
+  const handleBatchApprove = async () => {
+    const pendingRegs = registrations.filter((r) => r.status === 'Submitted');
+    if (pendingRegs.length === 0) {
+      toast.info('Không có hồ sơ nào đang chờ duyệt');
+      return;
+    }
+    let approvedCount = 0;
+    for (const reg of pendingRegs) {
+      if (reg.slotId && prog.slots) {
+        const slot = prog.slots.find((s) => s.id === reg.slotId);
+        if (slot && slot.confirmedCount >= slot.quota) continue;
+      } else if (prog.confirmedCount >= prog.quota) {
+        continue;
+      }
+      try {
+        await apiClient.put(`/programs/registrations/${reg.id}`, { status: 'Confirmed' });
+        approvedCount++;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ['program', id] });
+    toast.success(`Đã duyệt hàng loạt ${approvedCount} hồ sơ hợp lệ thành công!`);
+  };
 
   const handleExportCsv = () => {
     const headers = ['Họ tên,MSSV,Email,Ngành,Khóa,Ca đăng ký,Trạng thái'];
@@ -179,7 +267,6 @@ export const ProgramManagePage: React.FC = () => {
         </div>
       </Card>
 
-      <Input aria-label="Lý do từ chối đăng ký" placeholder="Lý do từ chối (bắt buộc khi từ chối đăng ký)" value={reviewReason} onChange={(e) => setReviewReason(e.target.value)} />
       <Tabs defaultValue="registrations">
         <TabsList>
           <TabsTrigger value="registrations">
@@ -188,17 +275,99 @@ export const ProgramManagePage: React.FC = () => {
           <TabsTrigger value="participants">
             Người tham gia đã xác nhận ({confirmedRegs.length})
           </TabsTrigger>
+          <TabsTrigger value="checkin">
+            Quét QR &amp; Điểm danh ({Object.keys(checkedInRecords).length}/{confirmedRegs.length})
+          </TabsTrigger>
           <TabsTrigger value="announcements">
             Thông báo chung ({announcements.length}/5 hôm nay)
           </TabsTrigger>
-
         </TabsList>
 
         <TabsContent value="registrations" className="space-y-4">
-          {registrations.length === 0 ? (
+          {/* Tỷ lệ chỗ & Bộ lọc theo Ca và Trạng thái */}
+          <Card className="p-4 bg-neutral-50 border-neutral-200 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <span className="text-caption font-semibold text-neutral-600 block">
+                  Tỷ lệ nhận chỗ &amp; Sức chứa
+                </span>
+                <div className="text-body-sm text-neutral-800 flex items-center gap-2 mt-0.5">
+                  <span>
+                    Đã nhận: <strong className="text-brand-700">{prog.confirmedCount}/{prog.quota}</strong>
+                  </span>
+                  <span>·</span>
+                  <span>
+                    Chỗ trống còn lại (Available): <strong className="text-emerald-700">{availableSlotsTotal} chỗ</strong>
+                  </span>
+                </div>
+                <div className="text-xs text-neutral-500 mt-0.5">
+                  Công thức: <code>Available = Quota ({prog.quota}) - Confirmed ({confirmedRegs.length}) - Offered ({offeredRegs.length})</code>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleBatchApprove}
+                  leftIcon={<CheckCircle2 className="h-4 w-4" />}
+                >
+                  Duyệt hàng loạt hồ sơ chờ
+                </Button>
+              </div>
+            </div>
+
+            {/* Filter controls */}
+            <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-neutral-200">
+              <div className="flex items-center gap-2">
+                <span className="text-caption text-neutral-600 whitespace-nowrap">Lọc theo Ca:</span>
+                <Select
+                  value={filterSlot}
+                  onChange={(e) => setFilterSlot(e.target.value)}
+                  className="w-48 text-caption"
+                >
+                  <option value="all">Tất cả các ca</option>
+                  {prog.slots?.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.confirmedCount}/{s.quota})
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-caption text-neutral-600 whitespace-nowrap">Lọc theo Trạng thái:</span>
+                <Select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-44 text-caption"
+                >
+                  <option value="all">Mọi trạng thái</option>
+                  <option value="Submitted">Chờ xét duyệt</option>
+                  <option value="Confirmed">Đã xác nhận</option>
+                  <option value="Waitlisted">Chờ có chỗ</option>
+                  <option value="Offered">Được mời</option>
+                  <option value="Rejected">Đã từ chối</option>
+                </Select>
+              </div>
+
+              <span className="text-caption text-neutral-500 ml-auto">
+                Hiển thị {filteredRegs.length} / {registrations.length} hồ sơ
+              </span>
+            </div>
+          </Card>
+
+          <Input
+            aria-label="Lý do từ chối đăng ký"
+            placeholder="Lý do từ chối (bắt buộc khi bấm Từ chối đơn)"
+            value={reviewReason}
+            onChange={(e) => setReviewReason(e.target.value)}
+          />
+
+          {filteredRegs.length === 0 ? (
             <EmptyState
-              title="Chưa có lượt đăng ký nào"
-              description="Chia sẻ đường dẫn kênh chương trình để sinh viên đăng ký tham gia."
+              title="Không tìm thấy đăng ký phù hợp"
+              description="Thử thay đổi bộ lọc Ca hoặc Trạng thái để xem các hồ sơ khác."
             />
           ) : (
             <Card className="overflow-hidden">
@@ -214,7 +383,7 @@ export const ProgramManagePage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
-                    {registrations.map((reg) => (
+                    {filteredRegs.map((reg) => (
                       <tr key={reg.id} className="hover:bg-neutral-50/70">
                         <td className="py-3 px-4">
                           <div className="font-semibold text-neutral-900">
@@ -267,7 +436,13 @@ export const ProgramManagePage: React.FC = () => {
                                     status: 'Confirmed',
                                   })
                                 }
-                                disabled={reviewRegMutation.isPending || prog.confirmedCount >= prog.quota || (Boolean(reg.slotId) && (prog.slots?.find((slot) => slot.id === reg.slotId)?.confirmedCount || 0) >= (prog.slots?.find((slot) => slot.id === reg.slotId)?.quota || 0))}
+                                disabled={
+                                  reviewRegMutation.isPending ||
+                                  prog.confirmedCount >= prog.quota ||
+                                  (Boolean(reg.slotId) &&
+                                    (prog.slots?.find((slot) => slot.id === reg.slotId)?.confirmedCount || 0) >=
+                                      (prog.slots?.find((slot) => slot.id === reg.slotId)?.quota || 0))
+                                }
                                 leftIcon={<Check className="h-3.5 w-3.5" />}
                               >
                                 Xác nhận
@@ -292,6 +467,165 @@ export const ProgramManagePage: React.FC = () => {
               </div>
             </Card>
           )}
+        </TabsContent>
+
+        {/* TAB QUÉT QR & ĐIỂM DANH */}
+        <TabsContent value="checkin" className="space-y-4">
+          <Card className="p-5 space-y-4 bg-gradient-to-r from-neutral-50 to-brand-50/20 border-brand-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-card-title text-neutral-900 flex items-center gap-2">
+                  <QrCode className="h-5 w-5 text-brand-600" />
+                  Điểm danh theo ca &amp; Quét mã QR
+                </h3>
+                <p className="text-caption text-neutral-600">
+                  Kiểm soát chống quét trùng tự động: Hệ thống chỉ ghi nhận 1 lần quét duy nhất trên mỗi mã đăng ký.
+                </p>
+              </div>
+
+              {/* Ca filter for checkin */}
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-caption font-semibold text-neutral-700">Chọn ca điểm danh:</span>
+                <Select
+                  value={checkInSlot}
+                  onChange={(e) => setCheckInSlot(e.target.value)}
+                  className="w-44 text-caption"
+                >
+                  <option value="all">Tất cả các ca</option>
+                  {prog.slots?.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+
+            {/* Check-in input box */}
+            <form onSubmit={handleManualCodeSubmit} className="flex gap-2.5 max-w-xl">
+              <Input
+                placeholder="Nhập mã check-in (VD: SCS-2026-REG... hoặc MSSV)"
+                value={checkInInput}
+                onChange={(e) => setCheckInInput(e.target.value)}
+                className="font-mono text-sm uppercase"
+              />
+              <Button type="submit" variant="primary" leftIcon={<ShieldCheck className="h-4 w-4" />}>
+                Xác nhận điểm danh
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsScanning(!isScanning);
+                  toast.info(isScanning ? 'Đã tắt chế độ quét camera' : 'Đang kích hoạt camera quét QR...');
+                }}
+                leftIcon={<ScanLine className="h-4 w-4" />}
+              >
+                {isScanning ? 'Tắt quét' : 'Quét Camera'}
+              </Button>
+            </form>
+
+            {isScanning && (
+              <div className="p-6 bg-neutral-900 rounded-xl text-center text-white space-y-3 max-w-md mx-auto border-2 border-brand-500 animate-pulse">
+                <ScanLine className="h-10 w-10 text-brand-400 mx-auto" />
+                <div className="text-sm font-semibold">Khung quét Camera QR Code</div>
+                <p className="text-caption text-neutral-300">
+                  Hướng camera vào mã QR trên màn hình điện thoại của sinh viên để check-in tự động.
+                </p>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    if (confirmedRegs[0]) {
+                      handlePerformCheckIn(confirmedRegs[0]);
+                    }
+                    setIsScanning(false);
+                  }}
+                >
+                  Mô phỏng quét mã sinh viên đầu tiên
+                </Button>
+              </div>
+            )}
+          </Card>
+
+          {/* Table of confirmed attendees for this shift */}
+          <Card className="overflow-hidden">
+            <div className="p-4 border-b border-neutral-200 flex items-center justify-between">
+              <div className="text-caption font-semibold text-neutral-700">
+                Danh sách người tham gia theo ca ({confirmedRegs.filter((r) => checkInSlot === 'all' || r.slotId === checkInSlot).length} sinh viên)
+              </div>
+              <div className="text-caption text-emerald-700 font-semibold">
+                Đã có {confirmedRegs.filter((r) => checkedInRecords[r.id]).length} sinh viên check-in
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-neutral-50 border-b border-neutral-200 text-caption font-semibold text-neutral-600">
+                  <tr>
+                    <th className="py-3 px-4">Sinh viên</th>
+                    <th className="py-3 px-4">Mã Check-in</th>
+                    <th className="py-3 px-4">Ca hoạt động</th>
+                    <th className="py-3 px-4">Trạng thái điểm danh</th>
+                    <th className="py-3 px-4 text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {confirmedRegs
+                    .filter((r) => checkInSlot === 'all' || r.slotId === checkInSlot)
+                    .map((reg) => {
+                      const checkInTime = checkedInRecords[reg.id];
+                      return (
+                        <tr key={reg.id} className="hover:bg-neutral-50/70">
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-neutral-900">
+                              {reg.profileSnapshot.fullName}
+                            </div>
+                            <div className="text-caption text-neutral-500">
+                              {reg.profileSnapshot.studentCode} · {reg.profileSnapshot.major}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <code className="text-caption font-mono font-bold text-neutral-800 bg-neutral-150 px-2 py-0.5 rounded">
+                              SCS-2026-REG{reg.id.slice(-6).toUpperCase()}
+                            </code>
+                          </td>
+                          <td className="py-3 px-4 text-caption text-neutral-700">
+                            {reg.slotName || 'Ca chung'}
+                          </td>
+                          <td className="py-3 px-4">
+                            {checkInTime ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-caption font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Đã điểm danh ({checkInTime})
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-caption font-semibold bg-neutral-100 text-neutral-600">
+                                Chưa điểm danh
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {checkInTime ? (
+                              <span className="text-caption text-neutral-400">Đã check-in</span>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePerformCheckIn(reg)}
+                                leftIcon={<UserCheck className="h-3.5 w-3.5" />}
+                              >
+                                Điểm danh nhanh
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         </TabsContent>
 
         <TabsContent value="participants" className="space-y-4">

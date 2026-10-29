@@ -11,13 +11,15 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
 import { Select } from '@/components/ui/Select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
 import { toast } from '@/components/ui/Toast';
 import { SearchInput } from '@/components/shared/SearchInput';
 import { Pagination } from '@/components/ui/Pagination';
-import { ShieldCheck, Plus, Trash2, ShieldAlert, Pencil, Search } from 'lucide-react';
+import { ShieldCheck, Plus, Trash2, ShieldAlert, Pencil, Search, GraduationCap } from 'lucide-react';
 import type { User } from '@/types/entities';
+import { UNIVERSITIES } from '@/features/profile/profileConstants';
 
 export const AdminManagementPage: React.FC = () => {
   const managerPermissionOptions = [
@@ -38,9 +40,14 @@ export const AdminManagementPage: React.FC = () => {
   const [selectedUserLabel, setSelectedUserLabel] = useState('');
   const [editingAdmin, setEditingAdmin] = useState<User | null>(null);
   const [editingPermissions, setEditingPermissions] = useState<string[]>([]);
+  const [editingSchoolAdmin, setEditingSchoolAdmin] = useState<User | null>(null);
+  const [assignedSchool, setAssignedSchool] = useState(UNIVERSITIES[0]);
+  const [scopeReason, setScopeReason] = useState('');
   const [addForm, setAddForm] = useState({
     userId: '',
-    role: 'manager' as const,
+    role: 'manager' as 'manager' | 'school_admin',
+    assignedSchool: UNIVERSITIES[0],
+    reason: '',
     permissions: managerPermissionOptions.map((item) => item.key),
   });
   const [revokeUserId, setRevokeUserId] = useState<string | null>(null);
@@ -55,7 +62,7 @@ export const AdminManagementPage: React.FC = () => {
   });
   const usersQuery = useQuery({
     queryKey: ['admin', 'users', 'permission-search', userSearch],
-    queryFn: () => apiClient.get<User[]>('/admin/users', { params: { search: userSearch } }),
+    queryFn: () => apiClient.get<User[]>('/admin/users', { params: { q: userSearch } }),
     enabled: isAddOpen && userSearch.trim().length >= 2,
   });
   const filteredAdmins = (adminsQuery.data || []).filter((admin) => `${admin.fullName} ${admin.email} ${admin.id} ${admin.roles.join(' ')}`.toLowerCase().includes(adminSearch.toLowerCase()));
@@ -65,11 +72,13 @@ export const AdminManagementPage: React.FC = () => {
     mutationFn: () => apiClient.post('/admin/admins', {
       ...addForm,
       adminPermissions: addForm.role === 'manager' ? addForm.permissions : undefined,
+      assignedSchool: addForm.role === 'school_admin' ? addForm.assignedSchool : undefined,
+      reason: addForm.reason,
     }),
     onSuccess: () => {
       toast.success('Thêm quản trị viên thành công!');
       setIsAddOpen(false);
-      setAddForm({ userId: '', role: 'manager', permissions: managerPermissionOptions.map((item) => item.key) });
+      setAddForm({ userId: '', role: 'manager', assignedSchool: UNIVERSITIES[0], reason: '', permissions: managerPermissionOptions.map((item) => item.key) });
       setUserSearch('');
       setSelectedUserLabel('');
       queryClient.invalidateQueries({ queryKey: ['admin', 'admins'] });
@@ -89,8 +98,19 @@ export const AdminManagementPage: React.FC = () => {
     onError: () => toast.error('Không thể cập nhật quyền Manager.'),
   });
 
+  const updateSchoolScopeMutation = useMutation({
+    mutationFn: () => apiClient.put(`/admin/admins/${editingSchoolAdmin?.id}/scope`, { assignedSchool, reason: scopeReason }),
+    onSuccess: () => {
+      toast.success('Đã cập nhật trường được phân công.');
+      setEditingSchoolAdmin(null);
+      setScopeReason('');
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'admins'] });
+    },
+    onError: () => toast.error('Không thể cập nhật phạm vi trường.'),
+  });
+
   const revokeMutation = useMutation({
-    mutationFn: (targetId: string) => apiClient.delete(`/admin/admins/${targetId}`),
+    mutationFn: ({ targetId, reason }: { targetId: string; reason: string }) => apiClient.delete(`/admin/admins/${targetId}`, { data: { reason } }),
     onSuccess: () => {
       toast.success('Đã thu hồi quyền quản trị viên!');
       setRevokeUserId(null);
@@ -119,7 +139,7 @@ export const AdminManagementPage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Phân quyền Quản trị viên"
-        description="Admin duy nhất quản lý các Manager và phạm vi chức năng được phép truy cập"
+        description="System Admin cấp quyền Manager hoặc School Admin; School Admin chỉ xác minh sinh viên của trường được gán."
         breadcrumbs={[
           { label: 'Admin Portal', href: '/admin' },
           { label: 'Phân quyền' },
@@ -155,6 +175,8 @@ export const AdminManagementPage: React.FC = () => {
                         <Badge variant="primary" className="font-semibold">
                           <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Admin toàn hệ thống
                         </Badge>
+                      ) : admin.roles.includes('school_admin') ? (
+                        <Badge variant="secondary">School Admin · Xác minh sinh viên</Badge>
                       ) : (
                         <Badge variant="secondary">
                           Quản lý nghiệp vụ (Manager)
@@ -162,7 +184,7 @@ export const AdminManagementPage: React.FC = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 text-xs font-medium">
-                      {admin.school || 'Tất cả cơ sở'}
+                      {admin.roles.includes('school_admin') ? admin.assignedSchool : 'Toàn hệ thống'}
                     </td>
                     <td className="px-6 py-4 text-right">
                       {admin.roles.includes('manager') && (
@@ -177,7 +199,8 @@ export const AdminManagementPage: React.FC = () => {
                           <Pencil className="w-4 h-4 mr-1" /> Chỉnh quyền
                         </Button>
                       )}
-                      {admin.roles.includes('manager') && (
+                      {admin.roles.includes('school_admin') && <Button variant="ghost" size="sm" onClick={() => { setEditingSchoolAdmin(admin); setAssignedSchool(admin.assignedSchool || UNIVERSITIES[0]); setScopeReason(''); }}><Pencil className="w-4 h-4 mr-1" /> Đổi trường</Button>}
+                      {(admin.roles.includes('manager') || admin.roles.includes('school_admin')) && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -250,7 +273,7 @@ export const AdminManagementPage: React.FC = () => {
               <Select
                 value={addForm.role}
                 onChange={(e) => setAddForm({ ...addForm, role: e.target.value as any })}
-                options={[{ label: 'Quản lý nghiệp vụ (Manager)', value: 'manager' }]}
+                options={[{ label: 'Quản lý nghiệp vụ (Manager)', value: 'manager' }, { label: 'School Admin · Xác minh sinh viên', value: 'school_admin' }]}
               />
             </FormField>
             {addForm.role === 'manager' && (
@@ -281,15 +304,29 @@ export const AdminManagementPage: React.FC = () => {
                 </p>
               </FormField>
             )}
+            {addForm.role === 'school_admin' && <FormField label="Trường được phân công" required>
+              <Select value={addForm.assignedSchool} onChange={(event) => setAddForm({ ...addForm, assignedSchool: event.target.value })} options={UNIVERSITIES.map((school) => ({ label: school, value: school }))} />
+              <p className="mt-1 text-xs text-[var(--text-muted)]">School Admin chỉ được duyệt hồ sơ của một trường này.</p>
+            </FormField>}
+            <FormField label="Lý do cấp quyền" required><Textarea rows={2} value={addForm.reason} onChange={(event) => setAddForm({ ...addForm, reason: event.target.value })} placeholder="Nêu lý do phân quyền" /></FormField>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddOpen(false)}>
               Hủy
             </Button>
-            <Button onClick={() => addAdminMutation.mutate()} loading={addAdminMutation.isPending}>
+            <Button onClick={() => addAdminMutation.mutate()} disabled={!addForm.userId || !addForm.reason.trim()} loading={addAdminMutation.isPending}>
               Cấp quyền
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingSchoolAdmin} onOpenChange={(open) => !open && setEditingSchoolAdmin(null)}>
+        <DialogContent><DialogHeader><DialogTitle>Đổi trường được phân công</DialogTitle></DialogHeader>
+          <p className="text-sm">{editingSchoolAdmin?.fullName}</p>
+          <Select value={assignedSchool} onChange={(event) => setAssignedSchool(event.target.value)} options={UNIVERSITIES.map((school) => ({ label: school, value: school }))} />
+          <Textarea rows={2} value={scopeReason} onChange={(event) => setScopeReason(event.target.value)} placeholder="Lý do đổi phạm vi trường" />
+          <DialogFooter><Button variant="outline" onClick={() => setEditingSchoolAdmin(null)}>Hủy</Button><Button disabled={!scopeReason.trim()} loading={updateSchoolScopeMutation.isPending} onClick={() => updateSchoolScopeMutation.mutate()}>Lưu phạm vi</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -328,9 +365,9 @@ export const AdminManagementPage: React.FC = () => {
         description="Người dùng này sẽ mất toàn bộ quyền truy cập vào cổng Admin Portal."
         label="Lý do thu hồi quyền"
         placeholder="Nhập lý do thực hiện..."
-        onConfirm={() => {
+        onConfirm={(reason) => {
           if (!revokeUserId) return;
-          revokeMutation.mutate(revokeUserId);
+          revokeMutation.mutate({ targetId: revokeUserId, reason });
         }}
       />
     </div>

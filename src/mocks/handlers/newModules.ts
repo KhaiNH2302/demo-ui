@@ -106,14 +106,6 @@ export const newModulesHandlers = [
     return HttpResponse.json({
       data: [
         {
-          id: 'td-1',
-          kind: 'swap_invite',
-          title: 'Lời mời đổi lớp SE1701 ↔ SE1703',
-          subtitle: 'Từ Trần Minh · Môn PRN212',
-          actionLabel: 'Xem & phản hồi',
-          href: '/swap/connections',
-        },
-        {
           id: 'td-2',
           kind: 'club_need_info',
           title: 'Đơn đăng ký F-Code cần bổ sung thông tin',
@@ -207,9 +199,9 @@ export const newModulesHandlers = [
       unreadMessages: 2,
       pendingMessageRequests: 1,
       pendingGroupJoinRequests: 1,
-      pendingSwapInvites: 1,
+      pendingSwapInvites: 0,
       pendingRequestsTotal:
-        needMoreInfoCount + clubPendingReviews + pendingProgramRegs + pendingFollows + 3,
+        needMoreInfoCount + clubPendingReviews + pendingProgramRegs + pendingFollows + 2,
       pendingMentoringRequests: seedMentoringRequests.filter(
         (r) => r.mentorId === userId && r.status === 'PENDING_MENTOR_RESPONSE'
       ).length,
@@ -781,20 +773,6 @@ export const newModulesHandlers = [
         linkTo: '/people?tab=requests',
       },
       {
-        id: 'req_01',
-        module: 'swap',
-        moduleLabel: 'Đổi lớp',
-        title: 'Đề xuất đổi lớp CSD201 (SE1701 sang SE1704)',
-        fromUser: {
-          id: 'usr_mentor_02',
-          fullName: 'Lê Thị Bình',
-          avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-        },
-        createdAt: '2026-09-25T14:30:00Z',
-        status: 'Pending',
-        linkTo: '/swap/connections',
-      },
-      {
         id: 'req_02',
         module: 'group',
         moduleLabel: 'Nhóm kết nối',
@@ -867,15 +845,6 @@ export const newModulesHandlers = [
             createdAt: '2026-09-25T14:20:00Z',
             status: 'Confirmed',
             linkTo: '/clubs/registrations/resp_02',
-          },
-          {
-            id: 'req_hist_03',
-            module: 'swap',
-            moduleLabel: 'Đổi lớp',
-            title: 'Đã hoàn tất đổi lớp PRJ301',
-            createdAt: '2026-09-18T10:00:00Z',
-            status: 'Confirmed',
-            linkTo: '/swap/connections',
           },
         ],
       });

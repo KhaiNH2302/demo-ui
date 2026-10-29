@@ -3,12 +3,12 @@ import type { Conversation, Message } from '@/types/entities';
 export const seedConversations: Conversation[] = [
   {
     id: 'conv_01',
-    kind: 'swap',
-    refId: 'conn_01',
-    title: 'Đổi lớp PRJ301 (IA1601 ↔ IA1603)',
-    participantIds: ['usr_student_01', 'usr_mentor_02'],
+    kind: 'group',
+    refId: 'grp_05',
+    title: 'Nhóm Ôn Thi PRJ301 & Lập Trình Java Web',
+    participantIds: ['usr_student_01', 'usr_student_08', 'usr_student_09'],
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80',
-    lastMessage: 'Ok bạn nhé, mình đã nộp đơn lên phòng đào tạo rồi! 👍',
+    lastMessage: 'Mình vừa upload bộ câu hỏi trắc nghiệm và code mẫu MVC2 lên drive nhóm nhé!',
     lastMessageAt: '2026-09-25T09:30:00Z',
     unreadCount: 0,
     requestStatus: 'accepted',
@@ -88,12 +88,12 @@ export const seedConversations: Conversation[] = [
   },
   {
     id: 'conv_08',
-    kind: 'swap',
-    refId: 'conn_02',
-    title: 'Đổi lớp MAS291 (IA1502 ↔ IA1504)',
-    participantIds: ['usr_student_01', 'usr_student_03'],
+    kind: 'group',
+    refId: 'grp_06',
+    title: 'AI Lab · Dự án LLM & RAG FPTU',
+    participantIds: ['usr_student_01', 'usr_student_10', 'usr_mentor_03'],
     avatarUrl: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=120&q=80',
-    lastMessage: 'Mình đã check trùng lịch, đổi sang slot 3 thứ 4 và thứ 6 nhé.',
+    lastMessage: 'Cuối tuần này nhóm họp sync tiến độ fine-tuning model nhé.',
     lastMessageAt: '2026-09-24T14:20:00Z',
     unreadCount: 0,
     requestStatus: 'accepted',
@@ -138,30 +138,29 @@ export const seedConversations: Conversation[] = [
 ];
 
 export const seedMessages: Message[] = [
-  // Conversation 01 (Swap)
+  // Conversation 01 (Group PRJ301)
   {
     id: 'msg_01',
     conversationId: 'conv_01',
-    senderId: 'usr_student_01',
-    content: 'Chào Bình, mình đã nhận được xác nhận đổi lớp trên hệ thống!',
+    senderId: 'usr_student_08',
+    content: 'Chào mọi người, nhóm ôn thi PRJ301 bắt đầu ôn tập phần Servlet và JDBC nhé.',
     status: 'read',
-    createdAt: '2026-09-18T16:05:00Z',
+    createdAt: '2026-09-25T09:00:00Z',
   },
   {
     id: 'msg_02',
     conversationId: 'conv_01',
-    senderId: 'usr_mentor_02',
-    content: 'Ok Long, mai mình cùng lên phòng 102 để xin chữ ký giáo vụ nhé.',
+    senderId: 'usr_student_09',
+    content: 'Ok Nam, mình đã tải tài liệu đề thi thực hành PE kỳ trước về rồi.',
     status: 'read',
     reactions: { '👍': ['usr_student_01'] },
-    createdAt: '2026-09-18T16:15:00Z',
+    createdAt: '2026-09-25T09:15:00Z',
   },
   {
     id: 'msg_03',
     conversationId: 'conv_01',
     senderId: 'usr_student_01',
-    content: 'Ok bạn nhé, mình đã nộp đơn lên phòng đào tạo rồi! 👍',
-    type: 'like',
+    content: 'Mình vừa upload bộ câu hỏi trắc nghiệm và code mẫu MVC2 lên drive nhóm nhé!',
     status: 'read',
     createdAt: '2026-09-25T09:30:00Z',
   },
@@ -171,7 +170,7 @@ export const seedMessages: Message[] = [
     id: 'msg_04',
     conversationId: 'conv_02',
     senderId: 'usr_student_01',
-    content: 'Chào Mentor Nam, em đang gặp khó khăn khi cấu hình Spring Security 6 với JWT cho project SWP391.',
+    content: 'Chào Mentor Bình, em đang gặp khó khăn khi cấu hình Spring Security 6 với JWT cho project SWP391.',
     status: 'read',
     createdAt: '2026-09-24T18:00:00Z',
   },
@@ -188,7 +187,7 @@ export const seedMessages: Message[] = [
     createdAt: '2026-09-24T18:15:00Z',
   },
 
-  // Conversation 03 (Club)
+  // Conversation 03 (Club F-Code)
   {
     id: 'msg_06',
     conversationId: 'conv_03',
@@ -241,5 +240,105 @@ export const seedMessages: Message[] = [
     content: 'Chào bạn, mình thấy bài viết về AVL Tree của bạn rất hay! Bạn có thể chia sẻ thêm cho mình bộ tài liệu ôn tập CSD201 được không ạ?',
     status: 'sent',
     createdAt: '2026-09-25T11:10:00Z',
+  },
+
+  // Conversation 06 (Direct with Mai)
+  {
+    id: 'msg_11',
+    conversationId: 'conv_06',
+    senderId: 'usr_student_05',
+    content: 'Chào An, mình đã vẽ xong các màn hình chính cho đồ án Capstone theo design system Tailwind.',
+    status: 'read',
+    createdAt: '2026-09-25T07:30:00Z',
+  },
+  {
+    id: 'msg_12',
+    conversationId: 'conv_06',
+    senderId: 'usr_student_01',
+    content: 'Đẹp quá Mai ơi, component modal và bảng dữ liệu nhìn rất trực quan.',
+    status: 'read',
+    createdAt: '2026-09-25T07:40:00Z',
+  },
+  {
+    id: 'msg_13',
+    conversationId: 'conv_06',
+    senderId: 'usr_student_05',
+    content: 'File mockup UI Figma đã cập nhật thêm component modal nhé!',
+    status: 'read',
+    createdAt: '2026-09-25T07:45:00Z',
+  },
+
+  // Conversation 07 (Club JS)
+  {
+    id: 'msg_14',
+    conversationId: 'conv_07',
+    senderId: 'usr_mentor_02',
+    content: 'Tuần sau chúng ta có buổi training về React Server Components và Tailwind v4.',
+    status: 'read',
+    createdAt: '2026-09-24T21:30:00Z',
+  },
+
+  // Conversation 08 (Group AI Lab)
+  {
+    id: 'msg_15',
+    conversationId: 'conv_08',
+    senderId: 'usr_student_10',
+    content: 'Chào nhóm AI Lab, mô hình RAG tra cứu học vụ vừa đạt độ chính xác 88% trên tập dữ liệu kiểm thử.',
+    status: 'read',
+    createdAt: '2026-09-24T14:10:00Z',
+  },
+  {
+    id: 'msg_16',
+    conversationId: 'conv_08',
+    senderId: 'usr_student_01',
+    content: 'Cuối tuần này nhóm họp sync tiến độ fine-tuning model nhé.',
+    status: 'read',
+    createdAt: '2026-09-24T14:20:00Z',
+  },
+
+  // Conversation 09 (Group PRN211)
+  {
+    id: 'msg_17',
+    conversationId: 'conv_09',
+    senderId: 'usr_student_04',
+    content: 'Các bạn đã làm xong bài tập Entity Framework Core chưa?',
+    status: 'read',
+    createdAt: '2026-09-23T19:00:00Z',
+  },
+  {
+    id: 'msg_18',
+    conversationId: 'conv_09',
+    senderId: 'usr_student_01',
+    content: 'Đề cương ôn tập dạng bài Entity Framework Core và LINQ queries.',
+    status: 'read',
+    createdAt: '2026-09-23T19:10:00Z',
+  },
+
+  // Conversation 10 (Mentoring Clean Architecture)
+  {
+    id: 'msg_19',
+    conversationId: 'conv_10',
+    senderId: 'usr_mentor_02',
+    content: 'Anh đã xem qua bản thiết kế kiến trúc của em. Về cơ bản phân tầng đã rõ, chú ý dependency inversion nhé.',
+    status: 'read',
+    createdAt: '2026-09-22T15:30:00Z',
+  },
+  {
+    id: 'msg_20',
+    conversationId: 'conv_10',
+    senderId: 'usr_student_01',
+    content: 'Cảm ơn Mentor rất nhiều về bài đánh giá kiến trúc hệ thống!',
+    status: 'read',
+    createdAt: '2026-09-22T16:00:00Z',
+  },
+
+  // Conversation 11 (Direct Dũng)
+  {
+    id: 'msg_21',
+    conversationId: 'conv_11',
+    senderId: 'usr_student_02',
+    content: 'Bạn có tài liệu môn PRO192 Java không, cho mình xin với?',
+    status: 'sent',
+    createdAt: '2026-09-21T10:00:00Z',
   },
 ];

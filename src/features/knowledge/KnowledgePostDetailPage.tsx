@@ -27,6 +27,9 @@ import {
   Lock,
   CornerDownRight,
   Flag,
+  ThumbsUp,
+  CheckCheck,
+  Pin,
 } from 'lucide-react';
 import type { KnowledgePost, Comment } from '@/types/entities';
 
@@ -52,6 +55,23 @@ export default function KnowledgePostDetailPage() {
     snapshot?: string;
   } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
+  const [upvotedComments, setUpvotedComments] = useState<Record<string, boolean>>({});
+  const [commentVotes, setCommentVotes] = useState<Record<string, number>>({});
+
+  const handleUpvoteComment = (commentId: string, initialCount: number) => {
+    guard('like_post', () => {
+      const isUpvoted = !!upvotedComments[commentId];
+      setUpvotedComments((prev) => ({ ...prev, [commentId]: !isUpvoted }));
+      setCommentVotes((prev) => {
+        const cur = prev[commentId] !== undefined ? prev[commentId] : initialCount;
+        return { ...prev, [commentId]: isUpvoted ? Math.max(0, cur - 1) : cur + 1 };
+      });
+      toast({
+        variant: 'default',
+        title: isUpvoted ? 'Đã bỏ bình chọn hữu ích' : 'Đã đánh giá phản hồi là Hữu ích!',
+      });
+    })();
+  };
 
   const postDetailQuery = useQuery<{ post: KnowledgePost; comments: Comment[] }>({
     queryKey: ['knowledge', 'detail', id],
@@ -238,9 +258,20 @@ export default function KnowledgePostDetailPage() {
                   )}
                 >
                   {comment.isAcceptedAnswer && (
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-tier-success-text mb-2.5">
-                      <CheckCircle2 size={15} className="text-tier-success-dot shrink-0" />
-                      <span>Câu trả lời được chọn</span>
+                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-semibold text-emerald-900 mb-3 shadow-2xs">
+                      <div className="flex items-center gap-2">
+                        <CheckCheck size={16} className="text-emerald-600 shrink-0" />
+                        <span>Câu trả lời đúng & hữu ích nhất (Được người hỏi chọn & ghim lên đầu)</span>
+                      </div>
+                      {isAuthor && (
+                        <button
+                          type="button"
+                          onClick={() => acceptAnswerMutation.mutate(comment.id)}
+                          className="text-[11px] text-emerald-700 hover:underline font-normal cursor-pointer"
+                        >
+                          Bỏ ghim
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -282,9 +313,9 @@ export default function KnowledgePostDetailPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => acceptAnswerMutation.mutate(comment.id)}
-                            className="text-xs h-7 gap-1 text-tier-success-text hover:bg-tier-success-bg shrink-0"
+                            className="text-xs h-7 gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 shrink-0 font-medium"
                           >
-                            <CheckCircle2 size={13} /> Chọn câu trả lời này
+                            <CheckCheck size={13} className="text-emerald-600" /> Chọn câu trả lời đúng nhất
                           </Button>
                         )}
                       </div>
@@ -294,17 +325,30 @@ export default function KnowledgePostDetailPage() {
                       </p>
 
                       <div className="flex items-center justify-between text-xs text-neutral-500 pt-1">
-                        <div className="flex items-center gap-4">
-                          <button
-                            type="button"
-                            onClick={guard('like_post', () => {
-                              toast({ variant: 'default', title: 'Đã thích phản hồi' });
-                            })}
-                            className="flex items-center gap-1.5 hover:text-neutral-900 transition-colors cursor-pointer"
-                          >
-                            <Heart size={14} />
-                            <span>{comment.likesCount || 0}</span>
-                          </button>
+                        <div className="flex items-center gap-3">
+                          {/* Upvote Button */}
+                          {(() => {
+                            const isUpvoted = !!upvotedComments[comment.id];
+                            const currentVotes =
+                              commentVotes[comment.id] !== undefined
+                                ? commentVotes[comment.id]
+                                : comment.likesCount || 0;
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => handleUpvoteComment(comment.id, comment.likesCount || 0)}
+                                className={cn(
+                                  'flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs transition-all cursor-pointer',
+                                  isUpvoted
+                                    ? 'bg-amber-50 text-amber-800 border-amber-300 font-semibold shadow-2xs'
+                                    : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100 hover:text-neutral-900'
+                                )}
+                              >
+                                <ThumbsUp size={13} className={isUpvoted ? 'fill-current text-amber-600' : 'text-neutral-500'} />
+                                <span>Hữu ích ({currentVotes})</span>
+                              </button>
+                            );
+                          })()}
 
                           {!isClosed && (
                             <button

@@ -153,7 +153,7 @@ export const useAuthStore = create<AuthState>()(
         const user = get().user;
         if (!user) return false;
         return user.roles.some((r) =>
-            ['manager', 'admin', 'Manager', 'Admin'].includes(r)
+            ['manager', 'admin', 'school_admin', 'Manager', 'Admin', 'SchoolAdmin'].includes(r)
         );
       },
       setRepresentedClubs: (representedClubs) => set({ representedClubs }),
