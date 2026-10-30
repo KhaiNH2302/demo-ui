@@ -1,0 +1,8 @@
+TÀI LIỆU DEMO — KINH NGHIỆM SINH VIÊN
+
+- Chọn ba việc cần hoàn thành trong tuần.
+- Ghi lại các khoản chi để biết ngân sách còn lại.
+- Chừa thời gian nghỉ và trao đổi với bạn cùng nhóm.
+- Khi hỏi cộng đồng, nêu rõ tình huống và điều bạn đã thử.
+
+Tệp mẫu dùng kiểm tra chức năng xem và tải tài liệu.

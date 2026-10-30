@@ -1,22 +1,21 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ImagePlus,
   Paperclip,
   X,
   Send,
-  MessageCircle,
-  HelpCircle,
+  House,
+  CarFront,
+  School,
+  Lightbulb,
+  MessagesSquare,
   UtensilsCrossed,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { apiClient } from "@/lib/apiClient";
 import {
-  LIFE_CAMPUSES,
   LIFE_TOPICS,
-  isValidFoodReview,
   localReviewDate,
-  hasHousingExperience,
-  isValidHousingExperience,
 } from "@/lib/studentLife";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
@@ -25,17 +24,26 @@ import { useToast } from "@/components/ui/Toast";
 import { TagInput } from "./TagInput";
 import { FoodReviewFields } from "./FoodReviewFields";
 import { HousingExperienceFields } from "./HousingExperienceFields";
+import { HousingPostFields, StudentExperienceFields, RidePostFields } from "./TopicPostFields";
+import { HOUSING_KINDS } from "@/lib/studentLifeDetails";
+import { hasLifeDraftContent, initialLifeForm, lifeFormErrors, lifePostPayload, normalizeHousingForm, readLifeDraft, type LifeComposerState } from "@/lib/studentLifeForm";
+import { CAMPUS_OPTIONS } from "@/lib/campuses";
+import { CampusAreaSelect } from "./CampusAreaSelect";
 import type {
   FoodReview,
   HousingExperience,
   KnowledgePost,
   PostType,
+  HousingPost,
+  StudentExperience,
+  RidePost,
 } from "@/types/entities";
 
 export interface ThreadComposerProps {
   defaultSubject?: string;
   defaultTopic?: string;
   defaultCampus?: string;
+  defaultArea?: string;
   defaultType?: PostType;
   post?: KnowledgePost;
   variant?: "inline" | "sheet" | "page";
@@ -44,24 +52,21 @@ export interface ThreadComposerProps {
   placeholder?: string;
   className?: string;
 }
-type Draft = {
-  type?: PostType;
-  title?: string;
-  content?: string;
-  topic?: string;
-  campus?: string;
-  location?: string;
-  tags?: string[];
-  foodReview?: FoodReview;
-  housingExperience?: HousingExperience;
-  visibility?: "school" | "cross_school";
-};
 const field =
   "w-full rounded-lg border border-neutral-200 bg-surface px-3 py-2.5 text-sm text-neutral-900 outline-hidden focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15";
+const topicIcons = {
+  housing: House,
+  food: UtensilsCrossed,
+  transport: CarFront,
+  campus: School,
+  experience: Lightbulb,
+  conversation: MessagesSquare,
+};
 
 export function ThreadComposer({
   defaultTopic = "",
   defaultCampus = "",
+  defaultArea = "",
   defaultType,
   post,
   variant = "inline",
@@ -73,105 +78,60 @@ export function ThreadComposer({
   const user = useAuthStore((state) => state.user);
   const { toast } = useToast();
   const draftKey = `scs_student_life_draft_v1_${user?.id || "guest"}`;
-  const [draft] = useState<Draft>(() => {
-    try {
-      return JSON.parse(localStorage.getItem(draftKey) || "{}");
-    } catch {
-      return {};
-    }
+  const [initial] = useState(() => {
+    let raw: string | null = null;
+    try { raw = localStorage.getItem(draftKey); } catch { /* Posting works without browser storage. */ }
+    return initialLifeForm({ post, draft: readLifeDraft(raw), defaultTopic, defaultCampus, defaultArea, defaultType });
   });
-  const [expanded, setExpanded] = useState(
-    variant !== "inline" || Boolean(post),
-  );
-  const [type, setType] = useState<PostType>(
-    post?.type || defaultType || draft.type || "discussion",
-  );
-  const [foodReview, setFoodReview] = useState<FoodReview>(
-    (post ? post.foodReview : draft.foodReview) || {
-      placeName: "",
-      dish: "",
-      spentPerPerson: 0,
-      rating: 0,
-      visitedOn: localReviewDate(),
-    },
-  );
-  const [housingExperience, setHousingExperience] = useState<HousingExperience>(
-    post ? post.housingExperience || {} : draft.housingExperience || {},
-  );
-  const [title, setTitle] = useState(
-    post ? post.title || "" : draft.title || "",
-  );
-  const [content, setContent] = useState(
-    post ? post.contentMd || "" : draft.content || "",
-  );
-  const [topic, setTopic] = useState(
-    type === "review"
-      ? "food"
-      : post?.lifeTopic || defaultTopic || draft.topic || "",
-  );
-  const [campus, setCampus] = useState(
-    post?.campus || defaultCampus || draft.campus || "Hòa Lạc",
-  );
-  const [location, setLocation] = useState(
-    post ? post.location || "" : draft.location || "",
-  );
-  const [tags, setTags] = useState<string[]>(post?.tags || draft.tags || []);
-  const [visibility, setVisibility] = useState<"school" | "cross_school">(
-    post?.visibility || draft.visibility || "school",
-  );
-  const [images, setImages] = useState<string[]>(post?.images || []);
-  const [attachments, setAttachments] = useState<KnowledgePost["attachments"]>(
-    post?.attachments || [],
-  );
+  const [expanded, setExpanded] = useState(variant !== "inline" || Boolean(post));
+  const [type, setType] = useState<PostType>(initial.type);
+  const [foodReview, setFoodReview] = useState<FoodReview>(initial.foodReview);
+  const [housingExperience, setHousingExperience] = useState<HousingExperience>(initial.housingExperience);
+  const [housingPost, setHousingPost] = useState<HousingPost>(initial.housingPost);
+  const [studentExperience, setStudentExperience] = useState<StudentExperience>(initial.studentExperience);
+  const [ridePost, setRidePost] = useState<RidePost>(initial.ridePost);
+  const [title, setTitle] = useState(initial.title);
+  const [content, setContent] = useState(initial.content);
+  const [topic, setTopic] = useState(initial.topic);
+  const [campus, setCampus] = useState(initial.campus);
+  const [area, setArea] = useState(initial.area);
+  const [location, setLocation] = useState(initial.location);
+  const [tags, setTags] = useState(initial.tags);
+  const [visibility, setVisibility] = useState(initial.visibility);
+  const [images, setImages] = useState(initial.images);
+  const [attachments, setAttachments] = useState(initial.attachments);
   const [submitting, setSubmitting] = useState(false);
   const imageInput = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const titleInput = useRef<HTMLInputElement>(null);
 
+  const draftCleared = useRef(false);
+  const formState = useMemo<LifeComposerState>(() => ({
+    type, foodReview, housingExperience, housingPost, studentExperience, ridePost,
+    title, content, topic, campus, area, location, tags, visibility, images, attachments,
+  }), [type, foodReview, housingExperience, housingPost, studentExperience, ridePost, title, content, topic, campus, area, location, tags, visibility, images, attachments]);
+  const payload = lifePostPayload(formState);
+  const effectiveType = payload.type;
+  const errors = lifeFormErrors(formState);
+
   useEffect(() => {
-    if (post || !expanded) return;
+    if (post || !expanded || draftCleared.current) return;
     try {
-      if (
-        content.trim() ||
-        title.trim() ||
-        (type === "review" && foodReview.placeName.trim()) ||
-        (topic === "housing" && hasHousingExperience(housingExperience))
-      )
+      if (hasLifeDraftContent(formState))
         localStorage.setItem(
           draftKey,
           JSON.stringify({
-            type,
-            title,
-            content,
-            topic,
-            campus,
-            location,
-            tags,
-            visibility,
-            foodReview,
-            housingExperience,
+            ...formState,
+            images: undefined,
+            attachments: undefined,
+            housingPost: { ...formState.housingPost, area: formState.area || undefined },
           }),
         );
-      else localStorage.removeItem(draftKey);
+      else if (readLifeDraft(localStorage.getItem(draftKey)).topic === formState.topic) localStorage.removeItem(draftKey);
     } catch {
       /* A full browser store should not block posting. */
     }
-  }, [
-    draftKey,
-    expanded,
-    post,
-    type,
-    title,
-    content,
-    topic,
-    campus,
-    location,
-    tags,
-    visibility,
-    foodReview,
-    housingExperience,
-  ]);
-
+  }, [draftKey, expanded, post, formState]);
   const upload = (files: FileList | null, kind: "image" | "file") => {
     if (!files) return;
     const accepted = Array.from(files);
@@ -201,44 +161,12 @@ export function ThreadComposer({
         })),
       ]);
   };
-  const valid = Boolean(
-    content.trim() &&
-    topic &&
-    campus &&
-    (type !== "question" || title.trim()) &&
-    (type !== "review" || isValidFoodReview(foodReview)) &&
-    (topic !== "housing" ||
-      type === "question" ||
-      isValidHousingExperience(housingExperience)),
-  );
-  const submit = async (event: React.FormEvent) => {
+  const valid = errors.length === 0;
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!valid || submitting) return;
+    if (!valid || submitting || !event.currentTarget.reportValidity()) return;
     setSubmitting(true);
     try {
-      const payload = {
-        type,
-        title:
-          title.trim() ||
-          (type === "review"
-            ? `Ăn thử ở ${foodReview.placeName.trim()}`
-            : undefined),
-        contentMd: content.trim(),
-        lifeTopic: topic,
-        campus,
-        location: location.trim(),
-        foodReview: type === "review" ? foodReview : undefined,
-        housingExperience:
-          topic === "housing" &&
-          type !== "question" &&
-          hasHousingExperience(housingExperience)
-            ? housingExperience
-            : undefined,
-        tags,
-        visibility,
-        images,
-        attachments,
-      };
       const result = post
         ? await apiClient.put<KnowledgePost>(`/posts/${post.id}`, payload)
         : await apiClient.post<KnowledgePost>("/posts", payload);
@@ -252,17 +180,20 @@ export function ThreadComposer({
               : "Đã chia sẻ với cộng đồng",
       });
       if (!post) {
-        localStorage.removeItem(draftKey);
+        draftCleared.current = true;
+        try { localStorage.removeItem(draftKey); } catch { /* Save already succeeded. */ }
         setContent("");
         setTitle("");
         setFoodReview({
           placeName: "",
           dish: "",
           spentPerPerson: 0,
-          rating: 0,
           visitedOn: localReviewDate(),
         });
         setHousingExperience({});
+        setHousingPost(normalizeHousingForm());
+        setStudentExperience({ category: "ojt", intent: "sharing" });
+        setRidePost({ kind: "seeking", origin: "", destination: "", departure: "" });
         setImages([]);
         setAttachments([]);
         setTags([]);
@@ -283,6 +214,7 @@ export function ThreadComposer({
       <button
         type="button"
         onClick={() => {
+          draftCleared.current = false;
           setExpanded(true);
           setTimeout(() => titleInput.current?.focus(), 30);
         }}
@@ -306,6 +238,7 @@ export function ThreadComposer({
   return (
     <form
       onSubmit={submit}
+      onChangeCapture={() => { draftCleared.current = false; }}
       className={cn(
         "space-y-4",
         variant === "inline" &&
@@ -328,88 +261,98 @@ export function ThreadComposer({
           </p>
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          {
-            value: "discussion",
-            label: "Chia sẻ",
-            description: "Kể một chuyện, chia sẻ trải nghiệm",
-            icon: MessageCircle,
-          },
-          {
-            value: "question",
-            label: "Hỏi kinh nghiệm",
-            description: "Nhờ bạn bè góp ý, hỗ trợ",
-            icon: HelpCircle,
-          },
-          {
-            value: "review",
-            label: "Review quán",
-            description: "Kể bữa ăn, chấm điểm của bạn",
-            icon: UtensilsCrossed,
-          },
-        ].map((item) => (
-          <button
-            type="button"
-            key={item.value}
-            onClick={() => {
-              setType(item.value as PostType);
-              if (item.value === "review") setTopic("food");
-            }}
-            aria-pressed={
-              item.value === type ||
-              (item.value === "discussion" &&
-                !["question", "review"].includes(type))
-            }
-            className={`rounded-xl border p-3 text-left ${item.value === type || (item.value === "discussion" && !["question", "review"].includes(type)) ? "border-brand-300 bg-brand-50/60" : "border-neutral-200"}`}
-          >
-            <span className="flex items-center gap-2 text-sm font-semibold">
-              <item.icon size={16} />
-              {item.label}
-            </span>
-            <span className="mt-1 hidden text-[11px] text-neutral-500 sm:block">
-              {item.description}
-            </span>
-          </button>
-        ))}
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="space-y-1.5 text-xs font-medium text-neutral-600">
-          <span>
-            Chủ đề <span className="text-brand-600">*</span>
-          </span>
+      <fieldset className="space-y-2">
+        <legend className="text-xs font-semibold text-neutral-700">
+          Bạn muốn đăng gì? <span className="text-brand-600">*</span>
+        </legend>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {LIFE_TOPICS.map((item) => {
+            const selected = item.value === topic;
+            const Icon = topicIcons[item.value];
+            return (
+              <button
+                type="button"
+                key={item.value}
+                onClick={() => {
+                  if (item.value === topic) return;
+                  draftCleared.current = false;
+                  setTopic(item.value);
+                  setType(item.value === "food" ? "review"
+                    : item.value === "housing" ? housingPost.kind === "experience" ? "experience" : "discussion"
+                    : item.value === "experience" ? studentExperience.intent === "sharing" ? "experience" : "question"
+                    : "discussion");
+                }}
+                aria-pressed={selected}
+                className={`rounded-xl border p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-brand-500 ${selected ? "border-brand-300 bg-brand-50/60" : "border-neutral-200 hover:border-neutral-300"}`}
+              >
+                <span className="flex items-center gap-2 text-sm font-semibold">
+                  <Icon size={16} className="shrink-0" />
+                  {item.label}
+                </span>
+                <span className="mt-1 hidden text-[11px] text-neutral-500 sm:block">
+                  {item.description}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+      <div className={`grid gap-3 ${topic === "experience" || topic === "transport" ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+        {topic === "housing" ? (
+          <select aria-label="Nhu cầu về chỗ ở" value={housingPost.kind === "experience" && effectiveType === "question" ? "question" : housingPost.kind} className={field} onChange={(event) => {
+            const selected = event.target.value;
+            const kind = selected === "question" ? "experience" : selected as HousingPost["kind"];
+            setHousingPost((current) => normalizeHousingForm({ ...current, kind }));
+            setType(selected === "question" ? "question" : kind === "experience" ? "experience" : "discussion");
+          }}>
+            {HOUSING_KINDS.map((kind) => <option key={kind.value} value={kind.value}>{kind.label}</option>)}
+            <option value="question">Hỏi kinh nghiệm ở trọ</option>
+          </select>
+        ) : topic !== "experience" && topic !== "transport" && (
+          <select aria-label="Hình thức bài viết" value={effectiveType} onChange={(event) => setType(event.target.value as PostType)} className={field}>
+            <option value="discussion">Chia sẻ</option>
+            <option value="question">Đặt câu hỏi</option>
+            {topic === "food" && <option value="review">Review quán</option>}
+          </select>
+        )}
+        <div>
           <select
             required
-            value={topic}
-            disabled={type === "review"}
-            onChange={(e) => setTopic(e.target.value)}
-            className={field}
-          >
-            <option value="">Chọn chủ đề phù hợp</option>
-            {LIFE_TOPICS.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="space-y-1.5 text-xs font-medium text-neutral-600">
-          <span>Campus liên quan</span>
-          <select
+            aria-label="Campus liên quan"
             value={campus}
-            onChange={(e) => setCampus(e.target.value)}
+            onChange={(e) => {
+              setCampus(e.target.value);
+              setArea("");
+              setLocation("");
+              setFoodReview((review) => ({ ...review, coordinates: undefined }));
+            }}
             className={field}
           >
-            {LIFE_CAMPUSES.map((item) => (
-              <option key={item}>{item}</option>
+            <option value="">Chọn cơ sở</option>
+            {CAMPUS_OPTIONS.filter((item) => item.value !== "all").map((item) => (
+              <option key={item.value} value={item.value}>{item.label}</option>
             ))}
           </select>
-        </label>
+        </div>
+        <CampusAreaSelect
+          campus={campus}
+          value={area}
+          onChange={(value, selectedCampus) => {
+            if (value) setCampus(selectedCampus);
+            setArea(value);
+            setLocation("");
+            setFoodReview((review) => ({ ...review, coordinates: undefined }));
+          }}
+          required={topic === "housing" && housingPost.kind !== "experience"}
+        />
       </div>
-      {type === "review" && (
-        <FoodReviewFields value={foodReview} onChange={setFoodReview} />
+      {topic === "housing" && housingPost.kind !== "experience" && <HousingPostFields value={housingPost} onChange={(value) => setHousingPost(normalizeHousingForm(value))} />}
+      {topic === "experience" && <StudentExperienceFields value={studentExperience} onChange={(value) => { setStudentExperience(value); setType(value.intent === "sharing" ? "discussion" : "question"); }} />}
+      {topic === "transport" && <RidePostFields value={ridePost} onChange={setRidePost} />}
+      {payload.foodReview && (
+        <FoodReviewFields key={`${campus}-${area}`} value={foodReview} onChange={setFoodReview} />
       )}
-      {topic === "housing" && type !== "question" && (
+      {topic === "housing" && housingPost.kind === "experience" && effectiveType !== "question" && (
         <HousingExperienceFields
           value={housingExperience}
           onChange={setHousingExperience}
@@ -417,25 +360,36 @@ export function ThreadComposer({
       )}
       <label className="block space-y-1.5 text-xs font-medium text-neutral-600">
         <span>
-          {type === "question"
+          {effectiveType === "question"
             ? "Bạn đang muốn hỏi điều gì? *"
             : "Tiêu đề (không bắt buộc)"}
         </span>
         <input
           ref={titleInput}
-          required={type === "question"}
+          required={effectiveType === "question"}
           value={title}
           maxLength={140}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={
-            topic === "transport"
-              ? "Ví dụ: Mai có ai từ Mỹ Đình lên Hòa Lạc ca 1 không?"
-              : type === "question"
+            topic === "housing" && housingPost.kind !== "experience"
+              ? `Ví dụ: ${HOUSING_KINDS.find((item) => item.value === housingPost.kind)?.label} tại ${area || "khu vực gần trường"}`
+              : topic === "experience" && studentExperience.intent === "request_materials"
+                ? "Ví dụ: Xin tài liệu ôn tập môn PRJ301"
+              : topic === "experience" && studentExperience.category === "ojt"
+                ? "Ví dụ: Kinh nghiệm chuẩn bị hồ sơ OJT"
+              : topic === "experience" && studentExperience.category === "graduation"
+                ? "Ví dụ: Cần góp ý cách chuẩn bị bảo vệ đồ án tốt nghiệp"
+              : topic === "transport"
+              ? ridePost.kind === "offering" ? "Ví dụ: Chuyến về cuối tuần còn 2 chỗ" : "Ví dụ: Cần ghép chuyến đến trường vào sáng mai"
+              : effectiveType === "question"
                 ? "Viết ngắn gọn điều bạn muốn hỏi mọi người…"
                 : "Một điều bạn muốn chia sẻ hôm nay…"
           }
           className={field}
         />
+        <span className="block text-right text-[11px] font-normal text-neutral-400">
+          {title.length}/140
+        </span>
       </label>
       <label className="block space-y-1.5 text-xs font-medium text-neutral-600">
         <span>
@@ -447,11 +401,19 @@ export function ThreadComposer({
           maxLength={3000}
           onChange={(e) => setContent(e.target.value)}
           placeholder={
-            topic === "transport"
+            topic === "housing" && housingPost.kind !== "experience"
+              ? housingPost.kind === "seeking" ? "Mô tả phòng mong muốn, số người, cách liên hệ và yêu cầu thêm…" : housingPost.kind === "roommate" ? "Mô tả phòng, bạn cùng phòng mong muốn, chi phí chia sẻ và cách liên hệ…" : housingPost.kind === "transfer" ? "Nêu lý do nhượng, tình trạng phòng, hợp đồng, đồ để lại và cách liên hệ…" : "Mô tả diện tích, nội thất, hợp đồng, điều kiện thuê và cách liên hệ…"
+              : topic === "experience" && studentExperience.intent === "request_materials"
+                ? "Bạn cần tài liệu gì, cho môn nào, đang học phần nào? Nêu rõ để mọi người hỗ trợ đúng nhé…"
+              : topic === "experience" && studentExperience.category === "ojt"
+                ? "Chia sẻ hoặc hỏi về chuẩn bị OJT, ứng tuyển, công việc và báo cáo OJT…"
+              : topic === "experience" && studentExperience.category === "graduation"
+                ? "Bạn đang ở giai đoạn nào của đồ án tốt nghiệp? Nêu vấn đề, cách đã thử và điều cần góp ý…"
+              : topic === "transport"
               ? "Bạn cần ghép chuyến hay còn chỗ trống? Ghi tuyến đi, giờ xuất phát, điểm hẹn và cách chia chi phí nhé…"
-              : type === "question"
+              : effectiveType === "question"
                 ? "Kể tình huống của bạn, rồi hỏi điều bạn đang cần mọi người góp ý…"
-                : type === "review"
+                : effectiveType === "review"
                   ? "Bạn gọi gì, thấy ổn chỗ nào, có điểm nào chưa ưng? Kể như đang rủ bạn đi ăn nhé…"
                   : topic === "housing"
                     ? "Bạn đã ở thế nào, chi phí ra sao, có điều gì muốn nhắn bạn sắp chuyển trọ? Kể trải nghiệm của riêng bạn nhé…"
@@ -466,22 +428,20 @@ export function ThreadComposer({
           {content.length}/3000
         </span>
       </label>
-      <label className="block space-y-1.5 text-xs font-medium text-neutral-600">
-        <span>Khu vực / địa điểm (không bắt buộc)</span>
+      {topic !== "transport" && <label className="block space-y-1.5 text-xs font-medium text-neutral-600">
+        <span>Địa chỉ cụ thể (không bắt buộc)</span>
         <input
           value={location}
           maxLength={80}
           onChange={(e) => setLocation(e.target.value)}
           placeholder={
-            topic === "transport"
-              ? "Ví dụ: Mỹ Đình → campus Hòa Lạc"
-              : topic === "housing"
+            topic === "housing"
                 ? "Ví dụ: Khu gần campus, ký túc xá…"
                 : "Ví dụ: Ký túc xá, khu Cổng trường…"
           }
           className={field}
         />
-      </label>
+      </label>}
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {images.map((image, index) => (
@@ -529,12 +489,17 @@ export function ThreadComposer({
           ))}
         </div>
       )}
-      <TagInput
-        value={tags}
-        onChange={(items) => setTags(items.slice(0, 3))}
-        max={3}
-        placeholder="Thêm thẻ để dễ tìm lại (tối đa 3)…"
-      />
+      <div className="space-y-1.5">
+        <p className="text-xs font-medium text-neutral-600">
+          Thẻ (không bắt buộc)
+        </p>
+        <TagInput
+          value={tags}
+          onChange={(items) => setTags(items.slice(0, 3))}
+          max={3}
+          placeholder="Thêm thẻ để dễ tìm lại (tối đa 3)…"
+        />
+      </div>
       <label className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500">
         <span>Ai có thể xem bài?</span>
         <select
@@ -552,6 +517,7 @@ export function ThreadComposer({
         Chia sẻ thông tin cá nhân và địa chỉ riêng tư của người khác cần có sự
         đồng ý.
       </p>
+      {!valid && <p role="status" className="text-xs leading-relaxed text-neutral-500">{errors[0]}</p>}
       <input
         ref={imageInput}
         type="file"

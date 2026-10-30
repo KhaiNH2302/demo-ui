@@ -1,4 +1,5 @@
 import type { PostType } from "@/types/entities";
+import { isCampusArea } from "./campusAreas";
 
 export function lifePostReturnPath(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//"))
@@ -27,11 +28,13 @@ export function lifePostReturnPath(value: string | null) {
 export function lifePostCreateHref({
   topic,
   campus,
+  area,
   type,
   returnTo,
 }: {
   topic?: string;
   campus?: string;
+  area?: string;
   type?: PostType;
   returnTo?: string;
 } = {}) {
@@ -39,6 +42,7 @@ export function lifePostCreateHref({
   if (type) params.set("type", type);
   if (topic) params.set("topic", topic);
   if (campus) params.set("campus", campus);
+  if (isCampusArea(campus || "", area)) params.set("area", area);
   if (returnTo) params.set("returnTo", lifePostReturnPath(returnTo));
   return "/knowledge/new" + (params.size ? "?" + params.toString() : "");
 }

@@ -315,9 +315,40 @@ export interface FoodReview {
   placeName: string;
   dish?: string;
   spentPerPerson: number;
-  rating: number;
+  rating?: number;
   visitedOn?: string;
   isDemo?: boolean;
+  coordinates?: { latitude: number; longitude: number };
+}
+
+export interface HousingPost {
+  kind: "seeking" | "roommate" | "transfer" | "experience";
+  area?: string;
+  price?: number;
+  priceUnit?: "room" | "person";
+  people?: number;
+  availableFrom?: string;
+  amenities?: string[];
+  closed?: boolean;
+  deposit?: number;
+  electricity?: string;
+  water?: string;
+  serviceFee?: number;
+}
+
+export interface StudentExperience {
+  category: "ojt" | "graduation" | "materials" | "career" | "procedures" | "other";
+  intent: "sharing" | "asking" | "request_materials";
+  courseCode?: string;
+}
+
+export interface RidePost {
+  kind: "seeking" | "offering";
+  origin: string;
+  destination: string;
+  departure: string;
+  seats?: number;
+  contribution?: number;
 }
 
 export interface HousingExperience {
@@ -339,9 +370,13 @@ export interface KnowledgePost {
   content?: string;
   subject?: string;
   subjectCode?: string;
-  demoContent?: { note?: string; sources?: { label: string; url: string }[] };
+  demoContent?: { kind?: "synthetic" | "reference"; note?: string; sources?: { label: string; url: string }[] };
   foodReview?: FoodReview;
   housingExperience?: HousingExperience;
+  housingPost?: HousingPost;
+  area?: string;
+  studentExperience?: StudentExperience;
+  ridePost?: RidePost;
   lifeTopic?: string;
   campus?: string;
   location?: string;
@@ -356,6 +391,8 @@ export interface KnowledgePost {
   upvotes?: number;
   likedByMe?: boolean;
   savedByMe?: boolean;
+  /** Calculated for the current viewer; never stored with the post. */
+  distanceKm?: number;
   isSolved?: boolean;
   acceptedCommentId?: string;
   commentCount: number;

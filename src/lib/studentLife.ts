@@ -4,7 +4,7 @@ export const LIFE_TOPICS = [
     value: "housing",
     label: "Chuyện ở trọ",
     description:
-      "Trải nghiệm chỗ ở, chi phí sinh hoạt và chuyện sống cùng nhau.",
+      "Tìm trọ, ở ghép, nhượng phòng và chia sẻ kinh nghiệm chỗ ở.",
   },
   {
     value: "food",
@@ -24,7 +24,7 @@ export const LIFE_TOPICS = [
   {
     value: "experience",
     label: "Kinh nghiệm sinh viên",
-    description: "Từ ngày đầu nhập học đến cuộc sống tự lập.",
+    description: "OJT, đồ án tốt nghiệp, tài liệu và thủ tục sinh viên.",
   },
   {
     value: "conversation",
@@ -78,9 +78,11 @@ export function isValidFoodReview(review?: FoodReview) {
   )
     return false;
   if (
-    !Number.isInteger(review.rating) ||
-    review.rating < 1 ||
-    review.rating > 5
+    review.rating !== undefined && (
+      !Number.isInteger(review.rating) ||
+      review.rating < 1 ||
+      review.rating > 5
+    )
   )
     return false;
   if (

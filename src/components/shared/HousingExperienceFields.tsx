@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { House } from "lucide-react";
 import type { HousingExperience } from "@/types/entities";
 import { hasHousingExperience } from "@/lib/studentLife";
@@ -12,9 +13,11 @@ export function HousingExperienceFields({
   value: HousingExperience;
   onChange: (value: HousingExperience) => void;
 }) {
+  const [open, setOpen] = useState(hasHousingExperience(value));
   return (
     <details
-      open={hasHousingExperience(value) || undefined}
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
       className="rounded-xl border border-teal-100 bg-teal-50/30 p-4"
     >
       <summary className="cursor-pointer text-sm font-semibold text-neutral-800">

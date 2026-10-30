@@ -1,9 +1,16 @@
 import React, { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  RotateCcw,
+  Search,
+  SlidersHorizontal,
+} from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
-import { LIFE_CAMPUSES, LIFE_TOPICS } from "@/lib/studentLife";
+import { LIFE_TOPICS } from "@/lib/studentLife";
+import { CAMPUS_OPTIONS } from "@/lib/campuses";
 import { useAuthStore } from "@/store/authStore";
 import { useViewer } from "@/lib/viewer";
 import { useGuardedAction } from "@/lib/guestGate";
@@ -21,6 +28,11 @@ import { FeedFilterSelect } from "@/components/shared/FeedFilterSelect";
 import { TopicNavigation } from "@/components/shared/TopicNavigation";
 import { ThreadFeed } from "@/components/shared/ThreadFeed";
 import { useToast } from "@/components/ui/Toast";
+import { TopicFeedFilters } from "@/components/shared/TopicFeedFilters";
+import { distanceKm, TOPIC_FILTER_KEYS } from "@/lib/studentLifeDetails";
+import { useCurrentLocation } from "@/lib/useCurrentLocation";
+import { CampusAreaSelect } from "@/components/shared/CampusAreaSelect";
+import { isCampusArea } from "@/lib/campusAreas";
 import type { KnowledgePost } from "@/types/entities";
 
 const control =
@@ -36,6 +48,9 @@ export default function StudentLifePage() {
   const client = useQueryClient();
   const { toast } = useToast();
   const [topicsOpen, setTopicsOpen] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const position = useCurrentLocation();
+  const [radius, setRadius] = useState("3");
   const tab = params.get("tab") || "discover";
   const topic = params.get("topic") || "";
   const campus = params.get("campus") || "";
@@ -44,23 +59,51 @@ export default function StudentLifePage() {
   const maxPrice = params.get("maxPrice") || "";
   const search = params.get("q") || "";
   const status = params.get("status") || "Published";
-  const setFilter = (key: string, value: string) => {
+  const topicFilters = Object.fromEntries(TOPIC_FILTER_KEYS.filter((key) => params.get(key) && (key !== "area" || isCampusArea(campus, params.get(key)))).map((key) => [key, params.get(key)!]));
+  const topicFilterQuery = new URLSearchParams(topicFilters).toString();
+  const activeAdvancedCount =
+    Number(Boolean(campus)) +
+    Number(sort !== "new") +
+    Number(Boolean(maxPrice)) +
+    Object.keys(topicFilters).length +
+    Number(topic === "food" && Boolean(position.coordinates));
+  const setFilter = (key: string, value: string, selectedCampus?: string) => {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
     else next.delete(key);
+    if (key === "campus") next.delete("area");
+    if (key === "area" && value && isCampusArea(selectedCampus || campus, value)) next.set("campus", selectedCampus || campus);
     if (key === "type" && value === "review") next.set("topic", "food");
     if (key === "type" && value !== "review") next.delete("maxPrice");
-    if (key === "topic" && value !== "food" && type === "review") {
+    if (key === "topic") {
       next.delete("type");
-      next.delete("maxPrice");
+      if (value !== "food") next.delete("maxPrice");
+      TOPIC_FILTER_KEYS.forEach((filter) => next.delete(filter));
+      position.clear();
+      if ((value === "food" && sort === "unanswered") || (value !== "food" && ["price_low", "price_high"].includes(sort))) next.delete("sort");
     }
+    next.delete("priceUnit");
+    next.delete("moveBy");
+    next.delete("minRating");
+    if (key === "housingKind" && value === "experience") ["maxRent", "people", "moveMonth", "amenity", "onlyOpen"].forEach((filter) => next.delete(filter));
+    if (key === "experienceCategory" && value !== "materials") next.delete("courseCode");
     setParams(next, { replace: key === "q" });
+  };
+  const resetFilters = () => {
+    const next = new URLSearchParams(params);
+    ["topic", "campus", "type", "sort", "maxPrice", "q", "priceUnit", "moveBy", "minRating", ...TOPIC_FILTER_KEYS].forEach((key) =>
+      next.delete(key),
+    );
+    setParams(next);
+    position.clear();
+    setShowAdvancedFilters(false);
   };
   const compose = guard("auth", () =>
     navigate(
       lifePostCreateHref({
         topic,
         campus,
+        area: topicFilters.area,
         type:
           type === "review"
             ? "review"
@@ -91,10 +134,11 @@ export default function StudentLifePage() {
       search,
       status,
       maxPrice,
+      topicFilterQuery,
     ],
     queryFn: () =>
       apiClient.get(canBrowse ? "/posts" : "/public/posts/preview", {
-        params: { tab, topic, campus, type, sort, q: search, status, maxPrice },
+        params: { tab, topic, campus, type, sort, q: search, status, maxPrice, ...topicFilters },
       }),
   });
   const followMutation = useMutation({
@@ -120,27 +164,20 @@ export default function StudentLifePage() {
         title: "Chưa cập nhật được chủ đề, bạn thử lại nhé.",
       }),
   });
-  const posts = Array.isArray(postsQuery.data) ? postsQuery.data : [];
-  const campusSelect = (label: string) => (
-    <FeedFilterSelect
-      aria-label={label}
-      value={campus}
-      onChange={(e) => setFilter("campus", e.target.value)}
-      className="flex-1 sm:w-36 sm:flex-none"
-    >
-      <option value="">Mọi campus</option>
-      {LIFE_CAMPUSES.map((item) => (
-        <option key={item}>{item}</option>
-      ))}
-    </FeedFilterSelect>
-  );
-
+  const sourcePosts = Array.isArray(postsQuery.data) ? postsQuery.data : [];
+  const point = topic === "food" ? position.coordinates : null;
+  const posts = point ? sourcePosts
+    .filter((post) => post.foodReview?.coordinates && distanceKm(point, post.foodReview.coordinates) <= Number(radius))
+    .map((post) => ({ ...post, distanceKm: distanceKm(point, post.foodReview!.coordinates!) }))
+    .sort((a, b) => a.distanceKm - b.distanceKm)
+    : sourcePosts;
   if (params.get("compose") === "1")
     return (
       <Navigate
         to={lifePostCreateHref({
           topic,
           campus,
+          area: topicFilters.area,
           type:
             type === "review"
               ? "review"
@@ -188,6 +225,7 @@ export default function StudentLifePage() {
         <PostCreateEntry
           topic={topic}
           campus={campus}
+          area={topicFilters.area}
           type={
             type === "review"
               ? "review"
@@ -202,7 +240,7 @@ export default function StudentLifePage() {
               value={topic}
               onChange={(value) => setFilter("topic", value)}
             />
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <label className="relative min-w-[180px] flex-1 basis-full sm:basis-auto">
                 <Search
                   size={16}
@@ -216,30 +254,111 @@ export default function StudentLifePage() {
                   className={`${control} w-full pl-9`}
                 />
               </label>
-              {campusSelect("Lọc campus")}
-              <FeedFilterSelect
-                aria-label="Sắp xếp bài viết"
-                value={sort}
-                onChange={(e) => setFilter("sort", e.target.value)}
-                className="flex-1 sm:w-40 sm:flex-none"
-              >
-                <option value="new">Mới nhất</option>
-                <option value="hot">Nhiều lượt thích</option>
-                <option value="discussed">Nhiều bình luận</option>
-              </FeedFilterSelect>
+              <div className="flex flex-wrap items-stretch gap-2 sm:flex-nowrap">
+                <button
+                  type="button"
+                  aria-expanded={showAdvancedFilters}
+                  aria-controls="life-advanced-filters"
+                  onClick={() => setShowAdvancedFilters((open) => !open)}
+                  className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition-colors ${showAdvancedFilters ? "border-brand-600 bg-brand-600 text-white" : "border-neutral-200 bg-surface text-neutral-700 hover:border-neutral-300"}`}
+                >
+                  <SlidersHorizontal size={15} />
+                  <span className="whitespace-nowrap">Bộ lọc nâng cao</span>
+                  {activeAdvancedCount > 0 && (
+                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${showAdvancedFilters ? "bg-brand-700 text-white" : "bg-brand-100 text-brand-800"}`}>
+                      {activeAdvancedCount}
+                    </span>
+                  )}
+                  {showAdvancedFilters ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+                {(search || topic || type || activeAdvancedCount > 0) && (
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    title="Đặt lại bộ lọc"
+                    className="inline-flex min-h-10 items-center justify-center rounded-lg px-3 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
+                  >
+                    <RotateCcw size={14} />
+                    <span className="sr-only">Đặt lại bộ lọc</span>
+                  </button>
+                )}
+              </div>
             </div>
-            {type === "review" && (
-              <FeedFilterSelect
-                aria-label="Lọc mức chi"
-                value={maxPrice}
-                onChange={(e) => setFilter("maxPrice", e.target.value)}
-                className="w-full sm:w-48"
+            {showAdvancedFilters && (
+              <div
+                id="life-advanced-filters"
+                className="animate-in rounded-xl border border-neutral-200 bg-neutral-50/70 p-3 shadow-xs fade-in-50 duration-200 sm:p-4"
               >
-                <option value="">Mọi mức chi</option>
-                <option value="30000">Đến 30.000đ/người</option>
-                <option value="50000">Đến 50.000đ/người</option>
-                <option value="80000">Đến 80.000đ/người</option>
-              </FeedFilterSelect>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <div className="min-w-0">
+                    <FeedFilterSelect
+                      fitContent
+                      aria-label="Lọc campus"
+                      value={campus}
+                      onChange={(e) => setFilter("campus", e.target.value)}
+                    >
+                      {CAMPUS_OPTIONS.map((item) => (
+                        <option
+                          key={item.value}
+                          value={item.value === "all" ? "" : item.value}
+                        >
+                          {item.label}
+                        </option>
+                      ))}
+                    </FeedFilterSelect>
+                  </div>
+                  <CampusAreaSelect
+                    fitContent
+                    campus={campus}
+                    value={topicFilters.area || ""}
+                    onChange={(value, selectedCampus) => setFilter("area", value, selectedCampus)}
+                  />
+                  <div className="min-w-0">
+                    <FeedFilterSelect
+                      fitContent
+                      aria-label="Sắp xếp bài viết"
+                      value={point ? "nearby" : sort}
+                      disabled={Boolean(point)}
+                      onChange={(e) => setFilter("sort", e.target.value)}
+                    >
+                      {point && <option value="nearby">Gần nhất</option>}
+                      <option value="new">Mới nhất</option>
+                      <option value="hot">{topic === "food" ? "Quán được yêu thích" : "Nhiều lượt thích"}</option>
+                      <option value="discussed">{topic === "food" ? "Quán được bàn luận" : "Nhiều bình luận"}</option>
+                      {topic === "food" ? <>
+                        <option value="price_low">Giá thấp đến cao</option>
+                        <option value="price_high">Giá cao đến thấp</option>
+                      </> : <option value="unanswered">Câu hỏi chưa có lời giải</option>}
+                    </FeedFilterSelect>
+                  </div>
+                  {topic === "food" && (
+                    <div className="min-w-0">
+                      <FeedFilterSelect
+                        fitContent
+                        aria-label="Lọc mức giá"
+                        value={maxPrice}
+                        onChange={(e) => setFilter("maxPrice", e.target.value)}
+                      >
+                        <option value="">Mọi mức giá</option>
+                        <option value="30000">Đến 30.000đ/người</option>
+                        <option value="50000">Đến 50.000đ/người</option>
+                        <option value="80000">Đến 80.000đ/người</option>
+                      </FeedFilterSelect>
+                    </div>
+                  )}
+                </div>
+                <TopicFeedFilters
+                  topic={topic} params={params} onChange={setFilter}
+                  nearby={Boolean(point)} radius={radius} onRadius={setRadius}
+                  onLocate={() => position.request(() => setParams((current) => {
+                    const next = new URLSearchParams(current);
+                    next.delete("type");
+                    next.delete("sort");
+                    return next;
+                  }, { replace: true }))} onClearLocation={position.clear}
+                  locating={position.loading} locationError={position.error}
+                />
+              </div>
             )}
           </>
         )}
@@ -280,6 +399,11 @@ export default function StudentLifePage() {
             chuyện và xem thêm.
           </p>
         )}
+        {canBrowse && !postsQuery.isError && (
+          <p role="status" aria-live="polite" className="text-xs text-neutral-500">
+            {postsQuery.isFetching ? "Đang tìm bài phù hợp…" : `${posts.length} bài viết phù hợp`}
+          </p>
+        )}
         {postsQuery.isError ? (
           <div
             role="alert"
@@ -296,7 +420,7 @@ export default function StudentLifePage() {
           </div>
         ) : (
           <ThreadFeed
-            key={`${tab}-${topic}-${campus}-${search}-${type}-${sort}-${status}-${maxPrice}`}
+            key={`${tab}-${topic}-${campus}-${search}-${type}-${sort}-${status}-${maxPrice}-${topicFilterQuery}-${point?.latitude}-${point?.longitude}-${radius}`}
             posts={posts}
             isLoading={postsQuery.isLoading}
             paging="infinite"
@@ -317,7 +441,8 @@ export default function StudentLifePage() {
                   : "Chưa có câu chuyện nào ở đây."
             }
             emptyDescription={
-              tab === "following"
+              point ? "Chưa có review có vị trí quán phù hợp. Thử tăng bán kính hoặc bỏ lọc Gần tôi."
+              : tab === "following"
                 ? "Chọn chủ đề bạn quan tâm để bắt đầu."
                 : "Thử đổi bộ lọc hoặc mở đầu bằng một câu hỏi của bạn."
             }

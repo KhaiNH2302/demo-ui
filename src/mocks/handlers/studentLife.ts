@@ -5,6 +5,7 @@ import {
   seedReports,
 } from "../data/knowledge";
 import { seedUsers } from "../data/users";
+import { studentLifeDemoSavedIds } from "../data/studentLife";
 import { mockDelay, isScenarioActive, getViewerId } from "../utils";
 import {
   LIFE_TOPICS,
@@ -15,6 +16,7 @@ import {
   isValidHousingExperience,
 } from "@/lib/studentLife";
 import type { KnowledgePost, Comment } from "@/types/entities";
+import { matchesTopicFilters, topicDetailsFields, validTopicDetails } from "@/lib/studentLifeDetails";
 
 const following = new Map<string, Set<string>>();
 const saved = new Map<string, Set<string>>();
@@ -23,7 +25,7 @@ const followedTopics = (id: string) => {
   return following.get(id)!;
 };
 const savedPosts = (id: string) => {
-  if (!saved.has(id)) saved.set(id, new Set(["post_01", "post_04"]));
+  if (!saved.has(id)) saved.set(id, new Set(["post_01", "post_04", ...studentLifeDemoSavedIds]));
   return saved.get(id)!;
 };
 const actor = (request: Request) =>
@@ -77,8 +79,10 @@ const validBody = (body: Partial<KnowledgePost>) =>
       isValidHousingExperience(body.housingExperience))) &&
   (body.title?.length || 0) <= 140 &&
   (body.images?.length || 0) <= 4 &&
-  (body.attachments?.length || 0) <= 3;
+  (body.attachments?.length || 0) <= 3 &&
+  validTopicDetails(body);
 const fields = (body: Partial<KnowledgePost>) => ({
+  ...topicDetailsFields(body),
   type: body.type!,
   title: body.title?.trim(),
   contentMd: body.contentMd!.trim(),
@@ -91,10 +95,15 @@ const fields = (body: Partial<KnowledgePost>) => ({
           spentPerPerson: body.foodReview.spentPerPerson,
           visitedOn: body.foodReview.visitedOn || undefined,
           isDemo: body.foodReview.isDemo,
+          coordinates: body.foodReview.coordinates ? {
+            latitude: body.foodReview.coordinates.latitude,
+            longitude: body.foodReview.coordinates.longitude,
+          } : undefined,
         }
       : undefined,
   housingExperience:
     body.lifeTopic === "housing" &&
+    (!body.housingPost || body.housingPost.kind === "experience") &&
     body.type !== "question" &&
     hasHousingExperience(body.housingExperience)
       ? {
@@ -106,6 +115,7 @@ const fields = (body: Partial<KnowledgePost>) => ({
       : undefined,
   lifeTopic: body.lifeTopic,
   campus: body.campus,
+  area: body.area?.trim() || undefined,
   location: body.location?.trim().slice(0, 80),
   tags: (body.tags || []).slice(0, 3),
   visibility:
@@ -158,6 +168,7 @@ export const knowledgeHandlers = [
           post.foodReview &&
           post.foodReview.spentPerPerson <= maxPrice,
       );
+    list = list.filter((post) => matchesTopicFilters(post, params));
     if (params.get("authorId"))
       list = list.filter((post) => post.authorId === params.get("authorId"));
     if (params.get("tag"))
@@ -171,21 +182,32 @@ export const knowledgeHandlers = [
             post.contentMd,
             post.location,
             post.campus,
+            post.area,
             post.foodReview?.placeName,
             post.foodReview?.dish,
             post.housingExperience?.highlights,
             post.housingExperience?.considerations,
+            post.housingPost?.area,
+            post.studentExperience?.courseCode,
+            post.ridePost?.origin,
+            post.ridePost?.destination,
             ...post.tags,
           ].join(" "),
         ).includes(query),
       );
     }
     const sort = params.get("sort");
+    if (topic === "food" && ["hot", "discussed", "price_low", "price_high"].includes(sort || ""))
+      list = list.filter((post) => post.type === "review" && post.foodReview);
     if (sort === "unanswered")
       list = list.filter((post) => post.type === "question" && !post.isSolved);
     list.sort(
       sort === "hot"
         ? (a, b) => (b.likesCount || 0) - (a.likesCount || 0)
+        : topic === "food" && sort === "price_low"
+          ? (a, b) => a.foodReview!.spentPerPerson - b.foodReview!.spentPerPerson
+        : topic === "food" && sort === "price_high"
+          ? (a, b) => b.foodReview!.spentPerPerson - a.foodReview!.spentPerPerson
         : sort === "discussed"
           ? (a, b) => b.commentCount - a.commentCount
           : (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),

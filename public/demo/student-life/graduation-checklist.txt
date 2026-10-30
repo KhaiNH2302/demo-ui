@@ -1,0 +1,8 @@
+TÀI LIỆU DEMO — ĐỒ ÁN TỐT NGHIỆP
+
+1. Thống nhất mục tiêu và phạm vi với người hướng dẫn.
+2. Chia đầu việc, thời hạn và người chịu trách nhiệm.
+3. Chuẩn bị dữ liệu demo và kiểm tra luồng chính.
+4. Luyện trình bày, hỏi đáp và phương án xử lý lỗi khi demo.
+
+Đối chiếu yêu cầu thực tế của kỳ học. Đây không phải biểu mẫu của trường.

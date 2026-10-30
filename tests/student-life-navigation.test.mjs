@@ -13,6 +13,7 @@ test("opening the full-page composer keeps review context and returns to the ori
       topic: "food",
       type: "review",
       campus: "Hòa Lạc",
+      area: "Xã Hạ Bằng",
       returnTo,
     }),
     "https://scs.local",
@@ -21,11 +22,17 @@ test("opening the full-page composer keeps review context and returns to the ori
   assert.equal(url.searchParams.get("topic"), "food");
   assert.equal(url.searchParams.get("type"), "review");
   assert.equal(url.searchParams.get("campus"), "Hòa Lạc");
+  assert.equal(url.searchParams.get("area"), "Xã Hạ Bằng");
   assert.equal(lifePostReturnPath(url.searchParams.get("returnTo")), returnTo);
   assert.equal(
     lifePostReturnPath("/knowledge?compose=1&topic=housing"),
     "/knowledge?topic=housing",
   );
+});
+
+test("composer links discard an area from another campus", () => {
+  const url = new URL(lifePostCreateHref({ campus: "Đà Nẵng", area: "Xã Hạ Bằng" }), "https://scs.local");
+  assert.equal(url.searchParams.has("area"), false);
 });
 
 test("composer back links stay on known app pages and never return to the composer itself", () => {

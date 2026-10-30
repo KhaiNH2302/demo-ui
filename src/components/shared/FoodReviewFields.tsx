@@ -1,6 +1,10 @@
-import { Star, UtensilsCrossed } from "lucide-react";
+import { useRef, useState } from "react";
+import { UtensilsCrossed, MapPin } from "lucide-react";
 import type { FoodReview } from "@/types/entities";
 import { localReviewDate } from "@/lib/studentLife";
+import { coordinatesFromText } from "@/lib/studentLifeDetails";
+import { useCurrentLocation } from "@/lib/useCurrentLocation";
+import { Button } from "@/components/ui/Button";
 
 const field =
   "w-full rounded-lg border border-neutral-200 bg-surface px-3 py-2.5 text-sm text-neutral-900 outline-hidden focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15";
@@ -14,6 +18,10 @@ export function FoodReviewFields({
 }) {
   const update = (patch: Partial<FoodReview>) =>
     onChange({ ...value, ...patch });
+  const [mapValue, setMapValue] = useState(value.coordinates ? `${value.coordinates.latitude}, ${value.coordinates.longitude}` : "");
+  const position = useCurrentLocation();
+  const mapInput = useRef<HTMLInputElement>(null);
+  const invalidMap = Boolean(mapValue.trim() && !coordinatesFromText(mapValue));
   return (
     <section
       aria-label="Thông tin review quán"
@@ -69,36 +77,6 @@ export function FoodReviewFields({
         </label>
       </div>
       <div className="grid items-start gap-3 sm:grid-cols-2">
-        <fieldset className="space-y-2">
-          <legend className="text-xs font-medium text-neutral-600">
-            Điểm trải nghiệm của bạn *
-          </legend>
-          <div className="flex items-center gap-1">
-            {[1, 2, 3, 4, 5].map((rating) => (
-              <label
-                key={rating}
-                className="cursor-pointer rounded p-1 hover:bg-amber-100"
-              >
-                <input
-                  type="radio"
-                  name="food-review-rating"
-                  value={rating}
-                  checked={value.rating === rating}
-                  onChange={() => update({ rating })}
-                  aria-label={`${rating} sao`}
-                  className="peer sr-only"
-                />
-                <Star
-                  size={24}
-                  className={`rounded-sm peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500 ${rating <= value.rating ? "fill-amber-400 text-amber-500" : "text-neutral-300"}`}
-                />
-              </label>
-            ))}
-            <span className="ml-2 text-xs font-semibold text-amber-800">
-              {value.rating ? `${value.rating}/5` : ""}
-            </span>
-          </div>
-        </fieldset>
         <label className="space-y-1.5 text-xs font-medium text-neutral-600">
           <span>Ngày bạn ghé quán</span>
           <input
@@ -109,6 +87,24 @@ export function FoodReviewFields({
             className={field}
           />
         </label>
+      </div>
+      <div className="space-y-2 border-t border-amber-200/60 pt-3">
+        <label className="block space-y-1.5 text-xs font-medium text-neutral-600">
+          <span>Vị trí quán (không bắt buộc)</span>
+          <input ref={mapInput} value={mapValue} aria-invalid={invalidMap || undefined} aria-describedby="food-map-help" className={field} placeholder="Dán tọa độ hoặc liên kết Google Maps có tọa độ" onChange={(e) => {
+            const point = coordinatesFromText(e.target.value);
+            setMapValue(e.target.value);
+            e.target.setCustomValidity(e.target.value.trim() && !point ? "Nhập tọa độ hợp lệ hoặc liên kết Google Maps có tọa độ." : "");
+            update({ coordinates: point });
+          }} />
+        </label>
+        <p id="food-map-help" className={`text-[11px] leading-relaxed ${invalidMap ? "text-red-600" : "text-neutral-500"}`}>{invalidMap ? "Chưa đọc được tọa độ. Mở Google Maps, nhấp vào vị trí quán để sao chép cặp tọa độ; liên kết rút gọn chưa được hỗ trợ." : "Thêm vị trí đúng của quán để bài review xuất hiện trong bộ lọc Gần tôi. Không dùng vị trí nhà của bạn."}</p>
+        <Button type="button" size="sm" variant="outline" loading={position.loading} leftIcon={<MapPin size={14} />} onClick={() => position.request((point) => {
+          setMapValue(`${point.latitude}, ${point.longitude}`);
+          mapInput.current?.setCustomValidity("");
+          update({ coordinates: point });
+        })}>Tôi đang ở quán — dùng vị trí này</Button>
+        {position.error && <p role="alert" className="text-xs text-red-600">{position.error}</p>}
       </div>
       <p className="text-[11px] leading-relaxed text-neutral-500">
         Kể cả món bạn thích và điều chưa ưng. Mức chi là bữa bạn đã ăn, có thể

@@ -201,7 +201,7 @@ test("food reviews support campus, budget and place search while sharing stays s
   );
 });
 
-test("reviews require a real rating, a sensible amount and food topic before publication", async () => {
+test("reviews validate sensible prices, the food topic and any legacy rating supplied", async () => {
   const payload = {
     type: "review",
     title: "Ăn trưa sau giờ học",

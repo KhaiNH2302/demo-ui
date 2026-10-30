@@ -22,6 +22,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { toast } from '@/components/ui/Toast';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/cn';
+import { CAMPUS_OPTIONS as campusOptions } from '@/lib/campuses';
 import {
   UsersRound,
   Plus,
@@ -52,15 +53,6 @@ const categoryTabs: { key: 'all' | GroupCategory; label: string; icon: React.Ele
   { key: 'project', label: 'Đồ án & Capstone', icon: GraduationCap },
   { key: 'study', label: 'Môn học & Ôn thi', icon: BookOpen },
   { key: 'entertainment', label: 'Nhóm Giải trí', icon: Gamepad2 },
-];
-
-const campusOptions = [
-  { value: 'all', label: 'Tất cả cơ sở' },
-  { value: 'Hòa Lạc', label: 'FPT Hòa Lạc (Hà Nội)' },
-  { value: 'TP. Hồ Chí Minh', label: 'FPT TP. Hồ Chí Minh' },
-  { value: 'Đà Nẵng', label: 'FPT Đà Nẵng' },
-  { value: 'Cần Thơ', label: 'FPT Cần Thơ' },
-  { value: 'Quy Nhơn', label: 'FPT Quy Nhơn' },
 ];
 
 const goalOptions = [

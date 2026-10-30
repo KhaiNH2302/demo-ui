@@ -1,4 +1,8 @@
 import type { Comment, KnowledgePost } from "@/types/entities";
+import { createStudentLifeFilterFixtures } from "./studentLifeFilterFixtures";
+
+const filterFixtures = createStudentLifeFilterFixtures();
+export const studentLifeDemoSavedIds = filterFixtures.savedIds;
 
 const ago = (minutes: number) =>
   new Date(Date.now() - minutes * 60_000).toISOString();
@@ -24,6 +28,39 @@ const post = (
 });
 
 export const seedKnowledgePosts: KnowledgePost[] = [
+  post(18, {
+    lifeTopic: "housing", title: "Tìm phòng cho 2 người quanh Tân Xã, ngân sách 2 triệu",
+    contentMd: "Hai đứa mình muốn tìm phòng khép kín, có chỗ nấu ăn. Ngân sách tiền phòng tối đa 2 triệu/tháng, chưa gồm điện nước. Bạn nào biết phòng phù hợp chia sẻ giúp mình nhé.",
+    area: "Xã Hạ Bằng",
+    location: "Khu Mục Uyên",
+    housingPost: { kind: "seeking", area: "Xã Hạ Bằng", price: 2000000, priceUnit: "room", people: 2, amenities: ["Khép kín", "Bếp riêng"], closed: false },
+    demoContent: { note: "Tình huống minh họa bộ lọc tìm trọ, không phải nhu cầu hoặc tin Facebook đã xác minh." },
+  }),
+  post(19, {
+    lifeTopic: "housing", title: "Minh họa tin sinh viên nhượng phòng khép kín quanh campus",
+    contentMd: "Mình chuẩn bị chuyển chỗ ở và muốn nhượng lại phòng cùng một số đồ dùng. Mẫu tin minh họa cách ghi tiền phòng, tiền cọc và các khoản phí; không phải phòng đang được nhượng thực tế.",
+    area: "Xã Hòa Lạc",
+    housingPost: { kind: "transfer", area: "Xã Hòa Lạc", price: 2500000, priceUnit: "room", people: 2, amenities: ["Khép kín", "Điều hòa", "Không chung chủ"], deposit: 2500000, electricity: "3.500đ/kWh", water: "80.000đ/người/tháng", serviceFee: 100000, closed: false },
+    demoContent: { note: "Phòng và các khoản phí chỉ là dữ liệu minh họa, không dùng để liên hệ thuê hoặc đặt cọc." },
+  }),
+  post(20, {
+    lifeTopic: "experience", title: "Chuẩn bị OJT: mình bắt đầu từ CV và lịch ứng tuyển",
+    contentMd: "Mình gom các dự án đã làm, chọn phần việc mình trực tiếp phụ trách để đưa vào CV. Sau đó lập một danh sách vị trí OJT phù hợp và ghi lại lịch phỏng vấn để không bỏ sót. Mn thường chuẩn bị phần nào trước?",
+    studentExperience: { category: "ojt", intent: "sharing" },
+    demoContent: { note: "Bài viết minh họa phân loại OJT, không phải thông báo tuyển dụng." },
+  }),
+  post(21, {
+    lifeTopic: "experience", type: "question", title: "Xin tài liệu ôn tập PRJ301 để hệ thống lại kiến thức",
+    contentMd: "Mình cần checklist các phần cần ôn và bài tập tự luyện về servlet, session và kết nối cơ sở dữ liệu. Bạn nào có tài liệu được phép chia sẻ cho mình xin với, mình không tìm lời giải bài kiểm tra nhé.",
+    studentExperience: { category: "materials", intent: "request_materials", courseCode: "PRJ301" },
+    demoContent: { note: "Tình huống demo xin tài liệu; chưa có tệp đính kèm." },
+  }),
+  post(22, {
+    lifeTopic: "experience", type: "question", title: "Đồ án tốt nghiệp nên phân chia thời gian demo và trình bày thế nào?",
+    contentMd: "Nhóm mình đang tập trình bày, muốn chừa đủ thời gian cho luồng chính và phần hỏi đáp. Anh chị có cách luyện demo hoặc chuẩn bị phương án khi gặp lỗi chia sẻ giúp nhóm với.",
+    studentExperience: { category: "graduation", intent: "asking" },
+    demoContent: { note: "Tình huống minh họa, không phải hướng dẫn hoặc quy định chính thức của trường." },
+  }),
   post(14, {
     authorId: "usr_student_03",
     lifeTopic: "food",
@@ -331,6 +368,7 @@ export const seedKnowledgePosts: KnowledgePost[] = [
     rejectReason:
       "Ảnh ban đầu chứa mã sinh viên và thông tin cá nhân. Vui lòng che thông tin trước khi gửi lại.",
   }),
+  ...filterFixtures.posts,
 ];
 
 export const seedComments: Comment[] = [
@@ -426,11 +464,12 @@ export const seedComments: Comment[] = [
     likesCount: 5,
     createdAt: "",
   },
+  ...filterFixtures.comments,
 ];
+const postsById = new Map(seedKnowledgePosts.map((item) => [item.id, item]));
 seedComments.forEach((comment, index) => {
-  const original = seedKnowledgePosts.find(
-    (item) => item.id === comment.postId,
-  )!;
+  if (comment.createdAt) return;
+  const original = postsById.get(comment.postId)!;
   comment.createdAt = new Date(
     Math.min(
       Date.now() - 60_000,
@@ -438,8 +477,8 @@ seedComments.forEach((comment, index) => {
     ),
   ).toISOString();
 });
+const commentCounts = new Map<string, number>();
+seedComments.forEach((comment) => commentCounts.set(comment.postId, (commentCounts.get(comment.postId) || 0) + 1));
 seedKnowledgePosts.forEach((item) => {
-  item.commentCount = seedComments.filter(
-    (comment) => comment.postId === item.id,
-  ).length;
+  item.commentCount = commentCounts.get(item.id) || 0;
 });

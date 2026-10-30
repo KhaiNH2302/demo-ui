@@ -6,12 +6,13 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 import { ThreadComposer } from "@/components/shared/ThreadComposer";
 import { Button } from "@/components/ui/Button";
 import { apiClient } from "@/lib/apiClient";
 import { LIFE_CAMPUSES, LIFE_TOPICS } from "@/lib/studentLife";
 import { lifePostReturnPath } from "@/lib/studentLifeNavigation";
+import { isCampusArea } from "@/lib/campusAreas";
 import { useAuthStore } from "@/store/authStore";
 import type { KnowledgePost, PostType } from "@/types/entities";
 
@@ -38,6 +39,8 @@ export default function StudentLifeComposePage() {
   const defaultCampus = LIFE_CAMPUSES.find(
     (item) => item === params.get("campus"),
   );
+  const defaultArea = isCampusArea(defaultCampus || "", params.get("area"))
+    ? params.get("area")! : undefined;
   const detail = useQuery<{ post: KnowledgePost }>({
     queryKey: ["knowledge", "detail", id, user?.id],
     queryFn: () => apiClient.get(`/posts/${id}`),
@@ -52,21 +55,23 @@ export default function StudentLifeComposePage() {
   const heading = id ? "Chỉnh sửa bài viết" : "Viết bài";
   return (
     <div className="mx-auto max-w-[800px] space-y-5 pb-6">
-      <header className="space-y-4">
+      <header className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-surface p-4 sm:gap-4 sm:p-5">
         <Link
           to={returnTo}
-          className="inline-flex items-center gap-2 text-sm font-medium text-neutral-500 hover:text-brand-700"
+          aria-label="Quay lại"
+          title="Quay lại"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-50 text-neutral-500 transition-colors hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
         >
-          <ArrowLeft size={16} />
-          Quay lại
+          <ArrowLeft size={18} aria-hidden="true" />
         </Link>
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl">
+        <div className="min-w-0 space-y-1">
+          <h1 className="text-xl font-semibold leading-tight tracking-tight text-neutral-900 sm:text-2xl">
             {heading}
           </h1>
           {!id && (
-            <p className="text-xs text-neutral-400">
-              Nháp chữ được tự lưu khi bạn viết
+            <p className="flex items-start gap-1.5 text-xs leading-relaxed text-neutral-500">
+              <Save size={13} aria-hidden="true" className="mt-0.5 shrink-0" />
+              <span>Nội dung văn bản được tự lưu trên thiết bị này</span>
             </p>
           )}
         </div>
@@ -100,12 +105,13 @@ export default function StudentLifeComposePage() {
       ) : (
         <div className="rounded-2xl border border-neutral-200 bg-surface p-4 sm:p-6">
           <ThreadComposer
-            key={id || "new"}
+            key={id || `new-${defaultTopic || ""}-${defaultCampus || ""}-${defaultArea || ""}-${defaultType || ""}`}
             variant="page"
             post={post}
             defaultType={defaultType}
             defaultTopic={defaultTopic}
             defaultCampus={defaultCampus}
+            defaultArea={defaultArea}
             onCancel={() => navigate(returnTo)}
             onPosted={async (result) => {
               await Promise.all([

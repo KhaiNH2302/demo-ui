@@ -1,0 +1,8 @@
+TÀI LIỆU DEMO — GỢI Ý TỰ ÔN PRJ301
+
+- Vẽ luồng request và response cho một chức năng.
+- Phân biệt session với request attribute bằng ví dụ của bạn.
+- Tự viết một form có kiểm tra dữ liệu đầu vào.
+- Ôn kết nối cơ sở dữ liệu và cách xử lý lỗi.
+
+Đây là ghi chú tự học minh họa, không phải đề thi hoặc đáp án.

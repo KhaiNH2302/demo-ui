@@ -6,6 +6,7 @@ import { AttachmentList } from "@/components/shared/AttachmentList";
 import { HousingExperienceSummary } from "./HousingExperienceSummary";
 import { PostDemoSource } from "./PostDemoSource";
 import { FoodReviewSummary } from "./FoodReviewSummary";
+import { TopicPostSummary } from "./TopicPostSummary";
 import { ImageGallery } from "@/components/shared/ImageGallery";
 import { useToast } from "@/components/ui/Toast";
 import { useAuthStore } from "@/store/authStore";
@@ -444,6 +445,8 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
           )}
         </div>
 
+        <TopicPostSummary post={post} />
+
         {!isCompact &&
           post.lifeTopic === "housing" &&
           post.type !== "question" &&
@@ -455,6 +458,8 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
           <FoodReviewSummary
             review={post.foodReview}
             location={post.location}
+            distanceKm={post.distanceKm}
+            synthetic={post.demoContent?.kind === "synthetic"}
             compact={isCompact}
           />
         )}

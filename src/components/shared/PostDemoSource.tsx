@@ -6,7 +6,7 @@ export function PostDemoSource({
 }: {
   content: NonNullable<KnowledgePost["demoContent"]>;
 }) {
-  if (!content.sources?.length) return null;
+  if (!content.sources?.length && !content.note) return null;
   return (
     <div
       className="space-y-1.5 border-l-2 border-neutral-200 pl-3 text-[11px] leading-relaxed text-neutral-500"
@@ -17,7 +17,7 @@ export function PostDemoSource({
           "Bài được biên soạn lại từ thảo luận công khai; không phải bài đăng gốc."}
       </p>
       <div className="flex flex-wrap gap-x-3 gap-y-1">
-        {content.sources.map((source) => (
+        {content.sources?.map((source) => (
           <a
             key={source.url}
             href={source.url}

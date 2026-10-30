@@ -9,10 +9,12 @@ import type { PostType } from "@/types/entities";
 export function PostCreateEntry({
   topic,
   campus,
+  area,
   type,
 }: {
   topic?: string;
   campus?: string;
+  area?: string;
   type?: PostType;
 }) {
   const user = useAuthStore((state) => state.user);
@@ -34,6 +36,7 @@ export function PostCreateEntry({
             lifePostCreateHref({
               topic,
               campus,
+              area,
               type,
               returnTo: location.pathname + location.search,
             }),
