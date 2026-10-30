@@ -752,6 +752,8 @@ export interface Reconciliation {
 // ============================================================================
 
 export interface ProgramSlot {
+  unlimited?: boolean;
+  attendanceMode?: 'Online' | 'Offline';
   id: string;
   name: string;
   timeRange: string;
@@ -761,7 +763,10 @@ export interface ProgramSlot {
 }
 
 export interface ProgramChannel {
-  sourceType?: "ManagerCreated" | "StudentProposal";
+  onlineUnlimited?: boolean;
+  clubId?: string;
+  onlineLink?: string;
+  sourceType?: 'ManagerCreated' | 'StudentProposal';
   proposalId?: string;
   id: string;
   type: ProgramType;
@@ -797,8 +802,6 @@ export interface ProgramChannel {
   slots?: ProgramSlot[];
   preparationNotes?: string;
   safetyNotes?: string;
-  costInfo: "Free" | string;
-  costDetails?: string;
   speakerInfo?: {
     name: string;
     bio: string;
@@ -866,12 +869,16 @@ export interface ProgramAnnouncement {
   recipientCount: number;
 }
 
-/** Student proposes an idea; approval transfers organization to an Event Manager. */
+/** Student proposes an idea; approval transfers organization to an Manager. */
 export interface ProgramProposal {
+  onlineUnlimited?: boolean;
+  offlineQuota?: number;
+  onlineQuota?: number;
+  clubId?: string;
   id: string;
   studentId: string;
   studentName: string;
-  type: "Volunteer" | "Workshop";
+  type: 'Event' | 'Volunteer' | 'Workshop';
   title: string;
   description: string;
   goal: string;
@@ -879,7 +886,6 @@ export interface ProgramProposal {
   expectedParticipants: number;
   suggestedStartAt: string;
   location: string;
-  costInfo: string;
   safetyNotes: string;
   mode?: "Offline" | "Online" | "Hybrid";
   contactInfo?: string;

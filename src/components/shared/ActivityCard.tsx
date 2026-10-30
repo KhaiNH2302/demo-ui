@@ -36,6 +36,8 @@ export interface ActivityCardProps {
   capacity?: number | null;
   benefitBadge?: string | null;
   actionSlot?: React.ReactNode;
+  mediaSlot?: React.ReactNode;
+  unlimited?: boolean;
   density?: 'default' | 'compact';
   className?: string;
 }
@@ -63,6 +65,8 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   capacity,
   benefitBadge,
   actionSlot,
+  mediaSlot,
+  unlimited,
   density = 'default',
   className,
 }) => {
@@ -77,7 +81,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
       )}
     >
       <div>
-        <Link
+        {mediaSlot || <Link
           to={href}
           className={cn(
             'block relative bg-neutral-100 overflow-hidden',
@@ -128,7 +132,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
               <span>{galleryCount}</span>
             </div>
           )}
-        </Link>
+        </Link>}
 
         <div className={cn(isCompact ? 'p-3.5 space-y-2' : 'p-4 space-y-2.5')}>
           <div className="flex items-start gap-3">
@@ -177,7 +181,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         <div className="flex items-center gap-1.5 text-neutral-600">
           <Users className="h-3.5 w-3.5 text-neutral-400" />
           <span className="tabular-nums">
-            {capacity ? `${registeredCount}/${capacity} đã đăng ký` : `${registeredCount} quan tâm`}
+            {unlimited ? `${registeredCount} đã xác nhận · Online không giới hạn` : capacity ? `${registeredCount}/${capacity} đã đăng ký` : `${registeredCount} quan tâm`}
           </span>
         </div>
 

@@ -194,7 +194,7 @@ export default function LoginPage() {
     {
       email: 'manager@fpt.edu.vn',
       name: 'Đỗ Hải Phong',
-      roleLabel: 'Event Manager · Tổ chức chương trình',
+      roleLabel: 'Manager · Tổ chức chương trình',
     },
     {
       email: 'schooladmin@fpt.edu.vn',
