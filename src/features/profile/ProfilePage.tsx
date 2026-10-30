@@ -35,7 +35,6 @@ import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Textarea } from '@/components/ui/Textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { Chip } from '@/components/ui/Chip';
 import {
@@ -43,7 +42,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/Dialog';
 import {
   DropdownMenu,
@@ -63,9 +61,14 @@ import {
   seedMentors,
   seedMentorCourses,
   seedMentorProfileSections,
+  seedMentorReviews,
   seedMentoringPosts,
 } from '@/mocks/data/mentoring';
 import { SendMentoringRequestDialog } from '@/features/mentoring/SendMentoringRequestDialog';
+import { ReviewMentorDialog } from '@/features/mentoring/ReviewMentorDialog';
+import { findClass, getReviewState } from '@/features/mentoring/reviews';
+import { MentorOfferPanel } from '@/features/mentoring/MentorOfferPanel';
+import { MentorPublicProfile } from '@/features/mentoring/MentorPublicProfile';
 import { MentorCourseCard } from '@/components/shared/MentorCourseCard';
 import { MentorProfileSectionSheet } from '@/components/shared/MentorProfileSectionSheet';
 import type {
@@ -75,6 +78,8 @@ import type {
   MentorCourse,
   MentorPost,
   MentorProfileSection,
+  MentorReview,
+  MentoringClass,
   Audience,
 } from '@/types/entities';
 import type { ProfileVisibility } from '@/types/status';
@@ -130,7 +135,10 @@ export const ProfilePage: React.FC = () => {
   const [aboutSubTab, setAboutSubTab] = useState<AboutSubTabKey>('overview');
 
   // Preview Mode ("Xem như")
-  const [previewMode, setPreviewMode] = useState<PreviewMode>('self');
+  // ?preview=public: mở thẳng chế độ "xem như khách" (dùng từ Mentor Center để xem hồ sơ như học viên)
+  const [previewMode, setPreviewMode] = useState<PreviewMode>(
+    searchParams.get('preview') === 'public' ? 'follower_pending' : 'self'
+  );
 
   // Modals state
   const [followersModal, setFollowersModal] = useState<{
@@ -148,10 +156,15 @@ export const ProfilePage: React.FC = () => {
 
   // Mentor modals and interactive states
   const [sendRequestOpen, setSendRequestOpen] = useState(false);
+  const [sendRequestPlanId, setSendRequestPlanId] = useState<string | undefined>();
+  const [sendRequestTime, setSendRequestTime] = useState<string | undefined>();
+  const openSendRequest = (planId?: string, preferredTime?: string) => {
+    setSendRequestPlanId(planId);
+    setSendRequestTime(preferredTime);
+    setSendRequestOpen(true);
+  };
   const [mentorSectionsSheetOpen, setMentorSectionsSheetOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewComment, setReviewComment] = useState('');
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([]);
   const [likedPostIds, setLikedPostIds] = useState<string[]>(['mpost_01']);
   const [savedPostIds, setSavedPostIds] = useState<string[]>(['mpost_02']);
@@ -253,6 +266,27 @@ export const ProfilePage: React.FC = () => {
       }
     },
   });
+
+  const mentorReviewsQuery = useQuery<MentorReview[]>({
+    queryKey: ['mentor-reviews', targetUserId],
+    queryFn: async () => {
+      try {
+        return await apiClient.get<MentorReview[]>(`/mentors/${targetUserId}/reviews`);
+      } catch {
+        return seedMentorReviews.filter((review) => review.mentorId === targetUserId);
+      }
+    },
+  });
+
+  // Chỉ người đã "Đã kết nối" với Mentor mới đánh giá được
+  const myClassesQuery = useQuery<MentoringClass[]>({
+    queryKey: ['mentoring', 'classes'],
+    queryFn: () => apiClient.get<MentoringClass[]>('/mentoring/classes'),
+    enabled: !isOwnAccount && Boolean(currentUser),
+  });
+  const reviewClass = isOwnAccount ? undefined : findClass(myClassesQuery.data || [], currentUser?.id, targetUserId);
+  const reviewConnection = reviewClass?.request;
+  const reviewState = getReviewState(reviewClass, mentorReviewsQuery.data || []);
 
   // Enroll course mutation
   const enrollMutation = useMutation({
@@ -366,6 +400,9 @@ export const ProfilePage: React.FC = () => {
   const primaryEdu =
     studentProfile.education?.find((e) => e.isCurrent) || studentProfile.education?.[0];
 
+  // Chủ hồ sơ ở chế độ chỉnh sửa vẫn dùng giao diện hồ sơ cá nhân; người xem thấy giao diện Mentor
+  const showMentorLayout = isMentor && Boolean(mentorData) && !isEffectiveSelf && !isLimitedView;
+
   return (
     <div className="max-w-6xl mx-auto space-y-5 pb-12">
       {/* 1. Thanh thông báo chế độ Xem như (View As Banner) */}
@@ -392,6 +429,92 @@ export const ProfilePage: React.FC = () => {
         </div>
       )}
 
+      {showMentorLayout && mentorData ? (
+        // Học viên (hoặc Mentor đang "Xem như") thấy hồ sơ Mentor dạng ADPList: giới thiệu bên trái, đặt lịch bên phải
+        <MentorPublicProfile
+          user={userEntity}
+          profile={studentProfile}
+          mentor={mentorData}
+          coverUrl={displayCover}
+          sections={mentorSections}
+          posts={mentorPosts}
+          reviews={mentorReviewsQuery.data || []}
+          coursesCount={mentorCourses.length}
+          coursesTab={
+            mentorCourses.length === 0 ? (
+              <EmptyState title="Chưa có khóa học nào" description="Mentor chưa mở khóa học nào." />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {mentorCourses.map((course) => (
+                  <MentorCourseCard
+                    key={course.id}
+                    course={course}
+                    hasEnrolled={enrolledCourseIds.includes(course.id)}
+                    onEnroll={(id) => enrollMutation.mutate(id)}
+                  />
+                ))}
+              </div>
+            )
+          }
+          canBook={!isOwnAccount}
+          onBook={openSendRequest}
+          reviewState={reviewState}
+          onReview={() => setReviewModalOpen(true)}
+          canReply={isOwnAccount}
+          actions={
+            isOwnAccount ? (
+              <Button size="sm" variant="outline" onClick={() => setPreviewMode('self')} leftIcon={<Pencil className="w-3.5 h-3.5" />}>
+                Quay lại chỉnh sửa
+              </Button>
+            ) : (
+              <>
+                <FollowButton userId={userEntity.id} initialState={followState} onChangeState={setFollowState} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/chats?targetUser=${userEntity.id}`)}
+                  leftIcon={<MessageSquare className="w-3.5 h-3.5" />}
+                >
+                  Nhắn tin
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Tùy chọn khác"
+                      className="p-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        navigator.clipboard?.writeText(window.location.href);
+                        toast.success('Đã sao chép liên kết hồ sơ');
+                      }}
+                    >
+                      <Link2 className="w-3.5 h-3.5 mr-2" />
+                      <span>Sao chép liên kết</span>
+                    </DropdownMenuItem>
+                    {reviewState === 'can' && (
+                      <DropdownMenuItem onClick={() => setReviewModalOpen(true)}>
+                        <Star className="w-3.5 h-3.5 mr-2" />
+                        <span>Đánh giá Mentor</span>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={() => setReportUserOpen(true)} className="text-red-600 focus:text-red-600">
+                      <Flag className="w-3.5 h-3.5 mr-2" />
+                      <span>Báo cáo người dùng</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            )
+          }
+        />
+      ) : (
+      <>
       {/* 2. FACEBOOK-STYLE PROFILE HEADER */}
       <section className="bg-surface rounded-2xl border border-neutral-200 dark:border-neutral-700/80 shadow-sm overflow-hidden">
         {/* Cover Image */}
@@ -463,16 +586,23 @@ export const ProfilePage: React.FC = () => {
                         <CheckCircle2 className="h-3 w-3" />
                         <span>Mentor</span>
                       </Badge>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        🟢 Còn trống tuần này
-                      </span>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                        ⭐ 4.9 (42 lượt đánh giá)
-                      </span>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-50 text-violet-700 border border-violet-200">
-                        🎓 38 buổi đã kèm
-                      </span>
+                      {mentorData?.acceptingRequests ? (
+                        <Badge variant="success" dot>Đang nhận học viên</Badge>
+                      ) : (
+                        <Badge variant="secondary">Tạm ngưng nhận</Badge>
+                      )}
+                      {mentorData?.rating ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700">
+                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                          {mentorData.rating.toFixed(1)}
+                          <span className="font-normal text-neutral-500">({mentorData.reviewCount} đánh giá)</span>
+                        </span>
+                      ) : (
+                        <span className="text-xs text-neutral-500">Mentor mới</span>
+                      )}
+                      {mentorData?.sessionsCompleted ? (
+                        <span className="text-xs text-neutral-500">· đã kèm {mentorData.sessionsCompleted} buổi</span>
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -587,19 +717,22 @@ export const ProfilePage: React.FC = () => {
                       <Button
                         size="sm"
                         variant="primary"
-                        onClick={() => setSendRequestOpen(true)}
+                        onClick={() => openSendRequest()}
+                        disabled={mentorData ? !mentorData.acceptingRequests : false}
                         leftIcon={<Send className="w-3.5 h-3.5" />}
                       >
                         Gửi yêu cầu kèm học
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setReviewModalOpen(true)}
-                        leftIcon={<Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
-                      >
-                        Đánh giá buổi học
-                      </Button>
+                      {reviewState === 'can' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setReviewModalOpen(true)}
+                          leftIcon={<Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
+                        >
+                          Đánh giá Mentor
+                        </Button>
+                      )}
                     </>
                   )}
 
@@ -652,6 +785,9 @@ export const ProfilePage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Mentor tự xem: tóm tắt học phí & lịch rảnh như học viên sẽ thấy */}
+      {isMentor && mentorData && isOwnAccount && <MentorOfferPanel mentor={mentorData} />}
 
       {/* 3. PROFILE COMPLETENESS (Chỉ hiển thị cho chủ sở hữu khi ở chế độ self) */}
       {isEffectiveSelf && (
@@ -1020,6 +1156,8 @@ export const ProfilePage: React.FC = () => {
           </TabsContent>
         </Tabs>
       )}
+      </>
+      )}
 
       {/* MODAL: Đổi ảnh bìa */}
       <Dialog open={coverModalOpen} onOpenChange={setCoverModalOpen}>
@@ -1176,80 +1314,20 @@ export const ProfilePage: React.FC = () => {
         open={sendRequestOpen}
         onOpenChange={setSendRequestOpen}
         mentorId={userEntity.id}
+        initialPlanId={sendRequestPlanId}
+        initialPreferredTime={sendRequestTime}
       />
 
-      {/* Mentor Session Review Modal */}
-      <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Đánh giá &amp; Chấm sao sau buổi học</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <p className="text-caption text-neutral-600">
-              Đánh giá của bạn sẽ giúp xây dựng điểm uy tín cho Mentor <strong>{userEntity.fullName}</strong> và giúp các bạn sinh viên khóa sau lựa chọn người kèm phù hợp.
-            </p>
-
-            <div className="space-y-1.5 text-center">
-              <label className="text-caption font-semibold text-neutral-700 block">
-                Chất lượng buổi học (Chấm điểm số sao)
-              </label>
-              <div className="flex items-center justify-center gap-2 pt-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setReviewRating(star)}
-                    className="p-1 hover:scale-110 transition-transform cursor-pointer"
-                  >
-                    <Star
-                      className={cn(
-                        'w-7 h-7',
-                        star <= reviewRating
-                          ? 'fill-amber-400 text-amber-400'
-                          : 'text-neutral-300'
-                      )}
-                    />
-                  </button>
-                ))}
-              </div>
-              <span className="text-caption font-medium text-amber-700">
-                {reviewRating === 5 && '⭐ Tuyệt vời, giải thích rất dễ hiểu và nhiệt tình!'}
-                {reviewRating === 4 && '⭐ Rất tốt, giải quyết được thắc mắc'}
-                {reviewRating === 3 && '⭐ Tạm ổn, cần chuẩn bị giáo trình kỹ hơn'}
-                {reviewRating <= 2 && '⭐ Cần cải thiện chất lượng'}
-              </span>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-caption font-semibold text-neutral-700 block">
-                Nhận xét chi tiết về buổi kèm
-              </label>
-              <Textarea
-                rows={3}
-                value={reviewComment}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setReviewComment(e.target.value)}
-                placeholder="Chia sẻ cảm nhận về mức độ dễ hiểu, sự kiên nhẫn và hữu ích của Mentor..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setReviewModalOpen(false)}>
-              Hủy
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                toast.success(`Cảm ơn bạn! Đã ghi nhận đánh giá ${reviewRating} sao cho Mentor ${userEntity.fullName}!`);
-                setReviewModalOpen(false);
-                setReviewComment('');
-              }}
-            >
-              Gửi đánh giá
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Đánh giá Mentor: chỉ mở khi đã kết nối và chưa đánh giá lần kết nối đó */}
+      {reviewConnection && reviewState === 'can' && (
+        <ReviewMentorDialog
+          open={reviewModalOpen}
+          onOpenChange={setReviewModalOpen}
+          mentorId={userEntity.id}
+          mentorName={userEntity.fullName}
+          request={reviewConnection}
+        />
+      )}
 
       {/* Mentor Profile Custom Sections Sheet */}
       <MentorProfileSectionSheet

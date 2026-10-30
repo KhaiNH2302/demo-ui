@@ -31,14 +31,14 @@ export function useMentorRequestActions(opts?: {
       refresh();
       return;
     }
-    toast.error('Có lỗi xảy ra, vui lòng thử lại.');
+    toast.error(e?.message || 'Chưa xử lý được yêu cầu, thử lại sau ít phút.');
   };
 
   const accept = useMutation({
     mutationFn: (id: string) =>
       apiClient.post<{ request: MentoringRequest; connectionId: string }>(`/mentor/requests/${id}/accept`),
     onSuccess: (data) => {
-      toast.success('Đã chấp nhận yêu cầu', 'Mentoring Connection đã được tạo và hai bên đã nhận thông báo.');
+      toast.success('Đã kết nối', 'Học viên đã nhận thông báo. Nhắn tin để chốt lịch buổi đầu.');
       refresh();
       opts?.onAccepted?.(data);
     },

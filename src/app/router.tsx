@@ -101,6 +101,7 @@ const MentorCenterShell = React.lazy(() => import('@/features/mentor/MentorCente
 const MentorProfilePage = React.lazy(() => import('@/features/mentor/MentorProfilePage'));
 const MentorPostsPage = React.lazy(() => import('@/features/mentor/MentorPostsPage'));
 const MentorRequestsPage = React.lazy(() => import('@/features/mentor/MentorRequestsPage'));
+const MentorClassesPage = React.lazy(() => import('@/features/mentor/MentorClassesPage'));
 
 // Admin Portal
 const AdminDashboardPage = React.lazy(() => import('@/features/admin/AdminDashboardPage'));
@@ -240,6 +241,7 @@ export const router = createBrowserRouter([
           { path: 'profile', element: <MentorProfilePage /> },
           { path: 'posts', element: <MentorPostsPage /> },
           { path: 'requests', element: <MentorRequestsPage /> },
+          { path: 'classes', element: <MentorClassesPage /> },
         ],
       },
 

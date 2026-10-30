@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, CalendarDays, Send, ShieldCheck, Users } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Clock, Send, ShieldCheck, Users, Wallet } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useAuthStore } from '@/store/authStore';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Chip } from '@/components/ui/Chip';
 import { SendMentoringRequestDialog } from './SendMentoringRequestDialog';
+import { describePostFee } from './plans';
 import type { MentorPost } from '@/types/entities';
 
 interface PostDetailResponse {
@@ -75,10 +76,40 @@ export const MentoringPostDetailPage: React.FC = () => {
               {(post.tags || []).map((tag) => <Chip key={tag} size="sm">#{tag}</Chip>)}
             </div>
 
+            {/* Cùng thông tin với thẻ ở Feed: lịch, học phí, số buổi, học thử */}
+            <dl className="grid gap-3 rounded-xl border border-neutral-200 p-4 sm:grid-cols-2">
+              <div className="flex items-start gap-2 text-sm">
+                <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" />
+                <div>
+                  <dt className="text-xs text-neutral-500">Lịch học</dt>
+                  <dd className="font-medium text-neutral-900">{post.schedule?.length ? post.schedule.join(', ') : 'Lịch thỏa thuận'}</dd>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 text-sm">
+                <Wallet className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" />
+                <div>
+                  <dt className="text-xs text-neutral-500">{isNeed ? 'Ngân sách' : 'Học phí'}</dt>
+                  <dd className="font-medium text-neutral-900">
+                    {describePostFee(post.fee)}
+                    {post.sessions ? <span className="font-normal text-neutral-500">, {post.sessions} buổi</span> : null}
+                  </dd>
+                </div>
+              </div>
+              {!isNeed && (
+                <div className="flex items-start gap-2 text-sm sm:col-span-2">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" />
+                  <div>
+                    <dt className="text-xs text-neutral-500">Học thử</dt>
+                    <dd className="font-medium text-neutral-900">{post.trial ? 'Có buổi học thử trước khi quyết định học tiếp' : 'Không có học thử'}</dd>
+                  </div>
+                </div>
+              )}
+            </dl>
+
             <div className="grid gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4 sm:grid-cols-2">
               <div className="flex items-center gap-2 text-sm text-neutral-700">
-                <CalendarDays className="h-4 w-4 text-neutral-400" />
-                <span>Deadline: <strong>{post.deadline ? new Date(post.deadline).toLocaleDateString('vi-VN') : 'Chưa đặt'}</strong></span>
+                <Clock className="h-4 w-4 text-neutral-400" />
+                <span>Trả lời trước: <strong>{post.deadline ? new Date(post.deadline).toLocaleDateString('vi-VN') : 'Chưa đặt'}</strong></span>
               </div>
               <div className="flex items-center gap-2 text-sm text-neutral-700 sm:justify-end">
                 <Users className="h-4 w-4 text-neutral-400" />

@@ -1,200 +1,219 @@
 import React, { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
-  ArrowRight,
-  BookOpen,
-  Calendar,
   CalendarDays,
-  Check,
-  CheckCircle2,
   Clock,
-  CornerDownRight,
-  DollarSign,
-  GraduationCap,
   Heart,
-  HelpCircle,
-  Image as ImageIcon,
+  Inbox,
   MessageCircleMore,
-  Newspaper,
   Plus,
   Search,
   Send,
   Sparkles,
   Star,
   Users,
+  Wallet,
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { cn } from '@/lib/cn';
+import { formatCurrency, formatScheduleSlot } from '@/lib/format';
 import { useAuthStore } from '@/store/authStore';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { QueryBoundary } from '@/components/shared/QueryBoundary';
 import { UserMiniCard } from '@/components/shared/UserMiniCard';
 import { SearchInput } from '@/components/shared/SearchInput';
 import { FormField } from '@/components/shared/FormField';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { Chip } from '@/components/ui/Chip';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { Switch } from '@/components/ui/Switch';
 import { Textarea } from '@/components/ui/Textarea';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { toast } from '@/components/ui/Toast';
 import { SendMentoringRequestDialog } from './SendMentoringRequestDialog';
-import type { Comment, MentorPost, SupportMode } from '@/types/entities';
+import { describePostFee } from './plans';
+import { MODES, MODE_LABELS, SUBJECTS, TIME_PRESETS, type Mode } from './postOptions';
+import type { Comment, Mentor, MentoringRequest, MentorPost, SupportMode } from '@/types/entities';
 
-const SUBJECT_OPTIONS = [
-  { label: 'Tất cả môn học', value: 'all' },
-  { label: 'CSD201 - Data Structures & Algorithms', value: 'CSD201' },
-  { label: 'PRJ301 - Java Web Application', value: 'PRJ301' },
-  { label: 'SWE201c - Software Engineering', value: 'SWE201c' },
-  { label: 'MAS291 - Statistics & Probability', value: 'MAS291' },
-  { label: 'PRF192 - Programming with C', value: 'PRF192' },
-  { label: 'MAD101 - Discrete Mathematics', value: 'MAD101' },
-  { label: 'SWP391 - Software Project', value: 'SWP391' },
-];
+type Lane = 'OFFER_MENTORING' | 'NEED_MENTOR';
 
-const MODE_FILTER_OPTIONS = [
-  { label: 'Tất cả hình thức học', value: 'all' },
-  { label: 'Online', value: 'online' },
-  { label: 'Trực tiếp tại trường (Offline)', value: 'offline' },
-  { label: 'Trao đổi qua Chat', value: 'chat' },
-];
+const LANES: Record<Lane, { title: string; hint: string; empty: string }> = {
+  OFFER_MENTORING: {
+    title: 'Lớp kèm đang mở',
+    hint: 'Mentor mở lớp theo môn, có lịch và học phí rõ ràng',
+    empty: 'Chưa có lớp kèm nào khớp bộ lọc. Thử bỏ bớt bộ lọc, hoặc đăng bài nhờ kèm để Mentor tìm tới bạn.',
+  },
+  NEED_MENTOR: {
+    title: 'Bạn khóa dưới cần kèm',
+    hint: 'Sinh viên đăng môn đang vướng và giờ học được',
+    empty: 'Chưa có bài nhờ kèm nào khớp bộ lọc.',
+  },
+};
 
-const TIME_SLOT_OPTIONS = [
-  'Tối Thứ 2 & Thứ 4 (19:30 - 21:00)',
-  'Tối Thứ 3 & Thứ 5 (19:30 - 21:00)',
-  'Chiều Thứ 7 & Chủ Nhật (14:00 - 16:30)',
-  'Linh hoạt thỏa thuận theo tuần',
-];
-
-const defaultDeadline = () => {
+const inDays = (days: number) => {
   const date = new Date();
-  date.setDate(date.getDate() + 7);
+  date.setDate(date.getDate() + days);
   return date.toISOString().slice(0, 10);
 };
+
+const isClosed = (post: MentorPost) =>
+  post.status === 'CLOSED' ||
+  post.status === 'EXPIRED' ||
+  post.open === false ||
+  Boolean(post.deadline && new Date(post.deadline).getTime() < Date.now());
+
+const daysLeft = (deadline?: string) => {
+  if (!deadline) return null;
+  return Math.ceil((new Date(deadline).getTime() - Date.now()) / 86_400_000);
+};
+
+// Bài cũ chỉ có chuỗi mode tự do ("Online qua Google Meet") → quy về 3 hình thức chuẩn
+const postModes = (post: MentorPost): Mode[] => {
+  const raw = (post.modes?.length ? post.modes.join(' ') : String(post.mode || '')).toLowerCase();
+  return MODES.filter((mode) => raw.includes(mode));
+};
+
+const deadlineLabel = (closed: boolean, left: number | null) => {
+  if (closed || left === null || left < 0) return 'Đã đóng';
+  if (left === 0) return 'Hết hạn hôm nay';
+  return `Còn ${left} ngày`;
+};
+
+const ToggleChips: React.FC<{ options: { value: string; label: string }[]; value: string[]; onChange: (next: string[]) => void }> = ({
+  options,
+  value,
+  onChange,
+}) => (
+  <div className="flex flex-wrap gap-2">
+    {options.map((option) => (
+      <Chip
+        key={option.value}
+        selected={value.includes(option.value)}
+        onClick={() =>
+          onChange(value.includes(option.value) ? value.filter((item) => item !== option.value) : [...value, option.value])
+        }
+      >
+        {option.label}
+      </Chip>
+    ))}
+  </div>
+);
 
 interface MentoringFeedPageProps {
   embedded?: boolean;
   roleOverride?: 'student' | 'mentor';
 }
 
-export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({
-  embedded = false,
-  roleOverride,
-}) => {
+export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({ embedded = false, roleOverride }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
+  const isMentor =
+    roleOverride === 'mentor' || (!roleOverride && Boolean(user?.roles?.some((role) => role.toLowerCase() === 'mentor')));
 
-  const isMentorContext =
-    roleOverride === 'mentor' ||
-    (!roleOverride &&
-      (location.pathname.startsWith('/mentor') || user?.roles?.some((role) => role.toLowerCase() === 'mentor')));
-
-  // Feed Filter States
-  const [activeTab, setActiveTab] = useState<'ALL' | 'NEED_MENTOR' | 'OFFER_MENTORING'>('ALL');
+  const [lane, setLane] = useState<Lane>(isMentor ? 'NEED_MENTOR' : 'OFFER_MENTORING');
   const [search, setSearch] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [modeFilter, setModeFilter] = useState('all');
-
-  // Dedicated Create Post View State
-  const [isCreatingPost, setIsCreatingPost] = useState(false);
-  const [createPostTab, setCreatePostTab] = useState<'need' | 'offer'>(isMentorContext ? 'offer' : 'need');
-
-  // Tab 1: Form "Tìm Mentor" (Need Mentor)
-  const [needTitle, setNeedTitle] = useState('');
-  const [needContent, setNeedContent] = useState('');
-  const [needSubject, setNeedSubject] = useState('CSD201');
-  const [needSlots, setNeedSlots] = useState<string[]>([TIME_SLOT_OPTIONS[0]]);
-  const [needModes, setNeedModes] = useState<string[]>(['online']);
-  const [needFee, setNeedFee] = useState('100.000');
-  const [needDeadline, setNeedDeadline] = useState(defaultDeadline);
-
-  // Tab 2: Form "Mở lớp kèm" (Offer Mentoring)
-  const [offerSubject, setOfferSubject] = useState('CSD201');
-  const [offerDescription, setOfferDescription] = useState('');
-  const [offerSessions, setOfferSessions] = useState(8);
-  const [offerFee, setOfferFee] = useState('120.000');
-  const [offerSchedule, setOfferSchedule] = useState('Tối Thứ 3 & Thứ 5 (19:30 - 21:00)');
-  const [offerModes, setOfferModes] = useState<string[]>(['online']);
-  const [offerCapacity, setOfferCapacity] = useState(5);
-  const [offerTrialLesson, setOfferTrialLesson] = useState(true);
-  const [offerDeadline, setOfferDeadline] = useState(defaultDeadline);
-
-  // Send request dialog
-  const [requestMentorId, setRequestMentorId] = useState<string | null>(null);
-  const [requestPostId, setRequestPostId] = useState<string | null>(null);
-
+  const [expandedBodies, setExpandedBodies] = useState<Record<string, boolean>>({});
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [request, setRequest] = useState<{ recipientId: string; postId: string; label: string } | null>(null);
+  const [matchOnly, setMatchOnly] = useState(false);
+
+  // Màn tạo bài
+  const [composer, setComposer] = useState<Lane | null>(null);
+  const [form, setForm] = useState({
+    subject: SUBJECTS[0].code,
+    title: '',
+    content: '',
+    schedule: [TIME_PRESETS[1]] as string[],
+    modes: ['online'] as string[],
+    feeMode: 'negotiable' as 'negotiable' | 'fixed',
+    fee: 100000,
+    sessions: 4,
+    capacity: 5,
+    trial: true,
+    deadline: inDays(7),
+  });
+  const setField = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const postsQuery = useQuery({
     queryKey: ['mentoring', 'posts'],
     queryFn: () => apiClient.get<MentorPost[]>('/mentoring/posts'),
   });
-
+  const mentorsQuery = useQuery({
+    queryKey: ['mentoring', 'mentors'],
+    queryFn: () => apiClient.get<Mentor[]>('/mentoring/mentors'),
+  });
   const commentsQuery = useQuery({
     queryKey: ['mentoring', 'comments'],
     queryFn: () => apiClient.get<Comment[]>('/mentoring/comments'),
   });
 
-  const createNeedPostMutation = useMutation({
-    mutationFn: () =>
-      apiClient.post<MentorPost>('/mentoring/posts', {
-        title: needTitle.trim(),
-        content: needContent.trim(),
-        contentMd: needContent.trim(),
-        field: needSubject,
-        mode: needModes[0] || 'online',
-        deadline: needDeadline,
-        postType: 'NEED_MENTOR',
-        authorRole: 'student',
-        tags: [needSubject, ...needModes, `${needFee}đ/buổi`],
-      }),
-    onSuccess: () => {
-      toast.success('Đã đăng bài Tìm Mentor (Need Mentor) thành công!');
-      setIsCreatingPost(false);
-      setNeedTitle('');
-      setNeedContent('');
-      queryClient.invalidateQueries({ queryKey: ['mentoring', 'posts'] });
-    },
-    onError: () => toast.error('Không thể đăng bài. Vui lòng kiểm tra nội dung và thử lại.'),
-  });
+  const myMentorProfile = mentorsQuery.data?.find((mentor) => mentor.userId === user?.id);
+  const mentorById = (id?: string) => mentorsQuery.data?.find((mentor) => mentor.userId === id);
 
-  const createOfferPostMutation = useMutation({
-    mutationFn: () =>
-      apiClient.post<MentorPost>('/mentoring/posts', {
-        title: `Mở lớp kèm môn ${offerSubject} (${offerSessions} buổi) - ${offerSchedule}`,
-        content: `${offerDescription.trim()}\n\n• Lịch học: ${offerSchedule}\n• Số buổi: ${offerSessions} buổi\n• Học phí: ${offerFee}đ/buổi\n• Có học thử: ${offerTrialLesson ? 'Có (01 buổi miễn phí)' : 'Không'}`,
-        contentMd: offerDescription.trim(),
-        field: offerSubject,
-        mode: offerModes[0] || 'online',
-        capacity: offerCapacity,
-        slots: offerCapacity,
-        deadline: offerDeadline,
-        postType: 'OFFER_MENTORING',
-        authorRole: 'mentor',
-        tags: [offerSubject, ...offerModes, `${offerFee}đ/buổi`, offerTrialLesson ? 'Có học thử' : ''],
-      }),
-    onSuccess: () => {
-      toast.success('Đã đăng bài Mở lớp kèm (Offer Mentoring) thành công!');
-      setIsCreatingPost(false);
-      setOfferDescription('');
-      queryClient.invalidateQueries({ queryKey: ['mentoring', 'posts'] });
+  const openComposer = (type: Lane) => {
+    // Mentor mở lớp: lấy sẵn học phí & lịch rảnh từ hồ sơ Mentor để khỏi nhập lại
+    const pricing = myMentorProfile?.pricing;
+    setForm((prev) => ({
+      ...prev,
+      title: '',
+      content: '',
+      feeMode: type === 'OFFER_MENTORING' ? 'fixed' : 'negotiable',
+      fee: type === 'OFFER_MENTORING' ? pricing?.pricePerSession ?? 100000 : prev.fee,
+      trial: type === 'OFFER_MENTORING' ? pricing?.trial.enabled ?? true : prev.trial,
+      schedule:
+        type === 'OFFER_MENTORING' && myMentorProfile?.availability.length
+          ? myMentorProfile.availability.map((slot) => formatScheduleSlot(slot))
+          : [TIME_PRESETS[1]],
+    }));
+    setComposer(type);
+  };
+
+  const createPost = useMutation({
+    mutationFn: () => {
+      const offer = composer === 'OFFER_MENTORING';
+      return apiClient.post<MentorPost>('/mentoring/posts', {
+        title: form.title.trim(),
+        content: form.content.trim(),
+        contentMd: form.content.trim(),
+        subject: form.subject,
+        field: form.subject,
+        modes: form.modes as SupportMode[],
+        mode: form.modes[0] || 'online',
+        schedule: form.schedule,
+        fee: form.feeMode === 'fixed' ? form.fee : undefined,
+        sessions: form.sessions,
+        trial: offer ? form.trial : undefined,
+        capacity: offer ? form.capacity : 1,
+        deadline: form.deadline,
+        postType: composer,
+        authorRole: offer ? 'mentor' : 'student',
+        tags: [form.subject],
+      });
     },
-    onError: () => toast.error('Không thể đăng bài. Vui lòng kiểm tra nội dung và thử lại.'),
+    onSuccess: () => {
+      toast.success(composer === 'OFFER_MENTORING' ? 'Đã mở lớp kèm' : 'Đã đăng bài nhờ kèm');
+      const posted = composer;
+      setComposer(null);
+      queryClient.invalidateQueries({ queryKey: ['mentoring', 'posts'] });
+      queryClient.invalidateQueries({ queryKey: ['mentoring', 'posts', 'mine'] });
+      // Học viên quản lý bài nhờ kèm của mình ở trang Yêu cầu; Mentor ở lại Bảng tin
+      if (!isMentor && posted === 'NEED_MENTOR') navigate('/mentoring/requests?tab=posts');
+      else setLane(posted ?? lane);
+    },
+    onError: () => toast.error('Chưa đăng được bài. Kiểm tra các ô bắt buộc rồi thử lại.'),
   });
 
   const likeMutation = useMutation({
     mutationFn: ({ postId, liked }: { postId: string; liked: boolean }) =>
-      liked
-        ? apiClient.post(`/mentoring/posts/${postId}/like`)
-        : apiClient.delete(`/mentoring/posts/${postId}/like`),
+      liked ? apiClient.post(`/mentoring/posts/${postId}/like`) : apiClient.delete(`/mentoring/posts/${postId}/like`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['mentoring', 'posts'] }),
-    onError: () => toast.error('Không thể cập nhật lượt thích.'),
+    onError: () => toast.error('Chưa cập nhật được lượt thích.'),
   });
 
   const addCommentMutation = useMutation({
@@ -205,610 +224,529 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({
       queryClient.invalidateQueries({ queryKey: ['mentoring', 'comments'] });
       queryClient.invalidateQueries({ queryKey: ['mentoring', 'posts'] });
     },
-    onError: () => toast.error('Không thể gửi bình luận.'),
+    onError: () => toast.error('Chưa gửi được bình luận.'),
   });
 
-  // Filter posts (Bỏ hoàn toàn mục "Bài phù hợp", lọc theo Tab, Môn học, Hình thức học)
-  const filteredPosts = useMemo(() => {
+  const posts = useMemo(() => postsQuery.data || [], [postsQuery.data]);
+  const laneCounts = {
+    OFFER_MENTORING: posts.filter((post) => post.postType === 'OFFER_MENTORING' && !isClosed(post)).length,
+    NEED_MENTOR: posts.filter((post) => post.postType === 'NEED_MENTOR' && !isClosed(post)).length,
+  };
+
+  const subjectOptions = useMemo(() => {
+    const codes = Array.from(new Set(posts.map((post) => post.subject).filter(Boolean))) as string[];
+    return [{ label: 'Tất cả môn', value: 'all' }, ...codes.sort().map((code) => ({ label: code, value: code }))];
+  }, [posts]);
+
+  // Môn Mentor đang nhận kèm → đánh dấu & đưa bài nhờ kèm khớp môn lên đầu
+  const mySubjects = useMemo(
+    () => (isMentor ? (myMentorProfile?.subjects || []).map((s) => s.toUpperCase()) : []),
+    [isMentor, myMentorProfile]
+  );
+  const isSubjectMatch = (post: MentorPost) => Boolean(post.subject && mySubjects.includes(post.subject.toUpperCase()));
+  const matchingCount = posts.filter((post) => post.postType === 'NEED_MENTOR' && !isClosed(post) && isSubjectMatch(post)).length;
+  const myClasses = posts.filter((post) => post.postType === 'OFFER_MENTORING' && (post.authorId || post.mentorId) === user?.id);
+
+  const mentorRequestsQuery = useQuery({
+    queryKey: ['mentor', 'requests'],
+    queryFn: () => apiClient.get<MentoringRequest[]>('/mentor/requests'),
+    enabled: embedded && isMentor,
+  });
+  const pendingByPost = (mentorRequestsQuery.data || []).reduce<Record<string, number>>((acc, req) => {
+    if (req.sourcePostId && req.status === 'PENDING_MENTOR_RESPONSE') acc[req.sourcePostId] = (acc[req.sourcePostId] || 0) + 1;
+    return acc;
+  }, {});
+
+  const visiblePosts = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return (postsQuery.data || []).filter((post) => {
-      if (activeTab === 'NEED_MENTOR' && post.postType !== 'NEED_MENTOR') return false;
-      if (activeTab === 'OFFER_MENTORING' && post.postType !== 'OFFER_MENTORING') return false;
-
-      if (subjectFilter !== 'all') {
-        const text = (post.title + ' ' + (post.content || '') + ' ' + (post.field || '')).toUpperCase();
-        if (!text.includes(subjectFilter.toUpperCase())) return false;
-      }
-
-      if (modeFilter !== 'all') {
-        if (post.mode && String(post.mode).toLowerCase() !== modeFilter.toLowerCase()) return false;
-      }
-
-      if (q) {
-        const searchable = [post.title, post.content, post.contentMd, post.field, ...(post.tags || [])]
+    const matches = (post: MentorPost) => Boolean(post.subject && mySubjects.includes(post.subject.toUpperCase()));
+    return posts
+      .filter((post) => post.postType === lane)
+      .filter((post) => !matchOnly || lane !== 'NEED_MENTOR' || matches(post))
+      .filter((post) => subjectFilter === 'all' || post.subject === subjectFilter)
+      .filter((post) => modeFilter === 'all' || postModes(post).includes(modeFilter as Mode))
+      .filter((post) => {
+        if (!q) return true;
+        return [post.title, post.content, post.contentMd, post.subject, ...(post.tags || [])]
           .filter(Boolean)
           .join(' ')
-          .toLowerCase();
-        if (!searchable.includes(q)) return false;
-      }
+          .toLowerCase()
+          .includes(q);
+      })
+      .sort((a, b) => {
+        // Bài đã đóng luôn xuống cuối
+        if (isClosed(a) !== isClosed(b)) return isClosed(a) ? 1 : -1;
+        if (lane === 'NEED_MENTOR' && matches(a) !== matches(b)) return matches(a) ? -1 : 1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+  }, [posts, lane, subjectFilter, modeFilter, search, matchOnly, mySubjects]);
 
-      return true;
-    });
-  }, [postsQuery.data, activeTab, subjectFilter, modeFilter, search]);
+  const filtersActive = search.trim() !== '' || subjectFilter !== 'all' || modeFilter !== 'all' || matchOnly;
 
-  const toggleSlot = (slot: string) => {
-    setNeedSlots((prev) => (prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot]));
-  };
+  // ---------- Màn tạo bài ----------
+  if (composer) {
+    const offer = composer === 'OFFER_MENTORING';
+    const scheduleOptions = Array.from(new Set([...form.schedule, ...TIME_PRESETS])).map((value) => ({ value, label: value }));
+    const canSubmit = form.title.trim() && form.content.trim() && form.schedule.length > 0 && form.modes.length > 0 && form.deadline;
 
-  const toggleNeedMode = (m: string) => {
-    setNeedModes((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
-  };
-
-  const toggleOfferMode = (m: string) => {
-    setOfferModes((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
-  };
-
-  const handleOpenRequest = (mentorId: string, postId: string) => {
-    setRequestMentorId(mentorId);
-    setRequestPostId(postId);
-  };
-
-  // MÀN HÌNH TẠO BÀI MENTORING RIÊNG BIỆT (KHÔNG DÙNG POPUP, GỒM 2 TAB)
-  if (isCreatingPost) {
     return (
       <div className="mx-auto max-w-3xl space-y-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsCreatingPost(false)}
-          leftIcon={<ArrowLeft className="h-4 w-4" />}
+        <button
+          type="button"
+          onClick={() => setComposer(null)}
+          className="inline-flex items-center gap-1.5 rounded-md text-sm text-neutral-500 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
         >
-          Quay lại Bảng tin Mentoring
-        </Button>
+          <ArrowLeft className="h-4 w-4" /> Quay lại bảng tin
+        </button>
 
-        <div>
-          <h1 className="text-page-title text-neutral-900">Tạo bài đăng Mentoring</h1>
-          <p className="text-meta text-neutral-600 mt-1">
-            Chọn mô hình phù hợp: Tìm Mentor hướng dẫn hoặc Mở lớp kèm học cho sinh viên khóa dưới.
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+            {offer ? 'Mở lớp kèm' : 'Đăng bài nhờ kèm'}
+          </h1>
+          <p className="text-sm text-neutral-600">
+            {offer
+              ? 'Học viên thấy môn, lịch, học phí và số chỗ ngay trên thẻ bài. Học phí và lịch được lấy sẵn từ hồ sơ Mentor của bạn.'
+              : 'Mentor thấy môn bạn đang vướng và giờ bạn học được, rồi gửi lời nhận kèm.'}
           </p>
+          {isMentor && (
+            <div className="inline-flex rounded-lg border border-neutral-200 p-0.5 dark:border-neutral-700" role="tablist">
+              {(['OFFER_MENTORING', 'NEED_MENTOR'] as Lane[]).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  role="tab"
+                  aria-selected={composer === type}
+                  onClick={() => openComposer(type)}
+                  className={cn(
+                    'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                    composer === type ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-neutral-600 hover:text-neutral-900'
+                  )}
+                >
+                  {type === 'OFFER_MENTORING' ? 'Mở lớp kèm' : 'Tôi cần người kèm'}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        <Tabs value={createPostTab} onValueChange={(val) => setCreatePostTab(val as 'need' | 'offer')}>
-          <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="need" className="flex items-center gap-2">
-              <HelpCircle className="h-4 w-4" />
-              <span>Tab 1: Tìm Mentor (Need Mentor)</span>
-            </TabsTrigger>
-            <TabsTrigger value="offer" className="flex items-center gap-2">
-              <GraduationCap className="h-4 w-4" />
-              <span>Tab 2: Mở lớp kèm (Offer Mentoring)</span>
-            </TabsTrigger>
-          </TabsList>
+        <div className="space-y-5 rounded-2xl border border-neutral-200 bg-surface p-5 sm:p-6 dark:border-neutral-700/80">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[12rem_1fr]">
+            <FormField label="Môn" required>
+              <Select
+                value={form.subject}
+                onChange={(e) => setField('subject', e.target.value)}
+                options={SUBJECTS.map((s) => ({ value: s.code, label: `${s.code} · ${s.name}` }))}
+              />
+            </FormField>
+            <FormField label="Tiêu đề" required>
+              <Input
+                value={form.title}
+                onChange={(e) => setField('title', e.target.value)}
+                placeholder={offer ? 'VD: Kèm CSD201 từ mất gốc tới qua môn, 8 buổi' : 'VD: Cần người kèm ôn Practical Exam CSD201 tuần sau'}
+              />
+            </FormField>
+          </div>
 
-          {/* TAB 1: TÌM MENTOR (Cho mọi sinh viên & mentor) */}
-          <TabsContent value="need" className="space-y-4 pt-2">
-            <Card className="p-6 space-y-4">
-              <div className="p-3.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-caption">
-                💡 <strong>Dành cho mọi sinh viên &amp; Mentor:</strong> Đăng nhu cầu cần anh chị khóa trên kèm môn khó, review đồ án hoặc giải đáp bài tập.
-              </div>
+          <FormField label={offer ? 'Lớp học gồm những gì?' : 'Bạn đang vướng ở đâu?'} required>
+            <Textarea
+              rows={4}
+              value={form.content}
+              onChange={(e) => setField('content', e.target.value)}
+              placeholder={
+                offer
+                  ? 'Lộ trình từng buổi, tài liệu bạn chuẩn bị, cách bạn chữa bài...'
+                  : 'Phần kiến thức chưa hiểu, mục tiêu (qua môn, đạt điểm, xong đồ án), muốn học 1-1 hay nhóm nhỏ...'
+              }
+            />
+          </FormField>
 
-              <div className="space-y-4">
-                <FormField label="Môn học bạn cần hỗ trợ" required>
+          <FormField label={offer ? 'Lịch học' : 'Giờ bạn học được'} required helperText="Chọn một hoặc nhiều khung giờ.">
+            <ToggleChips options={scheduleOptions} value={form.schedule} onChange={(next) => setField('schedule', next)} />
+          </FormField>
+
+          <FormField label="Hình thức" required>
+            <ToggleChips
+              options={MODES.map((mode) => ({ value: mode, label: MODE_LABELS[mode] }))}
+              value={form.modes}
+              onChange={(next) => setField('modes', next)}
+            />
+          </FormField>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <FormField label={offer ? 'Học phí mỗi buổi' : 'Học phí bạn trả được'}>
+              <div className="space-y-2">
+                {!offer && (
                   <Select
-                    value={needSubject}
-                    onChange={(e) => setNeedSubject(e.target.value)}
-                    options={SUBJECT_OPTIONS.filter((s) => s.value !== 'all')}
+                    value={form.feeMode}
+                    onChange={(e) => setField('feeMode', e.target.value as 'negotiable' | 'fixed')}
+                    options={[
+                      { value: 'negotiable', label: 'Thỏa thuận' },
+                      { value: 'fixed', label: 'Nhập mức cụ thể' },
+                    ]}
                   />
-                </FormField>
-
-                <FormField label="Tiêu đề bài đăng" required>
+                )}
+                {(offer || form.feeMode === 'fixed') && (
                   <Input
-                    value={needTitle}
-                    onChange={(e) => setNeedTitle(e.target.value)}
-                    placeholder="VD: Cần tìm Mentor kèm ôn thi Practical Exam CSD201 tuần tới"
-                    required
+                    type="number"
+                    min={0}
+                    step={10000}
+                    value={form.fee}
+                    onChange={(e) => setField('fee', Number(e.target.value) || 0)}
+                    aria-label="Học phí (VNĐ/buổi)"
                   />
-                </FormField>
-
-                <FormField label="Mô tả chi tiết nhu cầu học & mục tiêu" required>
-                  <Textarea
-                    rows={4}
-                    value={needContent}
-                    onChange={(e) => setNeedContent(e.target.value)}
-                    placeholder="Mô tả phần kiến thức bạn đang bị hổng, mong muốn kèm 1-1 hay nhóm nhỏ, mục tiêu điểm số..."
-                    required
-                  />
-                </FormField>
-
-                {/* Khung giờ có thể học (Chọn nhiều) */}
-                <div>
-                  <label className="block text-sm font-medium text-neutral-800 mb-2">
-                    Khung giờ có thể học (Chọn nhiều) <span className="text-tier-danger-text">*</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {TIME_SLOT_OPTIONS.map((slot) => {
-                      const isSelected = needSlots.includes(slot);
-                      return (
-                        <button
-                          key={slot}
-                          type="button"
-                          onClick={() => toggleSlot(slot)}
-                          className={`px-3 py-1.5 rounded-lg text-caption font-medium border transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-brand-50 border-brand-500 text-brand-700 ring-1 ring-brand-500'
-                              : 'bg-surface border-neutral-200 text-neutral-700 hover:bg-neutral-50'
-                          }`}
-                        >
-                          {isSelected && '✓ '} {slot}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Hình thức học (Chọn nhiều: Online, Gặp trực tiếp, Chat) */}
-                <div>
-                  <label className="block text-sm font-medium text-neutral-800 mb-2">
-                    Hình thức học mong muốn (Chọn nhiều) <span className="text-tier-danger-text">*</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { id: 'online', label: 'Online qua Google Meet / Zoom' },
-                      { id: 'offline', label: 'Gặp trực tiếp tại trường (Offline)' },
-                      { id: 'chat', label: 'Hỏi đáp qua Chat' },
-                    ].map((m) => {
-                      const isSelected = needModes.includes(m.id);
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => toggleNeedMode(m.id)}
-                          className={`px-3 py-1.5 rounded-lg text-caption font-medium border transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-brand-50 border-brand-500 text-brand-700 ring-1 ring-brand-500'
-                              : 'bg-surface border-neutral-200 text-neutral-700 hover:bg-neutral-50'
-                          }`}
-                        >
-                          {isSelected && '✓ '} {m.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Mức học phí mong muốn (đ/buổi - tùy chọn) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField label="Mức học phí mong muốn (đ/buổi - Tùy chọn)">
-                    <div className="relative">
-                      <Input
-                        value={needFee}
-                        onChange={(e) => setNeedFee(e.target.value)}
-                        placeholder="VD: 100.000 hoặc Thỏa thuận"
-                      />
-                      <span className="absolute right-3 top-2.5 text-caption text-neutral-400">VNĐ/buổi</span>
-                    </div>
-                  </FormField>
-
-                  <FormField label="Thời hạn cần tìm Mentor" required>
-                    <Input
-                      type="date"
-                      value={needDeadline}
-                      onChange={(e) => setNeedDeadline(e.target.value)}
-                    />
-                  </FormField>
-                </div>
-
-                {/* Ghi chú UI: KHÔNG CÓ Ô SỐ CHỖ Ở TAB NÀY */}
+                )}
+                {(offer || form.feeMode === 'fixed') && (
+                  <p className="text-xs text-neutral-500">{form.fee === 0 ? 'Miễn phí' : `${formatCurrency(form.fee)}/buổi`}</p>
+                )}
               </div>
+            </FormField>
+            <FormField label={offer ? 'Số buổi' : 'Số buổi dự kiến'}>
+              <Input type="number" min={1} max={30} value={form.sessions} onChange={(e) => setField('sessions', Number(e.target.value) || 1)} />
+            </FormField>
+            <FormField label={offer ? 'Hạn đăng ký' : 'Cần tìm trước ngày'} required>
+              <Input type="date" min={inDays(0)} value={form.deadline} onChange={(e) => setField('deadline', e.target.value)} />
+            </FormField>
+          </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-neutral-150">
-                <Button variant="outline" onClick={() => setIsCreatingPost(false)}>
-                  Hủy
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    if (!needTitle.trim() || !needContent.trim()) {
-                      toast.error('Vui lòng nhập tiêu đề và mô tả nhu cầu');
-                      return;
-                    }
-                    createNeedPostMutation.mutate();
-                  }}
-                  isLoading={createNeedPostMutation.isPending}
-                  leftIcon={<Send className="h-4 w-4" />}
-                >
-                  Đăng bài Need Mentor
-                </Button>
-              </div>
-            </Card>
-          </TabsContent>
+          {offer && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField label="Số học viên tối đa">
+                <Input type="number" min={1} max={20} value={form.capacity} onChange={(e) => setField('capacity', Number(e.target.value) || 1)} />
+              </FormField>
+              <label className="flex items-center justify-between gap-3 self-end rounded-xl border border-neutral-200 px-4 py-2.5 text-sm dark:border-neutral-700">
+                <span>
+                  <span className="block font-medium text-neutral-900 dark:text-neutral-100">Cho học thử 1 buổi</span>
+                  <span className="text-xs text-neutral-500">Học viên gặp bạn trước khi quyết định</span>
+                </span>
+                <Switch checked={form.trial} onCheckedChange={(checked) => setField('trial', checked)} />
+              </label>
+            </div>
+          )}
 
-          {/* TAB 2: MỞ LỚP KÈM (Dành cho tài khoản Mentor) */}
-          <TabsContent value="offer" className="space-y-4 pt-2">
-            <Card className="p-6 space-y-4">
-              <div className="p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-caption">
-                ⭐ <strong>Dành riêng cho Mentor:</strong> Tạo lớp học kèm có lộ trình bài bản, số buổi và lịch học cố định cho sinh viên.
-              </div>
-
-              <div className="space-y-4">
-                <FormField label="Môn học mở lớp kèm" required>
-                  <Select
-                    value={offerSubject}
-                    onChange={(e) => setOfferSubject(e.target.value)}
-                    options={SUBJECT_OPTIONS.filter((s) => s.value !== 'all')}
-                  />
-                </FormField>
-
-                <FormField label="Mô tả nội dung & Lộ trình khóa học" required>
-                  <Textarea
-                    rows={4}
-                    value={offerDescription}
-                    onChange={(e) => setOfferDescription(e.target.value)}
-                    placeholder="Mô tả chi tiết những gì sinh viên sẽ học được, tài liệu cung cấp và phương pháp giải đề thi thực chiến..."
-                    required
-                  />
-                </FormField>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField label="Số buổi học" required>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={30}
-                      value={offerSessions}
-                      onChange={(e) => setOfferSessions(Number(e.target.value))}
-                    />
-                  </FormField>
-
-                  <FormField label="Học phí (đ/buổi - Chỉ hiển thị thông tin)" required>
-                    <div className="relative">
-                      <Input
-                        value={offerFee}
-                        onChange={(e) => setOfferFee(e.target.value)}
-                        placeholder="120.000"
-                      />
-                      <span className="absolute right-3 top-2.5 text-caption text-neutral-400">VNĐ/buổi</span>
-                    </div>
-                  </FormField>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField label="Lịch học cố định" required>
-                    <Input
-                      value={offerSchedule}
-                      onChange={(e) => setOfferSchedule(e.target.value)}
-                      placeholder="VD: Tối Thứ 3 & Thứ 5 (19:30 - 21:00)"
-                    />
-                  </FormField>
-
-                  <FormField label="Số chỗ nhận tối đa (Capacity)" required>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={offerCapacity}
-                      onChange={(e) => setOfferCapacity(Number(e.target.value))}
-                    />
-                  </FormField>
-                </div>
-
-                {/* Hình thức học */}
-                <div>
-                  <label className="block text-sm font-medium text-neutral-800 mb-2">
-                    Hình thức giảng dạy (Chọn nhiều) <span className="text-tier-danger-text">*</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { id: 'online', label: 'Online qua Google Meet / Zoom' },
-                      { id: 'offline', label: 'Trực tiếp tại thư viện / phòng học' },
-                      { id: 'chat', label: 'Hỗ trợ Q&A qua Chat' },
-                    ].map((m) => {
-                      const isSelected = offerModes.includes(m.id);
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => toggleOfferMode(m.id)}
-                          className={`px-3 py-1.5 rounded-lg text-caption font-medium border transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-brand-50 border-brand-500 text-brand-700 ring-1 ring-brand-500'
-                              : 'bg-surface border-neutral-200 text-neutral-700 hover:bg-neutral-50'
-                          }`}
-                        >
-                          {isSelected && '✓ '} {m.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Checkbox Có học thử hay không */}
-                <label className="flex items-start gap-2.5 p-3.5 rounded-lg bg-emerald-50/60 border border-emerald-200 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={offerTrialLesson}
-                    onChange={(e) => setOfferTrialLesson(e.target.checked)}
-                    className="mt-1 rounded text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <div>
-                    <span className="text-sm font-semibold text-emerald-950 block">
-                      Có học thử miễn phí (Trial Session)
-                    </span>
-                    <span className="text-caption text-emerald-800">
-                      Cho phép sinh viên tham gia 01 buổi đầu tiên để đánh giá sự phù hợp trước khi xác nhận học tiếp.
-                    </span>
-                  </div>
-                </label>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-neutral-150">
-                <Button variant="outline" onClick={() => setIsCreatingPost(false)}>
-                  Hủy
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    if (!offerDescription.trim()) {
-                      toast.error('Vui lòng nhập mô tả lớp học kèm');
-                      return;
-                    }
-                    createOfferPostMutation.mutate();
-                  }}
-                  isLoading={createOfferPostMutation.isPending}
-                  leftIcon={<Send className="h-4 w-4" />}
-                >
-                  Đăng bài Mở lớp kèm
-                </Button>
-              </div>
-            </Card>
-          </TabsContent>
-        </Tabs>
+          <div className="flex justify-end gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+            <Button variant="outline" onClick={() => setComposer(null)}>Hủy</Button>
+            <Button disabled={!canSubmit} loading={createPost.isPending} onClick={() => createPost.mutate()}>
+              {offer ? 'Mở lớp kèm' : 'Đăng bài nhờ kèm'}
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
 
-  // MÀN HÌNH BẢNG TIN (FEED MENTORING)
+  // ---------- Bảng tin ----------
+  const primaryCreate: Lane = isMentor ? 'OFFER_MENTORING' : 'NEED_MENTOR';
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       {!embedded && (
         <PageHeader
-          title="Bảng tin Mentoring & Học kèm"
-          description="Nền tảng cố vấn 2 chiều: Sinh viên đăng tìm Mentor và Mentor mở lớp kèm theo môn học trường."
-          breadcrumbs={[{ label: 'Trang chủ', href: '/' }, { label: 'Tìm Mentor' }]}
+          title="Mentoring"
+          description="Tìm lớp kèm theo môn, hoặc đăng môn bạn đang vướng để Mentor tìm tới bạn."
+          breadcrumbs={[{ label: 'Trang chủ', href: '/' }, { label: 'Mentoring' }]}
           actions={
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => navigate('/mentoring/browse')}>
-                <Search className="mr-1.5 h-4 w-4" /> Danh sách Mentor
+              <Button variant="ghost" onClick={() => navigate('/mentoring/browse')}>
+                <Users className="mr-1.5 h-4 w-4" /> Danh sách Mentor
               </Button>
-              <Button variant="outline" onClick={() => navigate('/mentoring/ai')}>
-                <Sparkles className="mr-1.5 h-4 w-4" /> Gợi ý AI
+              <Button variant="ghost" onClick={() => navigate('/mentoring/ai')}>
+                <Sparkles className="mr-1.5 h-4 w-4" /> Gợi ý bằng AI
               </Button>
-              <Button variant="primary" onClick={() => setIsCreatingPost(true)}>
-                <Plus className="mr-1.5 h-4 w-4" /> Tạo bài đăng
+              <Button variant="ghost" onClick={() => navigate('/mentoring/requests')}>
+                <Inbox className="mr-1.5 h-4 w-4" /> Yêu cầu của tôi
+              </Button>
+              <Button onClick={() => openComposer(primaryCreate)}>
+                <Plus className="mr-1.5 h-4 w-4" /> {isMentor ? 'Mở lớp kèm' : 'Đăng bài nhờ kèm'}
               </Button>
             </div>
           }
         />
       )}
+      {/* Trong Mentor Center: bảng tin bên trái, "Lớp của bạn" bên phải để dùng hết bề ngang */}
+      <div className={cn(embedded ? 'grid grid-cols-1 items-start gap-6 lg:grid-cols-12' : 'space-y-6')}>
+      <div className={cn(embedded ? 'min-w-0 space-y-4 lg:col-span-8' : 'space-y-6')}>
 
-      {/* Quick Action Banner */}
-      <Card className="border-violet-100 bg-gradient-to-r from-violet-50 to-surface">
-        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700">
-            <Newspaper className="h-5 w-5" />
+      {/* Điện thoại: cột "Lớp của bạn" nằm cuối trang, nên đưa nút mở lớp lên đầu */}
+      {embedded && (
+        <Button className="w-full lg:hidden" onClick={() => openComposer('OFFER_MENTORING')}>
+          <Plus className="mr-1.5 h-4 w-4" /> Mở lớp kèm
+        </Button>
+      )}
+
+      {/* Hai nhu cầu chính: chọn bên nào thì feed hiện bên đó */}
+      {/* Học viên chỉ xem lớp Mentor đăng; bài nhờ kèm của mình nằm ở trang Yêu cầu */}
+      {!isMentor && (
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{LANES.OFFER_MENTORING.title}</h2>
+            <p className="text-sm text-neutral-500">{LANES.OFFER_MENTORING.hint}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsCreatingPost(true)}
-            className="min-h-11 flex-1 rounded-full border border-neutral-200 bg-surface px-4 text-left text-sm text-neutral-500 transition-colors hover:border-violet-300 hover:bg-violet-50/40 cursor-pointer"
-          >
-            {isMentorContext
-              ? 'Mở lớp kèm môn mới hoặc tìm học viên cần hỗ trợ...'
-              : 'Bạn đang cần kèm môn nào? Bấm vào đây để đăng nhu cầu...'}
-          </button>
-          <Button size="sm" onClick={() => setIsCreatingPost(true)} leftIcon={<Plus className="h-4 w-4" />}>
-            Đăng bài ngay
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* THANH BỘ LỌC TRÊN FEED: Nút chọn [Tất cả] / [Tìm Mentor] / [Mở lớp] + Lọc Môn học & Hình thức */}
-      <Card className="p-4 space-y-3">
-        {/* Row 1: Nút chọn 3 tab bài đăng */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5">
-            {[
-              { id: 'ALL', label: 'Tất cả bài đăng' },
-              { id: 'NEED_MENTOR', label: '🙋 Sinh viên tìm Mentor (Need Mentor)' },
-              { id: 'OFFER_MENTORING', label: '🎓 Mentor mở lớp kèm (Offer Mentoring)' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`px-3 py-1.5 rounded-full text-caption font-medium transition-all cursor-pointer ${
-                  activeTab === tab.id
-                    ? 'bg-brand-600 text-white font-semibold shadow-xs'
-                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          <span className="text-caption text-neutral-500">
-            {filteredPosts.length} bài đăng phù hợp
+          <span className="text-3xl font-bold tabular-nums text-brand-600 dark:text-brand-300" aria-label={`${laneCounts.OFFER_MENTORING} lớp đang mở`}>
+            {laneCounts.OFFER_MENTORING}
           </span>
         </div>
+      )}
 
-        {/* Row 2: Search + Lọc theo Môn học + Lọc theo Hình thức học */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-neutral-150">
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="Tìm theo chủ đề, từ khóa, người đăng..."
-          />
-          <Select
-            value={subjectFilter}
-            onChange={(e) => setSubjectFilter(e.target.value)}
-            options={SUBJECT_OPTIONS}
-          />
-          <Select
-            value={modeFilter}
-            onChange={(e) => setModeFilter(e.target.value)}
-            options={MODE_FILTER_OPTIONS}
-          />
+      {isMentor && <div className={cn('grid grid-cols-1 sm:grid-cols-2', embedded ? 'gap-2' : 'gap-3')} role="tablist" aria-label="Loại bài">
+        {(['OFFER_MENTORING', 'NEED_MENTOR'] as Lane[]).map((key) => {
+          const active = lane === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setLane(key)}
+              className={cn(
+                'flex items-center justify-between gap-4 rounded-2xl border-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                embedded ? 'px-4 py-3' : 'px-5 py-4',
+                active
+                  ? 'border-brand-500 bg-surface dark:border-brand-400'
+                  : 'border-transparent bg-neutral-100 hover:bg-neutral-200/70 dark:bg-neutral-800 dark:hover:bg-neutral-700'
+              )}
+            >
+              <span className="min-w-0">
+                <span className="block text-base font-semibold text-neutral-900 dark:text-neutral-100">{LANES[key].title}</span>
+                <span className={cn('block text-sm text-neutral-500', embedded && 'line-clamp-1')}>
+                  {embedded && isMentor && key === 'NEED_MENTOR' ? 'Học viên đang tìm người kèm' : LANES[key].hint}
+                </span>
+              </span>
+              <span
+                className={cn(
+                  'font-bold tabular-nums',
+                  embedded ? 'text-2xl' : 'text-3xl',
+                  active ? 'text-brand-600 dark:text-brand-300' : 'text-neutral-400'
+                )}
+                aria-label={`${laneCounts[key]} bài đang mở`}
+              >
+                {laneCounts[key]}
+              </span>
+            </button>
+          );
+        })}
+      </div>}
+
+      {/* Bộ lọc gọn một hàng */}
+      <div className={cn('grid gap-2', embedded ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-[1fr_10rem_11rem]')}>
+        <div className={embedded ? 'col-span-2' : 'col-span-2 sm:col-span-1'}>
+          <SearchInput value={search} onChange={setSearch} placeholder="Tìm theo môn, chủ đề..." />
         </div>
-      </Card>
+        <Select aria-label="Lọc theo môn" value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} options={subjectOptions} />
+        <Select
+          aria-label="Lọc theo hình thức"
+          value={modeFilter}
+          onChange={(e) => setModeFilter(e.target.value)}
+          options={[{ value: 'all', label: 'Mọi hình thức' }, ...MODES.map((m) => ({ value: m, label: MODE_LABELS[m] }))]}
+        />
+      </div>
 
-      {/* POSTS LIST */}
       <QueryBoundary query={postsQuery}>
-        {filteredPosts.length === 0 ? (
-          <Card className="p-10 text-center">
-            <Search className="mx-auto mb-3 h-8 w-8 text-neutral-300" />
-            <p className="font-semibold text-neutral-900">Không tìm thấy bài đăng phù hợp</p>
-            <p className="mt-1 text-sm text-neutral-500">Hãy thử đổi bộ lọc môn học hoặc tạo bài đăng mới.</p>
-          </Card>
+        {visiblePosts.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-neutral-300 px-6 py-10 text-center dark:border-neutral-700">
+            <Search className="mx-auto mb-3 h-7 w-7 text-neutral-300" />
+            <p className="mx-auto max-w-md text-sm text-neutral-600">{LANES[lane].empty}</p>
+            <div className="mt-4 flex justify-center gap-2">
+              {filtersActive && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearch('');
+                    setSubjectFilter('all');
+                    setModeFilter('all');
+                    setMatchOnly(false);
+                  }}
+                >
+                  Xóa bộ lọc
+                </Button>
+              )}
+              {!isMentor && !filtersActive && (
+                <Button size="sm" onClick={() => openComposer('NEED_MENTOR')}>Đăng bài nhờ kèm</Button>
+              )}
+            </div>
+          </div>
         ) : (
-          <div className="w-full space-y-4">
-            {filteredPosts.map((post) => {
+          <ul className="space-y-4">
+            {visiblePosts.map((post) => {
               const ownerId = post.authorId || post.mentorId;
               const isOwner = ownerId === user?.id;
-              const total = post.capacity || post.slots || 5;
-              const filled = post.filledCount || 0;
-              const remaining = Math.max(total - filled, 0);
-              const isNeed = post.postType === 'NEED_MENTOR';
-              const postComments = (commentsQuery.data || []).filter((comment) => comment.postId === post.id);
-              const rootComments = postComments.filter((comment) => !comment.parentId);
+              const isOffer = post.postType === 'OFFER_MENTORING';
+              const closed = isClosed(post);
+              const capacity = post.capacity || post.slots || 1;
+              const remaining = Math.max(capacity - (post.filledCount || 0), 0);
+              const full = isOffer && remaining === 0;
+              const left = daysLeft(post.deadline);
+              const author = isOffer ? mentorById(ownerId) : undefined;
+              const modes = postModes(post);
+              const bodyText = post.content || post.contentMd || '';
+              const bodyOpen = Boolean(expandedBodies[post.id]);
+              const rootComments = (commentsQuery.data || []).filter((c) => c.postId === post.id && !c.parentId);
               const commentsOpen = Boolean(expandedComments[post.id]);
+              const matchesMe = isMentor && !isOffer && isSubjectMatch(post);
+
+              let action: React.ReactNode;
+              if (isOwner) {
+                action = (
+                  <Button variant="outline" size="sm" onClick={() => navigate(isMentor ? '/mentor/requests' : '/mentoring/requests')}>
+                    Xem yêu cầu nhận được
+                  </Button>
+                );
+              } else if (closed) {
+                action = <span className="text-sm text-neutral-500">Đã hết hạn</span>;
+              } else if (full) {
+                action = <span className="text-sm text-neutral-500">Lớp đã đủ chỗ</span>;
+              } else if (isOffer) {
+                action = (
+                  <Button size="sm" onClick={() => setRequest({ recipientId: ownerId || '', postId: post.id, label: 'Mentor' })}>
+                    <Send className="mr-1.5 h-3.5 w-3.5" /> Đăng ký lớp
+                  </Button>
+                );
+              } else if (isMentor) {
+                action = (
+                  <Button size="sm" onClick={() => setRequest({ recipientId: ownerId || '', postId: post.id, label: 'Học viên' })}>
+                    <Send className="mr-1.5 h-3.5 w-3.5" /> Nhận kèm bạn này
+                  </Button>
+                );
+              } else {
+                action = (
+                  <span className="text-xs text-neutral-500">
+                    Chỉ Mentor nhận kèm được. <Link to="/mentor/apply" className="text-primary hover:underline">Trở thành Mentor</Link>
+                  </span>
+                );
+              }
 
               return (
-                <Card key={post.id} className="overflow-hidden shadow-2xs hover:border-neutral-300 transition-colors">
-                  <CardHeader className="space-y-3 pb-3">
+                <li
+                  key={post.id}
+                  className={cn(
+                    'rounded-2xl border bg-surface',
+                    matchesMe && !closed ? 'border-brand-200 dark:border-brand-500/40' : 'border-neutral-200 dark:border-neutral-700/80',
+                    closed && 'opacity-70'
+                  )}
+                >
+                  <div className="space-y-3 p-5">
                     <div className="flex items-start justify-between gap-3">
                       <UserMiniCard userId={ownerId} showMajor />
-                      <div className="flex shrink-0 flex-col items-end gap-1.5">
-                        <Badge variant={isNeed ? 'attention' : 'brand'}>
-                          {isNeed ? 'Tìm Mentor (Need Mentor)' : 'Mở lớp kèm (Offer Mentoring)'}
-                        </Badge>
-                        <div className="flex items-center gap-1 text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                          <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                          <span className="font-semibold">4.9</span>
-                          <span className="text-neutral-400">· 24 đánh giá</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <CardTitle className="text-lg leading-snug">{post.title}</CardTitle>
-                      <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-neutral-700">
-                        {post.content || post.contentMd}
-                      </p>
-                    </div>
-                  </CardHeader>
-
-                  {/* THIẾT KẾ THẺ BÀI (MENTORING CARD) TRỰC QUAN */}
-                  <CardContent className="space-y-3 pb-4">
-                    {/* Visual Attributes Pill Row */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-lg bg-neutral-50 border border-neutral-150 text-caption">
-                      <div>
-                        <span className="text-neutral-500 block">Mã môn học:</span>
-                        <span className="font-bold text-brand-700">{post.field || 'CSD201'}</span>
-                      </div>
-                      <div>
-                        <span className="text-neutral-500 block">Lịch học:</span>
-                        <span className="font-semibold text-neutral-800">Tối T3 - T5</span>
-                      </div>
-                      <div>
-                        <span className="text-neutral-500 block">Học phí:</span>
-                        <span className="font-bold text-emerald-700">120.000đ/buổi</span>
-                      </div>
-                      <div>
-                        <span className="text-neutral-500 block">
-                          {isNeed ? 'Hình thức:' : 'Chỗ còn lại:'}
-                        </span>
-                        {isNeed ? (
-                          <span className="font-semibold text-neutral-800">{String(post.mode || 'Online')}</span>
-                        ) : (
-                          <span className="font-bold text-amber-700">Còn {remaining}/{total} chỗ</span>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {matchesMe && (
+                          <span className="rounded-full bg-brand-600 px-2.5 py-0.5 text-xs font-semibold text-white">Khớp môn bạn kèm</span>
+                        )}
+                        {author?.rating ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700">
+                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                            {author.rating.toFixed(1)}
+                            <span className="font-normal text-neutral-500">({author.reviewCount})</span>
+                          </span>
+                        ) : null}
+                        {post.subject && (
+                          <span className="rounded-md bg-brand-50 px-2 py-0.5 text-xs font-bold text-brand-700 dark:bg-brand-500/15 dark:text-brand-200">
+                            {post.subject}
+                          </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-caption font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                        <Check className="h-3 w-3" /> Có học thử
-                      </span>
-                      {post.mode && <Chip size="sm">Hình thức: {String(post.mode)}</Chip>}
-                      <Chip size="sm">Khoá 8 buổi</Chip>
-                    </div>
-                  </CardContent>
+                    <Link
+                      to={`/mentoring/posts/${post.id}`}
+                      className="block text-lg font-semibold leading-snug text-neutral-900 hover:underline dark:text-neutral-100"
+                    >
+                      {post.title}
+                    </Link>
 
-                  <CardFooter className="flex items-center justify-between border-t border-neutral-100 pt-3">
-                    <div className="flex items-center gap-1">
+                    {/* Thông tin chính: cái người đọc cần để quyết định */}
+                    <dl className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-neutral-700 dark:text-neutral-300">
+                      <div className="flex items-center gap-1.5">
+                        <CalendarDays className="h-4 w-4 text-neutral-400" />
+                        <dt className="sr-only">Lịch</dt>
+                        <dd>{post.schedule?.length ? post.schedule.join(', ') : 'Lịch thỏa thuận'}</dd>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Wallet className="h-4 w-4 text-neutral-400" />
+                        <dt className="sr-only">Học phí</dt>
+                        <dd className="font-semibold text-neutral-900 dark:text-neutral-100">
+                          {describePostFee(post.fee)}
+                          {post.sessions ? <span className="font-normal text-neutral-500">, {post.sessions} buổi</span> : null}
+                        </dd>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="h-4 w-4 text-neutral-400" />
+                        <dt className="sr-only">Hạn</dt>
+                        <dd className={cn(left !== null && left >= 0 && left <= 3 && 'font-medium text-amber-700')}>
+                          {deadlineLabel(closed, left)}
+                          {isOffer && !closed && <span className="text-neutral-500">, {remaining}/{capacity} chỗ trống</span>}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {post.trial && (
+                        <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200">
+                          Có học thử
+                        </span>
+                      )}
+                      {modes.map((mode) => (
+                        <span key={mode} className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                          {MODE_LABELS[mode]}
+                        </span>
+                      ))}
+                    </div>
+
+                    {bodyText && (
+                      <div>
+                        <p className={cn('whitespace-pre-line text-sm leading-relaxed text-neutral-600 dark:text-neutral-400', !bodyOpen && 'line-clamp-3')}>
+                          {bodyText}
+                        </p>
+                        {bodyText.length > 220 && (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedBodies((current) => ({ ...current, [post.id]: !current[post.id] }))}
+                            className="mt-1 text-sm font-medium text-neutral-900 hover:underline dark:text-neutral-100"
+                          >
+                            {bodyOpen ? 'Thu gọn' : 'Xem thêm'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 px-3 py-2.5 dark:border-neutral-800">
+                    <div className="flex items-center">
                       <Button
                         variant="ghost"
                         size="sm"
+                        aria-pressed={Boolean(post.liked)}
                         className={post.liked ? 'text-rose-600' : 'text-neutral-600'}
-                        loading={likeMutation.isPending && likeMutation.variables?.postId === post.id}
                         onClick={() => likeMutation.mutate({ postId: post.id, liked: !post.liked })}
                       >
-                        <Heart className={`mr-1.5 h-4 w-4 ${post.liked ? 'fill-current' : ''}`} />
+                        <Heart className={cn('mr-1.5 h-4 w-4', post.liked && 'fill-current')} />
                         {post.likeCount || 0}
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
+                        aria-expanded={commentsOpen}
                         className="text-neutral-600"
-                        onClick={() =>
-                          setExpandedComments((current) => ({ ...current, [post.id]: !current[post.id] }))
-                        }
+                        onClick={() => setExpandedComments((current) => ({ ...current, [post.id]: !current[post.id] }))}
                       >
                         <MessageCircleMore className="mr-1.5 h-4 w-4" />
-                        {post.commentCount || 0} Bình luận
+                        {post.commentCount || 0} bình luận
                       </Button>
                     </div>
+                    <div className="px-2">{action}</div>
+                  </div>
 
-                    {isOwner ? (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => navigate(isMentorContext ? '/mentor/requests' : '/mentoring/requests')}
-                      >
-                        Xem yêu cầu nhận được <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        onClick={() => handleOpenRequest(ownerId || 'usr_mentor_01', post.id)}
-                      >
-                        <Send className="mr-1.5 h-3.5 w-3.5" /> Gửi yêu cầu kết nối
-                      </Button>
-                    )}
-                  </CardFooter>
-
-                  {/* COMMENTS EXPANDED */}
                   {commentsOpen && (
-                    <div className="space-y-4 border-t border-neutral-100 bg-neutral-50/60 p-4">
+                    <div className="space-y-3 border-t border-neutral-100 bg-neutral-50/60 p-4 dark:border-neutral-800 dark:bg-neutral-900/40">
                       {rootComments.length === 0 ? (
-                        <p className="text-center text-xs text-neutral-500">Chưa có bình luận. Hãy là người đầu tiên đặt câu hỏi!</p>
+                        <p className="text-sm text-neutral-500">Chưa có bình luận. Hỏi người đăng điều bạn muốn biết trước khi đăng ký.</p>
                       ) : (
-                        <div className="space-y-3">
-                          {rootComments.map((comment) => (
-                            <div key={comment.id} className="rounded-xl border border-neutral-200 bg-surface p-3">
-                              <UserMiniCard
-                                userId={comment.authorId}
-                                size="sm"
-                                subtitle={new Date(comment.createdAt).toLocaleString('vi-VN')}
-                              />
-                              <p className="mt-2 text-sm leading-relaxed text-neutral-700">{comment.content}</p>
-                            </div>
-                          ))}
-                        </div>
+                        rootComments.map((comment) => (
+                          <div key={comment.id} className="rounded-xl border border-neutral-200 bg-surface p-3 dark:border-neutral-700">
+                            <UserMiniCard userId={comment.authorId} size="sm" subtitle={new Date(comment.createdAt).toLocaleString('vi-VN')} />
+                            <p className="mt-2 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">{comment.content}</p>
+                          </div>
+                        ))
                       )}
-
                       <form
                         className="flex gap-2"
                         onSubmit={(event) => {
@@ -818,15 +756,15 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({
                         }}
                       >
                         <Input
+                          aria-label="Viết bình luận"
                           value={commentDrafts[post.id] || ''}
-                          onChange={(event) =>
-                            setCommentDrafts((current) => ({ ...current, [post.id]: event.target.value }))
-                          }
-                          placeholder="Viết câu hỏi hoặc trao đổi với người đăng..."
+                          onChange={(event) => setCommentDrafts((current) => ({ ...current, [post.id]: event.target.value }))}
+                          placeholder="Hỏi về lịch, học phí, cách học..."
                         />
                         <Button
                           type="submit"
                           size="sm"
+                          aria-label="Gửi bình luận"
                           disabled={!(commentDrafts[post.id] || '').trim()}
                           loading={addCommentMutation.isPending && addCommentMutation.variables?.postId === post.id}
                         >
@@ -835,25 +773,107 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({
                       </form>
                     </div>
                   )}
-                </Card>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
       </QueryBoundary>
+      </div>
 
-      {/* MỞ KHÓA DIALOG GỬI YÊU CẦU */}
-      {requestMentorId && (
+      {embedded && (
+        <aside className="space-y-4 lg:sticky lg:top-20 lg:col-span-4 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto">
+          {/* Lớp Mentor đang mở: theo dõi chỗ trống và yêu cầu chờ mà không phải lục bảng tin */}
+          <section className="rounded-2xl border border-neutral-200 bg-surface dark:border-neutral-700/80" aria-labelledby="my-classes">
+            <div className="flex items-center justify-between gap-2 border-b border-neutral-100 px-4 py-3 dark:border-neutral-800">
+              <h2 id="my-classes" className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                Lớp của bạn <span className="font-normal text-neutral-400">{myClasses.length}</span>
+              </h2>
+              <Button size="sm" onClick={() => openComposer('OFFER_MENTORING')}>
+                <Plus className="mr-1 h-3.5 w-3.5" /> Mở lớp kèm
+              </Button>
+            </div>
+            {myClasses.length === 0 ? (
+              <p className="px-4 py-5 text-sm text-neutral-600">
+                Bạn chưa mở lớp nào. Lớp có lịch và học phí rõ ràng giúp học viên tự tìm tới bạn.
+              </p>
+            ) : (
+              <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                {myClasses.map((post) => {
+                  const capacity = post.capacity || post.slots || 1;
+                  const remaining = Math.max(capacity - (post.filledCount || 0), 0);
+                  const pending = pendingByPost[post.id] || 0;
+                  const closed = isClosed(post);
+                  return (
+                    <li key={post.id} className="space-y-1.5 px-4 py-3">
+                      <Link
+                        to={`/mentoring/posts/${post.id}`}
+                        className="line-clamp-2 text-sm font-medium text-neutral-900 hover:underline dark:text-neutral-100"
+                      >
+                        {post.title}
+                      </Link>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
+                        {post.subject && <span className="font-bold text-brand-700 dark:text-brand-300">{post.subject}</span>}
+                        <span className="tabular-nums">{closed ? 'Đã đóng' : `${remaining}/${capacity} chỗ trống`}</span>
+                        <span>{deadlineLabel(closed, daysLeft(post.deadline))}</span>
+                      </div>
+                      {pending > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => navigate('/mentor/requests')}
+                          className="text-xs font-semibold text-rose-600 hover:underline"
+                        >
+                          {pending} yêu cầu đang chờ bạn trả lời
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          {/* Lọc nhanh bài nhờ kèm khớp môn Mentor nhận */}
+          {mySubjects.length > 0 && (
+            <section className="space-y-3 rounded-2xl border border-neutral-200 bg-surface p-4 dark:border-neutral-700/80">
+              <div>
+                <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                  {matchingCount} bài nhờ kèm khớp môn bạn kèm
+                </p>
+                <p className="text-xs text-neutral-500">{mySubjects.join(', ')}</p>
+              </div>
+              <label className="flex items-center justify-between gap-3 text-sm text-neutral-700 dark:text-neutral-300">
+                Chỉ xem bài khớp môn
+                <Switch
+                  checked={matchOnly}
+                  onCheckedChange={(checked) => {
+                    setMatchOnly(checked);
+                    if (checked) setLane('NEED_MENTOR');
+                  }}
+                  aria-label="Chỉ xem bài khớp môn"
+                />
+              </label>
+            </section>
+          )}
+
+          <button
+            type="button"
+            onClick={() => openComposer('NEED_MENTOR')}
+            className="w-full rounded-xl px-4 py-2 text-left text-sm text-neutral-600 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:hover:bg-neutral-800"
+          >
+            Bạn cũng cần người kèm môn khác? <span className="font-medium text-brand-700 dark:text-brand-300">Đăng bài nhờ kèm</span>
+          </button>
+        </aside>
+      )}
+      </div>
+
+      {request && (
         <SendMentoringRequestDialog
-          open={!!requestMentorId}
-          onOpenChange={(open) => {
-            if (!open) {
-              setRequestMentorId(null);
-              setRequestPostId(null);
-            }
-          }}
-          mentorId={requestMentorId}
-          sourcePostId={requestPostId || undefined}
+          open
+          onOpenChange={(open) => !open && setRequest(null)}
+          mentorId={request.recipientId}
+          sourcePostId={request.postId}
+          recipientLabel={request.label}
         />
       )}
     </div>

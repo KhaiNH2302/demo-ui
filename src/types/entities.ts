@@ -906,6 +906,45 @@ export interface Mentor {
   supportModes: SupportMode[];
   acceptingRequests: boolean;
   menteesCount?: number;
+  pricing?: MentorPricing;
+  rating?: number;
+  reviewCount?: number;
+  sessionsCompleted?: number;
+}
+
+// Gói học Mentor tự đặt: số buổi + học phí trọn gói (0 = miễn phí)
+export interface MentorPackage {
+  id: string;
+  name: string;
+  sessions: number;
+  price: number;
+}
+
+// Học phí hiển thị cho học viên; SCS không thu hộ, học viên trả trực tiếp cho Mentor
+export interface MentorPricing {
+  pricePerSession: number;
+  minutesPerSession: number;
+  trial: { enabled: boolean; price: number; minutes: number };
+  packages: MentorPackage[];
+}
+
+export type MentoringPlanType = 'TRIAL' | 'SINGLE' | 'PACKAGE';
+
+// Đánh giá học viên để lại sau buổi học với Mentor
+export interface MentorReview {
+  id: string;
+  mentorId: string;
+  authorName: string;
+  authorAvatarUrl?: string;
+  authorMajor?: string;
+  rating: number;
+  topic: string;
+  comment: string;
+  // Yêu cầu "Đã kết nối" làm căn cứ để được đánh giá; mỗi yêu cầu chỉ đánh giá một lần
+  requestId?: string;
+  tags?: string[];
+  reply?: { content: string; createdAt: string };
+  createdAt: string;
 }
 
 export interface MentorProfileSection {
@@ -955,6 +994,13 @@ export interface MentorPost {
   saved?: boolean;
   createdAt: string;
   tags?: string[];
+  // Thông tin lớp / nhu cầu lưu thành trường riêng để thẻ bài hiển thị đúng (không đọc từ nội dung chữ)
+  subject?: string;
+  modes?: SupportMode[];
+  schedule?: string[];
+  fee?: number; // đ/buổi; 0 = miễn phí; bỏ trống = thỏa thuận
+  sessions?: number;
+  trial?: boolean;
 }
 
 export type MentoringPost = MentorPost;
@@ -970,6 +1016,11 @@ export interface MentoringRequest {
   topic: string;
   content: string;
   preferredTime?: string | string[];
+  planType?: MentoringPlanType;
+  packageId?: string;
+  planSummary?: string;
+  // Số buổi trong gói đã chọn (học thử/học lẻ = 1); dùng làm mốc cho tiến độ lớp học
+  totalSessions?: number;
   deadline?: string;
   connectionId?: string;
   status: MentoringRequestStatus;
@@ -977,11 +1028,61 @@ export interface MentoringRequest {
   createdAt: string;
 }
 
+// Mentor đánh dấu đã học → chờ học viên xác nhận → mới tính vào tiến độ
+export type MentoringSessionStatus = 'PLANNED' | 'PENDING_CONFIRM' | 'DONE' | 'CANCELLED';
+
+export interface MentoringSession {
+  id: string;
+  requestId: string;
+  startsAt: string;
+  mode: 'online' | 'offline' | 'chat';
+  note?: string;
+  status: MentoringSessionStatus;
+  // Học viên báo "chưa học" khi Mentor đánh dấu đã học
+  disputed?: boolean;
+  createdAt: string;
+}
+
+// Một lớp học = một yêu cầu đã kết nối giữa Mentor và học viên
+export interface MentoringClass {
+  request: MentoringRequest;
+  mentorId: string;
+  studentId: string;
+  sessions: MentoringSession[];
+}
+
 export interface AiMentorMatch {
   mentorId: string;
   score: number;
   reasons: string[];
   confidence: number;
+  // Từng tiêu chí học viên đặt ra và Mentor có đáp ứng không; thay cho một con số khó hiểu
+  checks?: AiMentorCheck[];
+}
+
+export type AiCriterionKey = 'subject' | 'schedule' | 'mode' | 'budget' | 'trial';
+
+export interface AiMentorCheck {
+  key: AiCriterionKey;
+  ok: boolean;
+  detail: string;
+}
+
+export type TimeOfDay = 'morning' | 'afternoon' | 'evening';
+
+// Những gì "AI" hiểu từ câu học viên gõ; học viên sửa lại được trước khi tìm
+export interface AiMentorCriteria {
+  subjects: string[];
+  days: ScheduleSlot['day'][];
+  timeOfDay?: TimeOfDay;
+  modes: ('online' | 'offline' | 'chat')[];
+  maxFee?: number;
+  wantTrial: boolean;
+}
+
+export interface AiMentorSearchResult {
+  criteria: AiMentorCriteria;
+  matches: AiMentorMatch[];
 }
 
 // Shared / General
@@ -1058,7 +1159,7 @@ export interface MentorApplication {
   personal: {
     avatarUrl: string;
     phone?: string;
-    currentRole: "student" | "alumni" | "lecturer" | "professional";
+    currentRole: 'student' | 'alumni';
     yearOrGraduation: string;
     workplace?: string;
     position?: string;
@@ -1090,15 +1191,16 @@ export interface MentorApplication {
   focus: {
     areas: string[];
     subjects: string[];
-    targetAudience: string[];
-    maxMentees: number;
+    // Hai trường dưới thuộc hồ sơ cũ; lịch rảnh & số học viên giờ được đặt trong Mentor Center sau khi duyệt
+    targetAudience?: string[];
+    maxMentees?: number;
   };
   about: {
     headline: string;
     bio: string;
     motivation: string;
   };
-  availability: {
+  availability?: {
     slots: ScheduleSlot[];
     modes: ("online" | "offline" | "chat")[];
     location?: string;
