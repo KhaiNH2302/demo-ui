@@ -23,6 +23,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useThemeStore } from '@/store/themeStore';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { NotificationBell } from '@/components/shared/NotificationBell';
+import { ChatQuickPreview } from '@/components/shared/ChatQuickPreview';
 import { QuickCreateSheet } from '@/components/shared/QuickCreateSheet';
 import { Button } from '@/components/ui/Button';
 import {
@@ -338,18 +339,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <>
           <NotificationBell variant="light" />
 
-          <Link
-            to="/chats"
-            aria-label="Tin nhắn"
-            className="relative p-2 rounded-md text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
-          >
-            <MessageCircle size={19} />
-            {unreadMessagesCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-tier-danger-dot px-1 text-[10px] font-bold text-white">
-                {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
-              </span>
-            )}
-          </Link>
+          <ChatQuickPreview unreadCount={unreadMessagesCount} />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
