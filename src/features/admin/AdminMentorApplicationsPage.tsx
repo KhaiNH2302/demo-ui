@@ -110,7 +110,7 @@ export const AdminMentorApplicationsPage: React.FC = () => {
                           Ứng viên #{app.id.slice(-4)}
                         </span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-neutral-100 text-neutral-600">
-                          {app.personal?.currentRole === 'student' ? 'Sinh viên' : 'Cựu SV / Chuyên gia'}
+                          {app.personal?.currentRole === 'student' ? 'Sinh viên' : 'Cựu sinh viên'}
                         </span>
                         <StatusBadge status={app.status} />
                       </div>

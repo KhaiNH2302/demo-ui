@@ -693,7 +693,7 @@ export const newModulesHandlers = [
     return HttpResponse.json({ data: newReport });
   }),
 
-  // FE-06: Event Manager programs and Student proposals.
+  // FE-06: Manager programs and Student proposals.
   ...programHandlers,
 
   // 9. Requests Management (GET /requests — C13)
@@ -862,23 +862,21 @@ export const newModulesHandlers = [
         userId: 'usr_student_01',
         status: 'Draft',
         personal: {
-          avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+          avatarUrl: '',
           currentRole: 'student',
-          yearOrGraduation: 'Năm 3 (K18)',
+          yearOrGraduation: '',
         },
         education: {
-          major: 'Kỹ thuật phần mềm',
-          gpa: 3.5,
+          major: '',
           gpaScale: 4,
-          gpaPublic: true,
-          strongSubjects: [{ code: 'CSD201', grade: '9.0' }],
+          gpaPublic: false,
+          strongSubjects: [],
         },
         experiences: [],
         skills: [],
         achievements: [],
-        focus: { areas: [], subjects: [], targetAudience: [], maxMentees: 3 },
+        focus: { areas: [], subjects: [] },
         about: { headline: '', bio: '', motivation: '' },
-        availability: { slots: [], modes: ['online', 'chat'], sessionMinutes: 45 },
         evidence: { cvUrl: '', portfolioUrls: [], otherFiles: [] },
         agreed: false,
         history: [],

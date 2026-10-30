@@ -69,7 +69,7 @@ export const QuickCreateSheet: React.FC<QuickCreateSheetProps> = ({
     {
       key: 'program',
       title: isEventManager ? 'Tạo chương trình cộng đồng' : 'Đề xuất chương trình cộng đồng',
-      description: isEventManager ? 'Tổ chức hoạt động tình nguyện hoặc workshop cho sinh viên' : 'Gửi ý tưởng để Event Manager xem xét và tổ chức',
+      description: isEventManager ? 'Tổ chức hoạt động tình nguyện hoặc workshop cho sinh viên' : 'Gửi ý tưởng để Manager xem xét và tổ chức',
       icon: HeartHandshake,
       onClick: () => {
         onOpenChange(false);

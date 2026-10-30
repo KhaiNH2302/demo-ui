@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, Search, Send, Sparkles, Users } from 'lucide-react';
+import { ArrowRight, CalendarClock, Search, Send, Sparkles, Star } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { formatScheduleSlot } from '@/lib/format';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { QueryBoundary } from '@/components/shared/QueryBoundary';
 import { UserMiniCard } from '@/components/shared/UserMiniCard';
@@ -15,9 +16,16 @@ import { Chip } from '@/components/ui/Chip';
 import { Select } from '@/components/ui/Select';
 import { Pagination } from '@/components/ui/Pagination';
 import { SendMentoringRequestDialog } from './SendMentoringRequestDialog';
+import { formatPrice, formatStartingPrice } from './plans';
 import type { Mentor } from '@/types/entities';
 
 const PAGE_SIZE = 6;
+
+const MODE_LABELS: Record<string, string> = {
+  online: 'Online',
+  offline: 'Gặp tại trường',
+  chat: 'Hỏi đáp qua chat',
+};
 
 const FIELD_OPTIONS = [
   { label: 'Tất cả chuyên ngành', value: 'all' },
@@ -132,7 +140,7 @@ export const MentorBrowsePage: React.FC = () => {
           />
         </div>
         <p className="flex items-center gap-1.5 text-xs text-neutral-500">
-          <Search className="h-3.5 w-3.5" /> Lọc theo môn học trường, hình thức học và khung giờ rảnh để tìm Mentor phù hợp nhất.
+          <Search className="h-3.5 w-3.5" /> Mỗi thẻ ghi rõ học phí, số phút mỗi buổi, gói học và lịch rảnh của Mentor.
         </p>
       </div>
 
@@ -147,41 +155,74 @@ export const MentorBrowsePage: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {visibleMentors.map((mentor) => (
-                <Card key={mentor.userId} className="flex flex-col justify-between hover:border-brand-300 transition-all shadow-2xs">
-                  <CardHeader className="space-y-3">
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        🟢 Còn trống tuần này
-                      </span>
-                      <div className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                        ⭐ 4.9 (42)
+              {visibleMentors.map((mentor) => {
+                const trial = mentor.pricing?.trial;
+                return (
+                  <Card key={mentor.userId} className="flex flex-col justify-between hover:border-brand-300 transition-all shadow-2xs">
+                    <CardHeader className="space-y-3">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        {mentor.acceptingRequests ? (
+                          <Badge variant="success" dot>Đang nhận học viên</Badge>
+                        ) : (
+                          <Badge variant="secondary">Tạm ngưng nhận</Badge>
+                        )}
+                        {mentor.rating ? (
+                          <span className="flex items-center gap-1 text-xs font-semibold text-amber-700">
+                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                            {mentor.rating.toFixed(1)}
+                            <span className="font-normal text-neutral-500">({mentor.reviewCount} đánh giá)</span>
+                          </span>
+                        ) : (
+                          <span className="text-xs text-neutral-500">Mentor mới</span>
+                        )}
                       </div>
-                    </div>
-                    <UserMiniCard userId={mentor.userId} showMajor />
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between text-xs text-neutral-600 bg-neutral-50 p-2.5 rounded-lg border border-neutral-150">
-                      <span>Đã kèm: <strong className="text-neutral-900">38 buổi</strong></span>
-                      <span>Học phí: <strong className="text-brand-700">{(mentor as any).hourlyRate ? `${(mentor as any).hourlyRate.toLocaleString()}đ/buổi` : '120.000đ/buổi'}</strong></span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {mentor.subjects.slice(0, 4).map((subject) => <Chip key={subject} size="sm" className="font-semibold text-brand-700 bg-brand-50 border-brand-200">{subject}</Chip>)}
-                    </div>
-                    <p className="line-clamp-2 text-xs leading-relaxed text-neutral-600">{mentor.experience}</p>
-                    <p className="text-xs text-neutral-500">Hình thức: {mentor.supportModes.join(' • ')}</p>
-                  </CardContent>
-                  <CardFooter className="flex items-center justify-between border-t border-neutral-100 pt-4">
-                    <Button variant="ghost" size="sm" onClick={() => navigate(`/mentoring/mentors/${mentor.userId}`)}>
-                      Xem hồ sơ <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="sm" disabled={!mentor.acceptingRequests} onClick={() => setSelectedMentorId(mentor.userId)} variant="primary">
-                      <Send className="mr-1 h-3.5 w-3.5" /> Gửi yêu cầu
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
+                      <UserMiniCard userId={mentor.userId} showMajor />
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="rounded-lg border border-neutral-150 bg-neutral-50 p-2.5 text-xs text-neutral-600 space-y-1.5">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span>Học phí</span>
+                          <strong className="text-sm text-brand-700 tabular-nums">{formatStartingPrice(mentor)}</strong>
+                        </div>
+                        {mentor.pricing && (
+                          <p className="text-neutral-500">
+                            {mentor.pricing.minutesPerSession} phút/buổi
+                            {mentor.pricing.packages.length > 0 &&
+                              ` · gói ${mentor.pricing.packages.map((pkg) => pkg.sessions).join('/')} buổi`}
+                          </p>
+                        )}
+                        {trial?.enabled && (
+                          <p className="font-medium text-emerald-700">
+                            Học thử {trial.minutes} phút · {formatPrice(trial.price).toLowerCase()}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {mentor.subjects.slice(0, 4).map((subject) => <Chip key={subject} size="sm" className="font-semibold text-brand-700 bg-brand-50 border-brand-200">{subject}</Chip>)}
+                      </div>
+                      <p className="line-clamp-2 text-xs leading-relaxed text-neutral-600">{mentor.experience}</p>
+                      {mentor.availability.length > 0 && (
+                        <p className="flex items-start gap-1.5 text-xs text-neutral-600">
+                          <CalendarClock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-neutral-400" />
+                          <span>{mentor.availability.slice(0, 2).map((slot) => formatScheduleSlot(slot)).join(', ')}{mentor.availability.length > 2 && ` +${mentor.availability.length - 2}`}</span>
+                        </p>
+                      )}
+                      <p className="text-xs text-neutral-500">
+                        {mentor.supportModes.map((mode) => MODE_LABELS[mode] || mode).join(' · ')}
+                        {mentor.menteesCount ? ` · ${mentor.menteesCount} học viên từng học` : ''}
+                      </p>
+                    </CardContent>
+                    <CardFooter className="flex items-center justify-between border-t border-neutral-100 pt-4">
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/mentoring/mentors/${mentor.userId}`)}>
+                        Xem hồ sơ <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="sm" disabled={!mentor.acceptingRequests} onClick={() => setSelectedMentorId(mentor.userId)} variant="primary">
+                        <Send className="mr-1 h-3.5 w-3.5" /> {trial?.enabled ? 'Đăng ký học thử' : 'Gửi yêu cầu'}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                );
+              })}
             </div>
 
             <Pagination

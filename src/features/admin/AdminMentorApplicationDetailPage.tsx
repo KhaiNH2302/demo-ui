@@ -1,20 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  GraduationCap,
   CheckCircle2,
   AlertCircle,
-  XCircle,
-  Clock,
   User,
   BookOpen,
   Briefcase,
   Award,
-  Compass,
-  MessageSquare,
   FileText,
   ExternalLink,
-  ShieldCheck,
+  type LucideIcon,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
@@ -25,6 +20,35 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton';
 import { useToast } from '@/components/ui/Toast';
 import type { MentorApplication } from '@/types/entities';
+import {
+  APPLICATION_STEPS,
+  EXPERIENCE_TYPE_LABELS,
+  MIN_GPA,
+  ROLE_LABELS,
+  SKILL_LEVEL_LABELS,
+  getFlaggedSteps,
+  getStepIssues,
+  meetsGpaThreshold,
+} from '@/features/mentor/applicationSteps';
+
+// Tiêu đề bước + ô đánh dấu "Cần bổ sung"; khóa đánh dấu trùng với bước của form ứng viên
+const StepHeader: React.FC<{ index: number; icon: LucideIcon; flagged: boolean; onToggle: () => void }> = ({
+  index,
+  icon: Icon,
+  flagged,
+  onToggle,
+}) => (
+  <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
+    <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
+      <Icon size={16} className="text-brand-600" />
+      <span>{index + 1}. {APPLICATION_STEPS[index].title}</span>
+    </h3>
+    <label className="flex items-center gap-1.5 text-xs text-neutral-500 cursor-pointer">
+      <input type="checkbox" checked={flagged} onChange={onToggle} className="rounded text-brand-600" />
+      <span>Cần bổ sung bước này</span>
+    </label>
+  </div>
+);
 
 export const AdminMentorApplicationDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -33,6 +57,7 @@ export const AdminMentorApplicationDetailPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   const [flaggedSections, setFlaggedSections] = useState<string[]>([]);
+  const [flagsLoaded, setFlagsLoaded] = useState(false);
   const [requestInfoDialogOpen, setRequestInfoDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
@@ -93,6 +118,14 @@ export const AdminMentorApplicationDetailPage: React.FC = () => {
     },
   });
 
+  // Lần đầu mở hồ sơ: hiện lại các bước đã đánh dấu ở lần yêu cầu bổ sung trước
+  useEffect(() => {
+    if (application && !flagsLoaded) {
+      setFlaggedSections(getFlaggedSteps(application));
+      setFlagsLoaded(true);
+    }
+  }, [application, flagsLoaded]);
+
   if (isLoading || !application) {
     return (
       <div className="space-y-6">
@@ -101,6 +134,23 @@ export const AdminMentorApplicationDetailPage: React.FC = () => {
       </div>
     );
   }
+
+  const issues = getStepIssues(application);
+  const gpaScale = application.education?.gpaScale ?? 4;
+  const autoChecks = [
+    { ok: true, label: 'Tài khoản đã xác minh email trường' },
+    {
+      ok: meetsGpaThreshold(application),
+      label: application.education?.gpa
+        ? `GPA ${application.education.gpa}/${gpaScale} ${meetsGpaThreshold(application) ? 'đạt' : 'chưa đạt'} mức tối thiểu ${MIN_GPA[gpaScale]}`
+        : 'Chưa khai GPA',
+    },
+    { ok: Boolean(application.evidence?.cvUrl), label: application.evidence?.cvUrl ? 'Đã đính kèm CV' : 'Chưa có CV' },
+    ...APPLICATION_STEPS.map((step) => ({
+      ok: issues[step.key].length === 0,
+      label: issues[step.key].length === 0 ? `${step.title}: đủ thông tin` : `${step.title}: thiếu ${issues[step.key].length} mục`,
+    })),
+  ];
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -115,116 +165,99 @@ export const AdminMentorApplicationDetailPage: React.FC = () => {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (2/3): 7 Sections */}
+        {/* Left Column (2/3): 4 bước giống form đăng ký */}
         <div className="lg:col-span-2 space-y-5">
-          {/* Section 1: Cá nhân */}
+          {/* Bước 1: Bạn là ai */}
           <div className="p-5 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
-              <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
-                <User size={16} className="text-brand-600" />
-                <span>1. Thông tin cá nhân & Liên hệ</span>
-              </h3>
-              <label className="flex items-center gap-1.5 text-xs text-neutral-500 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={flaggedSections.includes('personal')}
-                  onChange={() => toggleSectionFlag('personal')}
-                  className="rounded text-brand-600"
-                />
-                <span>Cần bổ sung phần này</span>
-              </label>
-            </div>
+            <StepHeader index={0} icon={User} flagged={flaggedSections.includes('identity')} onToggle={() => toggleSectionFlag('identity')} />
             <div className="flex items-start gap-4">
-              <img
-                src={application.personal?.avatarUrl}
-                alt="Avatar"
-                className="h-16 w-16 rounded-2xl object-cover ring-1 ring-neutral-200"
-              />
-              <div className="space-y-1 text-xs text-neutral-600">
-                <p><strong>Vai trò:</strong> {application.personal?.currentRole} ({application.personal?.yearOrGraduation})</p>
+              {application.personal?.avatarUrl && (
+                <img
+                  src={application.personal.avatarUrl}
+                  alt="Ảnh đại diện ứng viên"
+                  className="h-16 w-16 rounded-2xl object-cover ring-1 ring-neutral-200"
+                />
+              )}
+              <dl className="space-y-1 text-sm text-neutral-700">
+                <p><strong>Vai trò:</strong> {ROLE_LABELS[application.personal?.currentRole] || application.personal?.currentRole} ({application.personal?.yearOrGraduation || 'chưa ghi năm'})</p>
+                <p><strong>Chuyên ngành:</strong> {application.education?.major || 'Chưa có'}</p>
+                {application.personal?.currentRole !== 'student' && (
+                  <p><strong>Nơi làm việc:</strong> {[application.personal?.position, application.personal?.workplace].filter(Boolean).join(' tại ') || 'Chưa cung cấp'}</p>
+                )}
                 <p><strong>Điện thoại:</strong> {application.personal?.phone || 'Chưa cung cấp'}</p>
-                <p><strong>Tổ chức / Nơi làm việc:</strong> {application.personal?.workplace}</p>
-              </div>
+              </dl>
             </div>
           </div>
 
-          {/* Section 2: Học vấn */}
+          {/* Bước 2: Môn nhận kèm & năng lực */}
           <div className="p-5 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
-              <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
-                <BookOpen size={16} className="text-brand-600" />
-                <span>2. Chuyên ngành & Học vấn</span>
-              </h3>
-              <label className="flex items-center gap-1.5 text-xs text-neutral-500 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={flaggedSections.includes('education')}
-                  onChange={() => toggleSectionFlag('education')}
-                  className="rounded text-brand-600"
-                />
-                <span>Cần bổ sung phần này</span>
-              </label>
-            </div>
-            <div className="space-y-2 text-xs text-neutral-600">
-              <p><strong>Chuyên ngành:</strong> {application.education?.major}</p>
-              <p><strong>GPA tích lũy:</strong> <span className="font-bold text-neutral-900 text-sm">{application.education?.gpa} / {application.education?.gpaScale || 4}</span></p>
+            <StepHeader index={1} icon={BookOpen} flagged={flaggedSections.includes('teaching')} onToggle={() => toggleSectionFlag('teaching')} />
+            <div className="space-y-2 text-sm text-neutral-700">
+              <p><strong>Lĩnh vực:</strong> {application.focus?.areas?.join(', ') || 'Chưa có'}</p>
+              <p>
+                <strong>GPA tích lũy:</strong>{' '}
+                <span className="font-bold text-neutral-900">{application.education?.gpa ?? '—'} / {application.education?.gpaScale || 4}</span>
+                <span className="text-neutral-500"> · {application.education?.gpaPublic ? 'công khai' : 'ẩn với học viên'}</span>
+              </p>
               <div className="flex flex-wrap gap-2 pt-1">
                 {(application.education?.strongSubjects || []).map((s, idx) => (
-                  <span key={idx} className="px-2.5 py-1 bg-brand-50 text-brand-700 font-semibold rounded-lg">
-                    {s.code}: {s.grade}
+                  <span key={idx} className="px-2.5 py-1 bg-brand-50 text-brand-700 font-semibold rounded-lg text-xs">
+                    {s.code}: {s.grade || 'chưa có điểm'}
                   </span>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Section 3: Kinh nghiệm & Kỹ năng */}
+          {/* Bước 3: Kinh nghiệm & thành tích */}
           <div className="p-5 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
-              <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
-                <Briefcase size={16} className="text-brand-600" />
-                <span>3. Kinh nghiệm & Kỹ năng</span>
-              </h3>
-              <label className="flex items-center gap-1.5 text-xs text-neutral-500 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={flaggedSections.includes('experiences')}
-                  onChange={() => toggleSectionFlag('experiences')}
-                  className="rounded text-brand-600"
-                />
-                <span>Cần bổ sung phần này</span>
-              </label>
-            </div>
-            <div className="space-y-3 text-xs">
+            <StepHeader index={2} icon={Briefcase} flagged={flaggedSections.includes('experience')} onToggle={() => toggleSectionFlag('experience')} />
+            <div className="space-y-3 text-sm">
               {(application.experiences || []).map((exp, idx) => (
                 <div key={idx} className="p-3 bg-neutral-50 rounded-xl space-y-1">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="font-bold text-neutral-900">{exp.title}</span>
-                    <span className="text-neutral-400">{exp.from} - {exp.to || 'Hiện tại'}</span>
+                    <span className="text-xs text-neutral-500">{exp.from} – {exp.to || 'Hiện tại'}</span>
                   </div>
-                  <p className="text-neutral-600">{exp.org} • {exp.role}</p>
-                  <p className="text-neutral-700">{exp.description}</p>
+                  <p className="text-neutral-600">{EXPERIENCE_TYPE_LABELS[exp.type]} · {[exp.org, exp.role].filter(Boolean).join(', ')}</p>
+                  {exp.description && <p className="text-neutral-700">{exp.description}</p>}
+                </div>
+              ))}
+              {(application.skills || []).length > 0 && (
+                <p className="text-neutral-700">
+                  <strong>Kỹ năng:</strong>{' '}
+                  {application.skills.map((s) => `${s.name}${s.level ? ` (${SKILL_LEVEL_LABELS[s.level]})` : ''}`).join(', ')}
+                </p>
+              )}
+              {(application.achievements || []).map((ach, idx) => (
+                <div key={idx} className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 p-3">
+                  <span className="flex items-center gap-2">
+                    <Award size={15} className="text-amber-600" />
+                    <span className="font-semibold text-neutral-900">{ach.name}</span>
+                    <span className="text-neutral-500">· {ach.issuer} {ach.year}</span>
+                  </span>
+                  {ach.url ? (
+                    <a href={ach.url} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-brand-600">
+                      Minh chứng <ExternalLink size={12} />
+                    </a>
+                  ) : (
+                    <span className="shrink-0 text-xs text-amber-700">Chưa có minh chứng</span>
+                  )}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Section 4: Minh chứng tài liệu */}
+          {/* Bước 4: Giới thiệu & minh chứng */}
           <div className="p-5 rounded-2xl bg-surface border border-neutral-200 shadow-xs space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
-              <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
-                <FileText size={16} className="text-brand-600" />
-                <span>4. Hồ sơ năng lực & Minh chứng</span>
-              </h3>
-              <label className="flex items-center gap-1.5 text-xs text-neutral-500 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={flaggedSections.includes('evidence')}
-                  onChange={() => toggleSectionFlag('evidence')}
-                  className="rounded text-brand-600"
-                />
-                <span>Cần bổ sung phần này</span>
-              </label>
+            <StepHeader index={3} icon={FileText} flagged={flaggedSections.includes('intro')} onToggle={() => toggleSectionFlag('intro')} />
+            <div className="space-y-2 text-sm text-neutral-700">
+              <p className="font-semibold text-neutral-900">{application.about?.headline || 'Chưa có dòng giới thiệu'}</p>
+              {application.about?.bio && <p className="whitespace-pre-line">{application.about.bio}</p>}
+              <div className="rounded-xl bg-neutral-50 p-3">
+                <p className="text-xs font-semibold text-neutral-500">Lý do muốn làm Mentor</p>
+                <p>{application.about?.motivation || 'Ứng viên chưa trả lời.'}</p>
+              </div>
             </div>
             <div className="space-y-2 text-xs">
               {application.evidence?.cvUrl && (
@@ -269,24 +302,18 @@ export const AdminMentorApplicationDetailPage: React.FC = () => {
             {/* Automated Checks */}
             <div className="space-y-2.5 p-3.5 rounded-xl bg-neutral-50 border border-neutral-200">
               <span className="text-xs font-bold text-neutral-900 block">Kiểm tra tự động:</span>
-              <div className="space-y-1.5 text-xs text-neutral-700">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 size={14} className="text-emerald-600" />
-                  <span>Tài khoản xác minh email trường</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 size={14} className="text-emerald-600" />
-                  <span>GPA {application.education?.gpa} đạt chuẩn ({'>='} 2.8)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 size={14} className="text-emerald-600" />
-                  <span>Không có tiền sử vi phạm học vụ</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 size={14} className="text-emerald-600" />
-                  <span>Có 4 bài chia sẻ trên Knowledge</span>
-                </div>
-              </div>
+              <ul className="space-y-1.5 text-xs text-neutral-700">
+                {autoChecks.map((check) => (
+                  <li key={check.label} className="flex items-center gap-2">
+                    {check.ok ? (
+                      <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />
+                    ) : (
+                      <AlertCircle size={14} className="shrink-0 text-amber-600" />
+                    )}
+                    <span>{check.label}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             {/* Actions */}

@@ -82,6 +82,7 @@ const ProgramRegisterPage = React.lazy(() => import('@/features/programs/Program
 const ProgramFormPage = React.lazy(() => import('@/features/programs/ProgramFormPage'));
 const ProgramManagePage = React.lazy(() => import('@/features/programs/ProgramManagePage'));
 const ProgramProposalsPage = React.lazy(() => import('@/features/programs/ProgramProposalsPage').then(module => ({ default: module.ProgramProposalsPage })));
+const ProgramProposalFormPage = React.lazy(() => import('@/features/programs/ProgramProposalFormPage'));
 const ProgramProposalReviewPage = React.lazy(() => import('@/features/programs/ProgramProposalsPage').then(module => ({ default: module.ProgramProposalReviewPage })));
 
 // FE-05: Mentoring — phía Học viên (/mentoring/*): tìm Mentor, gửi & theo dõi yêu cầu đã gửi
@@ -101,6 +102,7 @@ const MentorCenterShell = React.lazy(() => import('@/features/mentor/MentorCente
 const MentorProfilePage = React.lazy(() => import('@/features/mentor/MentorProfilePage'));
 const MentorPostsPage = React.lazy(() => import('@/features/mentor/MentorPostsPage'));
 const MentorRequestsPage = React.lazy(() => import('@/features/mentor/MentorRequestsPage'));
+const MentorClassesPage = React.lazy(() => import('@/features/mentor/MentorClassesPage'));
 
 // Admin Portal
 const AdminDashboardPage = React.lazy(() => import('@/features/admin/AdminDashboardPage'));
@@ -204,13 +206,15 @@ export const router = createBrowserRouter([
 
       // FE-06: Community Program Registration
       { path: 'programs', element: <ProgramsExplorePage /> },
-      { path: 'programs/proposals', element: <ProtectedRoute requireRoles={['student', 'Student']}><ProgramProposalsPage /></ProtectedRoute> },
+      { path: 'programs/proposals', element: <ProtectedRoute requireRoles={['student', 'Student', 'club_rep']}><ProgramProposalsPage /></ProtectedRoute> },
+      { path: 'programs/proposals/new', element: <ProtectedRoute requireRoles={['student', 'Student', 'club_rep']}><ProgramProposalFormPage key="new" /></ProtectedRoute> },
+      { path: 'programs/proposals/:id/edit', element: <ProtectedRoute requireRoles={['student', 'Student', 'club_rep']}><ProgramProposalFormPage key="edit" /></ProtectedRoute> },
       { path: 'programs/proposals/review', element: <ProtectedRoute requireRoles={['event_manager']}><ProgramProposalReviewPage /></ProtectedRoute> },
       { path: 'programs/:id', element: <ProgramDetailPage /> },
-      { path: 'programs/new', element: <ProtectedRoute requireRoles={['event_manager']}><ProgramFormPage /></ProtectedRoute> },
-      { path: 'programs/:id/edit', element: <ProtectedRoute requireRoles={['event_manager']}><ProgramFormPage /></ProtectedRoute> },
+      { path: 'programs/new', element: <ProtectedRoute requireRoles={['event_manager', 'club_rep']}><ProgramFormPage /></ProtectedRoute> },
+      { path: 'programs/:id/edit', element: <ProtectedRoute requireRoles={['event_manager', 'club_rep']}><ProgramFormPage /></ProtectedRoute> },
       { path: 'programs/:id/register', element: <ProgramRegisterPage /> },
-      { path: 'programs/manage/:id', element: <ProtectedRoute requireRoles={['event_manager']}><ProgramManagePage /></ProtectedRoute> },
+      { path: 'programs/manage/:id', element: <ProtectedRoute requireRoles={['event_manager', 'club_rep']}><ProgramManagePage /></ProtectedRoute> },
 
       // FE-05: Mentoring (Student)
       { path: 'mentoring', element: <MentoringFeedPage /> },
@@ -240,6 +244,7 @@ export const router = createBrowserRouter([
           { path: 'profile', element: <MentorProfilePage /> },
           { path: 'posts', element: <MentorPostsPage /> },
           { path: 'requests', element: <MentorRequestsPage /> },
+          { path: 'classes', element: <MentorClassesPage /> },
         ],
       },
 

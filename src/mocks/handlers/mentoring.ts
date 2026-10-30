@@ -1,23 +1,46 @@
 import { http, HttpResponse } from 'msw';
 import {
+  seedClassSessions,
   seedMentors,
   seedMentoringComments,
   seedMentoringPosts,
   seedMentoringRequests,
   seedMentorCourses,
   seedMentorProfileSections,
+  seedMentorReviews,
 } from '../data/mentoring';
 import { mockDelay, isScenarioActive, getViewerId } from '../utils';
+import { seedUsers } from '../data/users';
+import { parseMentorQuery, rankMentors } from '../aiMentorMatching';
 import type {
   Mentor,
   MentorPost,
   MentoringPost,
   MentorCourse,
   MentorProfileSection,
+  MentorReview,
+  MentoringClass,
   MentoringRequest,
-  AiMentorMatch,
+  MentoringSession,
+  AiMentorCriteria,
+  AiMentorSearchResult,
   Comment,
 } from '@/types/entities';
+
+const toClass = (req: MentoringRequest): MentoringClass => ({
+  request: req,
+  startedAt: req.classStartedAt,
+  mentorId: req.mentorId,
+  studentId: req.studentId,
+  sessions: seedClassSessions
+    .filter((session) => session.requestId === req.id)
+    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()),
+});
+
+const ANONYMOUS_AUTHOR = 'Học viên ẩn danh';
+
+const classError = (code: string, message: string, status: number) =>
+  HttpResponse.json({ error: { code, message } }, { status });
 
 export const mentoringHandlers = [
   // Student side
@@ -55,7 +78,14 @@ export const mentoringHandlers = [
       mentorId: userId,
       authorId: userId,
       authorRole: body.authorRole === 'mentor' ? 'mentor' : 'student',
-      postType: body.authorRole === 'mentor' ? 'OFFER_MENTORING' : 'NEED_MENTOR',
+      // Chỉ Mentor được mở lớp; ai cũng đăng được bài tìm người kèm
+      postType: body.authorRole === 'mentor' && body.postType !== 'NEED_MENTOR' ? 'OFFER_MENTORING' : 'NEED_MENTOR',
+      subject: body.subject,
+      modes: body.modes,
+      schedule: body.schedule,
+      fee: body.fee,
+      sessions: body.sessions,
+      trial: body.trial,
       title: body.title || '',
       content: body.content || body.contentMd || '',
       contentMd: body.contentMd || body.content || '',
@@ -74,6 +104,32 @@ export const mentoringHandlers = [
     };
     seedMentoringPosts.unshift(newPost);
     return HttpResponse.json({ data: newPost });
+  }),
+
+  // Bài nhờ kèm của người đang đăng nhập, gồm cả bài đã đóng, để quản lý ở trang Yêu cầu
+  http.get('/api/v1/mentoring/posts/mine', async ({ request }) => {
+    await mockDelay();
+    const userId = getViewerId(request);
+    return HttpResponse.json({
+      data: seedMentoringPosts.filter((post) => post.postType === 'NEED_MENTOR' && (post.authorId || post.mentorId) === userId),
+    });
+  }),
+
+  // Chủ bài sửa nội dung hoặc đóng/mở lại bài
+  http.put('/api/v1/mentoring/posts/:id', async ({ params, request }) => {
+    await mockDelay();
+    const userId = getViewerId(request);
+    const body = (await request.json()) as Partial<MentoringPost>;
+    const post = seedMentoringPosts.find((p) => p.id === params.id);
+    if (!post) {
+      return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Bài đăng không tồn tại' } }, { status: 404 });
+    }
+    if ((post.authorId || post.mentorId) !== userId) {
+      return HttpResponse.json({ error: { code: 'FORBIDDEN', message: 'Chỉ người đăng được sửa bài' } }, { status: 403 });
+    }
+    const content = body.content ?? body.contentMd;
+    Object.assign(post, body, content === undefined ? {} : { content, contentMd: content });
+    return HttpResponse.json({ data: post });
   }),
 
   http.get('/api/v1/mentoring/posts/:id', async ({ params }) => {
@@ -137,7 +193,8 @@ export const mentoringHandlers = [
     return HttpResponse.json({ data: newComment });
   }),
 
-  http.post('/api/v1/mentoring/ai-search', async () => {
+  // Body: { query } lần đầu, hoặc { criteria } khi học viên đã sửa tiêu chí
+  http.post('/api/v1/mentoring/ai-search', async ({ request }) => {
     if (isScenarioActive('ai_timeout')) {
       await mockDelay(2000, 3000);
       return HttpResponse.json(
@@ -145,20 +202,12 @@ export const mentoringHandlers = [
         { status: 504 }
       );
     }
-    await mockDelay(300, 500);
+    await mockDelay(500, 900);
 
-    const matches: AiMentorMatch[] = seedMentors.map((m) => ({
-      mentorId: m.userId,
-      score: 95,
-      confidence: 0.92,
-      reasons: [
-        'Kinh nghiệm chuyên sâu môn CSD201 và PRJ301',
-        'Hình thức hỗ trợ phù hợp (Online + Chat)',
-        'Hình thức hỗ trợ phù hợp với nhu cầu đã nhập',
-      ],
-    }));
-
-    return HttpResponse.json({ data: matches });
+    const body = (await request.json()) as { query?: string; criteria?: AiMentorCriteria };
+    const criteria = body.criteria ?? parseMentorQuery(body.query || '');
+    const result: AiMentorSearchResult = { criteria, matches: rankMentors(seedMentors, criteria) };
+    return HttpResponse.json({ data: result });
   }),
 
   http.get('/api/v1/mentoring/requests/me', async ({ request }) => {
@@ -185,7 +234,7 @@ export const mentoringHandlers = [
     const requesterIsMentor = sourcePost?.postType === 'NEED_MENTOR';
     if (!body.deadline || new Date(body.deadline).getTime() <= Date.now()) {
       return HttpResponse.json(
-        { error: { code: 'INVALID_DEADLINE', message: 'Deadline phản hồi không hợp lệ.' } },
+        { error: { code: 'INVALID_DEADLINE', message: 'Hạn phản hồi phải là một ngày trong tương lai.' } },
         { status: 422 }
       );
     }
@@ -239,12 +288,111 @@ export const mentoringHandlers = [
       sourcePostId: body.sourcePostId,
       topic: body.topic,
       content: body.content,
+      planType: body.planType,
+      packageId: body.packageId,
+      planSummary: body.planSummary,
+      totalSessions: body.totalSessions,
+      preferredTime: body.preferredTime,
       deadline: body.deadline,
       status: 'PENDING_MENTOR_RESPONSE',
       createdAt: new Date().toISOString(),
     };
     seedMentoringRequests.unshift(newReq);
     return HttpResponse.json({ data: newReq });
+  }),
+
+  // Lớp học: sổ buổi học giữa Mentor và học viên sau khi đã kết nối
+  http.get('/api/v1/mentoring/classes', async ({ request }) => {
+    await mockDelay();
+    const userId = getViewerId(request);
+    const classes = seedMentoringRequests
+      .filter((item) => item.status === 'ACCEPTED' && (item.mentorId === userId || item.studentId === userId))
+      .map(toClass);
+    return HttpResponse.json({ data: classes });
+  }),
+
+  // Mentor toàn quyền bắt đầu lớp sau khi hai bên đã nhắn tin chốt gói và giờ; buổi đầu được tạo cùng lúc
+  http.post('/api/v1/mentoring/classes/:requestId/start', async ({ params, request }) => {
+    await mockDelay();
+    const userId = getViewerId(request);
+    const req = seedMentoringRequests.find((item) => item.id === params.requestId && item.status === 'ACCEPTED');
+    if (!req) return classError('NOT_FOUND', 'Yêu cầu không tồn tại hoặc chưa được kết nối.', 404);
+    if (req.mentorId !== userId) return classError('FORBIDDEN', 'Chỉ Mentor được bắt đầu lớp học.', 403);
+    if (req.classStartedAt) return classError('ALREADY_STARTED', 'Lớp học đã được bắt đầu.', 409);
+    const body = (await request.json()) as { startsAt?: string; mode?: MentoringSession['mode']; note?: string };
+    if (!body.startsAt || Number.isNaN(new Date(body.startsAt).getTime())) {
+      return classError('VALIDATION_ERROR', 'Hãy chọn ngày giờ của buổi đầu tiên.', 422);
+    }
+    req.classStartedAt = new Date().toISOString();
+    seedClassSessions.push({
+      id: `msess_${Date.now()}`,
+      requestId: req.id,
+      startsAt: body.startsAt,
+      mode: body.mode || 'online',
+      note: body.note?.trim() || undefined,
+      status: 'PLANNED',
+      createdAt: req.classStartedAt,
+    });
+    return HttpResponse.json({ data: toClass(req) });
+  }),
+
+  http.post('/api/v1/mentoring/classes/:requestId/sessions', async ({ params, request }) => {
+    await mockDelay();
+    const userId = getViewerId(request);
+    const req = seedMentoringRequests.find((item) => item.id === params.requestId && item.status === 'ACCEPTED');
+    if (!req) return classError('NOT_FOUND', 'Lớp học không tồn tại hoặc chưa được kết nối.', 404);
+    if (req.mentorId !== userId) return classError('FORBIDDEN', 'Chỉ Mentor của lớp được thêm buổi học.', 403);
+    if (!req.classStartedAt) return classError('NOT_STARTED', 'Hãy bắt đầu lớp học trước khi thêm buổi.', 409);
+    const body = (await request.json()) as { startsAt?: string; mode?: MentoringSession['mode']; note?: string };
+    if (!body.startsAt || Number.isNaN(new Date(body.startsAt).getTime())) {
+      return classError('VALIDATION_ERROR', 'Hãy chọn ngày giờ của buổi học.', 422);
+    }
+    const active = seedClassSessions.filter((item) => item.requestId === req.id && item.status !== 'CANCELLED').length;
+    if (req.totalSessions && active >= req.totalSessions) {
+      return classError('SESSIONS_FULL', `Gói chỉ có ${req.totalSessions} buổi và đã được xếp đủ.`, 409);
+    }
+    const session: MentoringSession = {
+      id: `msess_${Date.now()}`,
+      requestId: req.id,
+      startsAt: body.startsAt,
+      mode: body.mode || 'online',
+      note: body.note?.trim() || undefined,
+      status: 'PLANNED',
+      createdAt: new Date().toISOString(),
+    };
+    seedClassSessions.push(session);
+    return HttpResponse.json({ data: toClass(req) });
+  }),
+
+  // Mentor đánh dấu đã học → học viên xác nhận hoặc báo chưa học; hai bên đều hủy được buổi chưa học
+  http.post('/api/v1/mentoring/classes/:requestId/sessions/:sessionId/:action', async ({ params, request }) => {
+    await mockDelay();
+    const userId = getViewerId(request);
+    const req = seedMentoringRequests.find((item) => item.id === params.requestId && item.status === 'ACCEPTED');
+    const session = seedClassSessions.find((item) => item.id === params.sessionId && item.requestId === params.requestId);
+    if (!req || !session) return classError('NOT_FOUND', 'Buổi học không tồn tại.', 404);
+    const isMentorSide = userId === req.mentorId;
+    const isStudentSide = userId === req.studentId;
+    const action = String(params.action);
+
+    if (action === 'done') {
+      if (!isMentorSide) return classError('FORBIDDEN', 'Chỉ Mentor được đánh dấu đã học.', 403);
+      if (session.status !== 'PLANNED') return classError('INVALID_STATE', 'Buổi này không ở trạng thái dự kiến.', 409);
+      session.status = 'PENDING_CONFIRM';
+      session.disputed = false;
+    } else if (action === 'confirm' || action === 'dispute') {
+      if (!isStudentSide) return classError('FORBIDDEN', 'Chỉ học viên được xác nhận buổi học.', 403);
+      if (session.status !== 'PENDING_CONFIRM') return classError('INVALID_STATE', 'Buổi này chưa chờ xác nhận.', 409);
+      session.status = action === 'confirm' ? 'DONE' : 'PLANNED';
+      session.disputed = action === 'dispute';
+    } else if (action === 'cancel') {
+      if (!isMentorSide && !isStudentSide) return classError('FORBIDDEN', 'Bạn không thuộc lớp học này.', 403);
+      if (session.status !== 'PLANNED') return classError('INVALID_STATE', 'Chỉ hủy được buổi chưa học.', 409);
+      session.status = 'CANCELLED';
+    } else {
+      return classError('VALIDATION_ERROR', 'Thao tác không hợp lệ.', 422);
+    }
+    return HttpResponse.json({ data: toClass(req) });
   }),
 
   // Mentor Center
@@ -436,6 +584,78 @@ export const mentoringHandlers = [
   }),
 
   // Mentor Profile Sections
+  http.get('/api/v1/mentors/:id/reviews', async ({ params }) => {
+    await mockDelay();
+    // Đánh giá ẩn danh: không trả tên và ảnh người viết về client
+    const reviews = seedMentorReviews
+      .filter((review) => review.mentorId === params.id)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .map((review) => ({ ...review, authorName: ANONYMOUS_AUTHOR, authorAvatarUrl: undefined }));
+    return HttpResponse.json({ data: reviews });
+  }),
+
+  // Chỉ người đã "Đã kết nối" với Mentor mới đánh giá được, mỗi yêu cầu một lần
+  http.post('/api/v1/mentors/:id/reviews', async ({ params, request }) => {
+    await mockDelay();
+    const viewerId = getViewerId(request);
+    const body = (await request.json()) as { requestId?: string; rating?: number; tags?: string[]; comment?: string };
+    const connection = seedMentoringRequests.find((item) => item.id === body.requestId);
+    const connected = connection?.status === 'ACCEPTED' && connection.studentId === viewerId && connection.mentorId === params.id;
+    if (!connection || !connected) {
+      return HttpResponse.json(
+        { error: { code: 'REVIEW_NOT_ALLOWED', message: 'Chỉ học viên đã kết nối với Mentor mới đánh giá được.' } },
+        { status: 403 }
+      );
+    }
+    // Phải có ít nhất 1 buổi học đã được học viên xác nhận
+    if (!seedClassSessions.some((session) => session.requestId === connection.id && session.status === 'DONE')) {
+      return HttpResponse.json(
+        { error: { code: 'REVIEW_TOO_EARLY', message: 'Đánh giá mở sau buổi học đầu tiên được xác nhận.' } },
+        { status: 403 }
+      );
+    }
+    if (seedMentorReviews.some((review) => review.requestId === connection.id)) {
+      return HttpResponse.json({ error: { code: 'REVIEW_EXISTS', message: 'Bạn đã đánh giá lần kết nối này rồi.' } }, { status: 409 });
+    }
+    const rating = Math.round(Number(body.rating));
+    if (!(rating >= 1 && rating <= 5)) {
+      return HttpResponse.json({ error: { code: 'VALIDATION_ERROR', message: 'Hãy chọn số sao từ 1 đến 5.' } }, { status: 422 });
+    }
+    const author = seedUsers.find((user) => user.id === viewerId);
+    const review: MentorReview = {
+      id: `mrev_${Date.now()}`,
+      mentorId: String(params.id),
+      requestId: connection.id,
+      authorName: ANONYMOUS_AUTHOR,
+      authorMajor: author ? [author.major, author.cohort].filter(Boolean).join(' · ') : undefined,
+      rating,
+      topic: connection.topic,
+      tags: body.tags || [],
+      comment: (body.comment || '').trim().slice(0, 300),
+      createdAt: new Date().toISOString(),
+    };
+    seedMentorReviews.unshift(review);
+    return HttpResponse.json({ data: review });
+  }),
+
+  // Mentor trả lời công khai một lần
+  http.post('/api/v1/mentors/:id/reviews/:reviewId/reply', async ({ params, request }) => {
+    await mockDelay();
+    if (getViewerId(request) !== params.id) {
+      return HttpResponse.json({ error: { code: 'FORBIDDEN', message: 'Chỉ Mentor được trả lời đánh giá của mình.' } }, { status: 403 });
+    }
+    const review = seedMentorReviews.find((item) => item.id === params.reviewId && item.mentorId === params.id);
+    if (!review) {
+      return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Đánh giá không tồn tại' } }, { status: 404 });
+    }
+    if (review.reply) {
+      return HttpResponse.json({ error: { code: 'REPLY_EXISTS', message: 'Bạn đã trả lời đánh giá này.' } }, { status: 409 });
+    }
+    const body = (await request.json()) as { content?: string };
+    review.reply = { content: (body.content || '').trim().slice(0, 300), createdAt: new Date().toISOString() };
+    return HttpResponse.json({ data: review });
+  }),
+
   http.get('/api/v1/mentors/:id/profile-sections', async () => {
     await mockDelay();
     return HttpResponse.json({ data: seedMentorProfileSections });

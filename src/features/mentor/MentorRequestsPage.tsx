@@ -1,219 +1,273 @@
 import React, { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { Check, Inbox, MessageSquare, X } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { cn } from '@/lib/cn';
 import { QueryBoundary } from '@/components/shared/QueryBoundary';
 import { UserMiniCard } from '@/components/shared/UserMiniCard';
-import { StatusBadge } from '@/components/shared/StatusBadge';
-import { EmptyState } from '@/components/shared/EmptyState';
-import { ReasonDialog } from '@/components/shared/ReasonDialog';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
-import { CalendarClock, Check, Clock, ShieldCheck, X } from 'lucide-react';
+import { Chip } from '@/components/ui/Chip';
+import { Textarea } from '@/components/ui/Textarea';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import type { MentoringRequest } from '@/types/entities';
+import { RequestPlanDetails } from '@/features/mentoring/RequestPlanDetails';
 import { useMentorRequestActions } from './useMentorRequestActions';
 
-export const MentorRequestsPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab');
+type Tab = 'pending' | 'accepted' | 'rejected';
 
-  const [tab, setTab] = useState<'pending' | 'accepted' | 'rejected'>(
-    initialTab === 'accepted' || initialTab === 'rejected' ? initialTab : 'pending'
-  );
-  const [selectedReq, setSelectedReq] = useState<MentoringRequest | null>(null);
-  const [rejectReqId, setRejectReqId] = useState<string | null>(null);
+const TABS: { value: Tab; label: string }[] = [
+  { value: 'pending', label: 'Chờ trả lời' },
+  { value: 'accepted', label: 'Đã kết nối' },
+  { value: 'rejected', label: 'Đã từ chối' },
+];
+
+const EMPTY_TEXT: Record<Tab, string> = {
+  pending: 'Không có yêu cầu nào đang chờ. Hồ sơ có đủ học phí và lịch rảnh sẽ được đặt nhiều hơn.',
+  accepted: 'Bạn chưa nhận kèm ai.',
+  rejected: 'Bạn chưa từ chối yêu cầu nào.',
+};
+
+// Lý do hay gặp để Mentor từ chối nhanh, vẫn sửa được trước khi gửi
+const QUICK_REASONS = [
+  'Mình đã kín lịch khung giờ này',
+  'Mình chưa nhận kèm môn này',
+  'Mình đã đủ học viên tháng này',
+  'Nội dung chưa rõ, bạn mô tả thêm giúp mình',
+];
+
+const DAY_MS = 86_400_000;
+
+const deadlineInfo = (deadline?: string) => {
+  if (!deadline) return { label: 'Không có hạn', tone: 'neutral' as const, ms: Number.POSITIVE_INFINITY };
+  const ms = new Date(deadline).getTime() - Date.now();
+  if (ms < 0) return { label: 'Đã quá hạn', tone: 'expired' as const, ms };
+  const days = Math.floor(ms / DAY_MS);
+  if (days === 0) return { label: 'Hạn hôm nay', tone: 'urgent' as const, ms };
+  if (days <= 2) return { label: `Còn ${days} ngày`, tone: 'soon' as const, ms };
+  return { label: `Còn ${days} ngày`, tone: 'neutral' as const, ms };
+};
+
+const TONE_CLASS = {
+  expired: 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800',
+  urgent: 'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-200',
+  soon: 'bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200',
+  neutral: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300',
+};
+
+export const MentorRequestsPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const tab: Tab = tabParam === 'accepted' || tabParam === 'rejected' ? tabParam : 'pending';
+
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [rejecting, setRejecting] = useState<MentoringRequest | null>(null);
+  const [reason, setReason] = useState('');
 
   const requestsQuery = useQuery({
     queryKey: ['mentor', 'requests'],
     queryFn: () => apiClient.get<MentoringRequest[]>('/mentor/requests'),
   });
 
-  const { accept: acceptMutation, reject: rejectMutation } = useMentorRequestActions({
-    onAccepted: (data) => {
-      setSelectedReq(data.request);
-    },
+  const { accept, reject } = useMentorRequestActions({
     onRejected: () => {
-      setRejectReqId(null);
-      setSelectedReq(null);
+      setRejecting(null);
+      setReason('');
     },
   });
 
-  const allRequests = requestsQuery.data || [];
-  const filteredRequests = allRequests.filter((r) => {
-    if (tab === 'pending') return r.status === 'PENDING_MENTOR_RESPONSE';
-    if (tab === 'accepted') return r.status === 'ACCEPTED';
-    return r.status === 'REJECTED';
-  });
+  const all = requestsQuery.data || [];
+  const byTab: Record<Tab, MentoringRequest[]> = {
+    pending: all.filter((r) => r.status === 'PENDING_MENTOR_RESPONSE'),
+    accepted: all.filter((r) => r.status === 'ACCEPTED'),
+    rejected: all.filter((r) => r.status === 'REJECTED'),
+  };
+  // Chờ trả lời: hạn gần nhất lên đầu; tab khác: mới nhất lên đầu
+  const items = [...byTab[tab]].sort((a, b) =>
+    tab === 'pending'
+      ? deadlineInfo(a.deadline).ms - deadlineInfo(b.deadline).ms
+      : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-neutral-900">Yêu cầu nhận được</h2>
-        <p className="text-sm text-neutral-600">
-          Mở yêu cầu rồi Chấp nhận hoặc Từ chối. Khi chấp nhận, SCS kiểm tra lại deadline, capacity và duplicate trước khi tạo Mentoring Connection.
-        </p>
+    <div className="space-y-5">
+      <div className="inline-flex rounded-xl bg-neutral-100 p-1 dark:bg-neutral-800" role="tablist" aria-label="Lọc yêu cầu">
+        {TABS.map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            role="tab"
+            aria-selected={tab === item.value}
+            onClick={() => setSearchParams(item.value === 'pending' ? {} : { tab: item.value }, { replace: true })}
+            className={cn(
+              'rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+              tab === item.value
+                ? 'bg-surface text-neutral-900 shadow-xs dark:text-neutral-100'
+                : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400'
+            )}
+          >
+            {item.label} <span className="tabular-nums text-neutral-400">{byTab[item.value].length}</span>
+          </button>
+        ))}
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
-          <TabsTrigger value="pending">
-            Chờ phản hồi ({allRequests.filter((r) => r.status === 'PENDING_MENTOR_RESPONSE').length})
-          </TabsTrigger>
-          <TabsTrigger value="accepted">
-            Đã chấp nhận ({allRequests.filter((r) => r.status === 'ACCEPTED').length})
-          </TabsTrigger>
-          <TabsTrigger value="rejected">
-            Đã từ chối ({allRequests.filter((r) => r.status === 'REJECTED').length})
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value={tab} className="mt-6">
-          <QueryBoundary queries={[requestsQuery]}>
-            {filteredRequests.length === 0 ? (
-              <EmptyState
-                title="Không có yêu cầu nào"
-                description="Chưa có yêu cầu học viên gửi cho bạn trong danh mục này."
-              />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredRequests.map((req) => (
-                  <Card key={req.id} className="flex flex-col justify-between">
-                    <CardHeader className="p-4 pb-2 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <StatusBadge status={req.status} domain="mentoring" />
-                        <span className="text-xs text-[var(--text-subtle)] flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> {new Date(req.createdAt).toLocaleDateString('vi-VN')}
-                        </span>
-                      </div>
-                      <UserMiniCard userId={req.studentId} showMajor />
-                      <CardTitle className="text-sm pt-1 line-clamp-1">{req.topic}</CardTitle>
-                    </CardHeader>
-
-                    <CardContent className="p-4 pt-0 space-y-2">
-                      <p className="text-xs text-[var(--text-muted)] line-clamp-3 bg-[var(--surface-muted)] p-2.5 rounded">
-                        {req.content}
-                      </p>
-                      <div className="flex items-center justify-between gap-2 text-xs text-[var(--text-subtle)]">
-                        <span className="flex items-center gap-1">
-                          <CalendarClock className="h-3.5 w-3.5" /> Deadline: {req.deadline ? new Date(req.deadline).toLocaleDateString('vi-VN') : 'Chưa đặt'}
-                        </span>
-                        <Badge variant="outline">{req.sourceType === 'POST' ? 'Từ Mentoring Feed' : 'Yêu cầu trực tiếp'}</Badge>
-                      </div>
-                    </CardContent>
-
-                    <CardFooter className="p-4 border-t border-[var(--border-subtle)] flex items-center justify-between">
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedReq(req)}>
-                        Chi tiết
-                      </Button>
-                      {req.status === 'PENDING_MENTOR_RESPONSE' ? (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setRejectReqId(req.id)}
-                          >
-                            <X className="w-3.5 h-3.5 text-[var(--status-danger-fg)]" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => acceptMutation.mutate(req.id)}
-                            loading={acceptMutation.isPending && acceptMutation.variables === req.id}
-                          >
-                            <Check className="w-3.5 h-3.5 mr-1" /> Chấp nhận
-                          </Button>
-                        </div>
-                      ) : req.status === 'ACCEPTED' ? (
-                        <Badge variant="success" dot>Mentoring Connection đã tạo</Badge>
-                      ) : null}
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
+      <QueryBoundary queries={[requestsQuery]}>
+        {items.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-neutral-300 px-6 py-10 text-center dark:border-neutral-700">
+            <Inbox className="mx-auto mb-3 h-7 w-7 text-neutral-300" />
+            <p className="text-sm text-neutral-600">{EMPTY_TEXT[tab]}</p>
+            {tab === 'pending' && (
+              <Button size="sm" variant="outline" className="mt-4" onClick={() => navigate('/mentor/profile')}>
+                Xem lại hồ sơ & học phí
+              </Button>
             )}
-          </QueryBoundary>
-        </TabsContent>
-      </Tabs>
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {items.map((req) => {
+              const studentId = req.requesterId && req.requesterId !== req.mentorId ? req.requesterId : req.studentId;
+              const due = deadlineInfo(req.deadline);
+              const isOpen = Boolean(expanded[req.id]);
+              const expired = due.tone === 'expired';
+              return (
+                <li
+                  key={req.id}
+                  className={cn(
+                    'rounded-2xl border bg-surface p-4 sm:p-5',
+                    tab === 'pending' && due.tone === 'urgent'
+                      ? 'border-rose-200 dark:border-rose-500/30'
+                      : 'border-neutral-200 dark:border-neutral-700/80'
+                  )}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <UserMiniCard userId={studentId} showMajor />
+                    <div className="flex items-center gap-2">
+                      {req.sourceType === 'POST' && (
+                        <span className="text-xs text-neutral-500">Từ bài đăng</span>
+                      )}
+                      {tab === 'pending' && (
+                        <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', TONE_CLASS[due.tone])}>
+                          {due.label}
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
-      {/* Request Detail Dialog */}
+                  <h3 className="mt-3 text-base font-semibold text-neutral-900 dark:text-neutral-100">{req.topic}</h3>
+                  <div className="mt-2">
+                    <RequestPlanDetails request={req} />
+                  </div>
+
+                  <p
+                    className={cn(
+                      'mt-3 whitespace-pre-line text-sm leading-relaxed text-neutral-600 dark:text-neutral-400',
+                      !isOpen && 'line-clamp-2'
+                    )}
+                  >
+                    {req.content}
+                  </p>
+                  {req.content.length > 140 && (
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((e) => ({ ...e, [req.id]: !e[req.id] }))}
+                      className="mt-1 text-sm font-medium text-neutral-900 hover:underline dark:text-neutral-100"
+                    >
+                      {isOpen ? 'Thu gọn' : 'Đọc hết'}
+                    </button>
+                  )}
+
+                  {req.status === 'REJECTED' && req.rejectReason && (
+                    <p className="mt-3 rounded-lg bg-neutral-50 px-3 py-2 text-sm text-neutral-600 dark:bg-neutral-800">
+                      Lý do bạn gửi: {req.rejectReason}
+                    </p>
+                  )}
+
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 pt-3 dark:border-neutral-800">
+                    <span className="text-xs text-neutral-500">
+                      Gửi ngày {new Date(req.createdAt).toLocaleDateString('vi-VN')}
+                    </span>
+                    {req.status === 'PENDING_MENTOR_RESPONSE' && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setRejecting(req)}
+                          disabled={expired}
+                        >
+                          <X className="mr-1 h-4 w-4" /> Từ chối
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => accept.mutate(req.id)}
+                          loading={accept.isPending && accept.variables === req.id}
+                          disabled={expired}
+                        >
+                          <Check className="mr-1 h-4 w-4" /> Nhận kèm
+                        </Button>
+                      </div>
+                    )}
+                    {req.status === 'ACCEPTED' && (
+                      <Button size="sm" variant="outline" onClick={() => navigate(`/chats?targetUser=${studentId}`)}>
+                        <MessageSquare className="mr-1.5 h-4 w-4" /> Nhắn chốt lịch
+                      </Button>
+                    )}
+                  </div>
+                  {expired && req.status === 'PENDING_MENTOR_RESPONSE' && (
+                    <p className="mt-2 text-xs text-neutral-500">Yêu cầu đã quá hạn trả lời nên không nhận được nữa.</p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </QueryBoundary>
+
+      {/* Từ chối: chọn nhanh lý do, học viên thấy lý do này */}
       <Dialog
-        open={!!selectedReq}
-        onOpenChange={() => {
-          setSelectedReq(null);
+        open={Boolean(rejecting)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRejecting(null);
+            setReason('');
+          }
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Chi tiết yêu cầu hỗ trợ học tập</DialogTitle>
+            <DialogTitle>Từ chối yêu cầu</DialogTitle>
           </DialogHeader>
-          {selectedReq && (
-            <div className="space-y-4 py-2">
-              <div className="p-3 bg-[var(--surface-muted)] rounded-lg">
-                <span className="text-xs text-[var(--text-muted)] block mb-1">Học viên gửi yêu cầu:</span>
-                <UserMiniCard userId={selectedReq.studentId} showMajor />
-              </div>
-
-              <div>
-                <h4 className="font-semibold text-sm mb-1">Chủ đề: {selectedReq.topic}</h4>
-                <p className="text-sm text-[var(--text-main)] bg-[var(--surface-sunken)] p-3 rounded border border-[var(--border-subtle)] whitespace-pre-line">
-                  {selectedReq.content}
-                </p>
-              </div>
-
-              <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600">
-                <p className="flex items-center gap-1.5 font-semibold text-neutral-800">
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Kiểm tra cuối khi chấp nhận
-                </p>
-                <p className="mt-1">Deadline • capacity • duplicate</p>
-              </div>
-
-              <DialogFooter className="pt-4 border-t border-[var(--border-subtle)]">
-                {selectedReq.status !== 'PENDING_MENTOR_RESPONSE' && (
-                  <div className="flex items-center justify-between w-full gap-2">
-                    <StatusBadge status={selectedReq.status} domain="mentoring" />
-                    {selectedReq.status === 'ACCEPTED' && <Badge variant="success" dot>Mentoring Connection đã tạo</Badge>}
-                  </div>
-                )}
-                {selectedReq.status === 'PENDING_MENTOR_RESPONSE' && (
-                  <div className="flex items-center gap-2 w-full justify-end">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setRejectReqId(selectedReq.id);
-                        setSelectedReq(null);
-                      }}
-                    >
-                      Từ chối
-                    </Button>
-                    <Button
-                      onClick={() => acceptMutation.mutate(selectedReq.id)}
-                      loading={acceptMutation.isPending}
-                    >
-                      <Check className="w-4 h-4 mr-1.5" /> Đồng ý hướng dẫn
-                    </Button>
-                  </div>
-                )}
-              </DialogFooter>
+          <div className="space-y-3">
+            <p className="text-sm text-neutral-600">
+              Học viên sẽ thấy lý do này. Một câu ngắn giúp bạn ấy tìm Mentor khác nhanh hơn.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {QUICK_REASONS.map((item) => (
+                <Chip key={item} selected={reason === item} onClick={() => setReason(item)}>
+                  {item}
+                </Chip>
+              ))}
             </div>
-          )}
+            <Textarea
+              rows={3}
+              aria-label="Lý do từ chối"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Hoặc tự viết lý do..."
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejecting(null)}>Hủy</Button>
+            <Button
+              variant="danger"
+              loading={reject.isPending}
+              onClick={() => rejecting && reject.mutate({ id: rejecting.id, reason: reason.trim() || undefined })}
+            >
+              Từ chối yêu cầu
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Reject Reason Dialog */}
-      <ReasonDialog
-        open={!!rejectReqId}
-        onOpenChange={() => setRejectReqId(null)}
-        title="Từ chối yêu cầu Mentoring"
-        description="Học viên sẽ thấy lý do này trong mục Yêu cầu đã gửi."
-        label="Lý do từ chối (tùy chọn)"
-        placeholder="Ví dụ: Đã kín lịch vào khung giờ này..."
-        onConfirm={(reason) => {
-          if (!rejectReqId) return;
-          rejectMutation.mutate({ id: rejectReqId, reason });
-        }}
-      />
     </div>
   );
 };

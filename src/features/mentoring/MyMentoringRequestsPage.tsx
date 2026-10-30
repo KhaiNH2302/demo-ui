@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { AlertCircle, CalendarClock, Check, Clock, Plus, X } from 'lucide-react';
+import { AlertCircle, CalendarClock, Check, Clock, MessageSquare, Plus, X } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useAuthStore } from '@/store/authStore';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -16,13 +16,21 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useMentorRequestActions } from '@/features/mentor/useMentorRequestActions';
 import type { MentoringRequest } from '@/types/entities';
+import { RequestPlanDetails } from './RequestPlanDetails';
+import { MyNeedPosts } from './MyNeedPosts';
+import { ClassesPanel } from './ClassesPanel';
 
-type RequestTab = 'all' | 'pending' | 'accepted' | 'rejected';
+type RequestTab = 'all' | 'pending' | 'accepted' | 'rejected' | 'classes' | 'posts';
+
+const isRequestTab = (value: string | null): value is RequestTab =>
+  value === 'all' || value === 'pending' || value === 'accepted' || value === 'rejected' || value === 'classes' || value === 'posts';
 
 export const MyMentoringRequestsPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const [tab, setTab] = useState<RequestTab>('all');
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab');
+  const [tab, setTab] = useState<RequestTab>(isRequestTab(initialTab) ? initialTab : 'all');
   const [rejectId, setRejectId] = useState<string | null>(null);
 
   const requestsQuery = useQuery({
@@ -46,7 +54,7 @@ export const MyMentoringRequestsPage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Yêu cầu Mentoring"
-        description="Theo dõi yêu cầu đã gửi và phản hồi các yêu cầu gửi tới bài Need Mentor của bạn."
+        description="Theo dõi yêu cầu đã gửi, phản hồi lời đề nghị từ Mentor và quản lý bài nhờ kèm của bạn."
         breadcrumbs={[{ label: 'Trang chủ', href: '/' }, { label: 'Mentoring', href: '/mentoring' }, { label: 'Yêu cầu' }]}
         actions={
           <div className="flex gap-2">
@@ -57,14 +65,19 @@ export const MyMentoringRequestsPage: React.FC = () => {
       />
 
       <Tabs value={tab} onValueChange={(value) => setTab(value as RequestTab)}>
-        <TabsList className="grid w-full max-w-lg grid-cols-4">
+        <TabsList className="flex w-full max-w-3xl justify-start overflow-x-auto">
           <TabsTrigger value="all">Tất cả ({requests.length})</TabsTrigger>
           <TabsTrigger value="pending">Chờ phản hồi ({requests.filter((request) => request.status === 'PENDING_MENTOR_RESPONSE').length})</TabsTrigger>
-          <TabsTrigger value="accepted">Đã chấp nhận ({requests.filter((request) => request.status === 'ACCEPTED').length})</TabsTrigger>
+          <TabsTrigger value="accepted">Đã kết nối ({requests.filter((request) => request.status === 'ACCEPTED').length})</TabsTrigger>
           <TabsTrigger value="rejected">Đã từ chối ({requests.filter((request) => request.status === 'REJECTED').length})</TabsTrigger>
+          <TabsTrigger value="classes">Lớp học của tôi</TabsTrigger>
+          <TabsTrigger value="posts">Bài nhờ kèm của tôi</TabsTrigger>
         </TabsList>
 
         <TabsContent value={tab} className="mt-6">
+          {tab === 'posts' && <MyNeedPosts requests={requests} onViewOffers={() => setTab('pending')} />}
+          {tab === 'classes' && <ClassesPanel />}
+          {tab !== 'posts' && tab !== 'classes' && (
           <QueryBoundary query={requestsQuery}>
             {items.length === 0 ? (
               <EmptyState
@@ -97,6 +110,7 @@ export const MyMentoringRequestsPage: React.FC = () => {
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <p className="line-clamp-3 rounded-lg bg-neutral-50 p-3 text-xs leading-relaxed text-neutral-600">{request.content}</p>
+                        <RequestPlanDetails request={request} />
                         {request.rejectReason && (
                           <div className="flex gap-1.5 rounded-lg border border-rose-100 bg-rose-50 p-2.5 text-xs text-rose-700">
                             <AlertCircle className="h-4 w-4 shrink-0" /> Lý do từ chối: {request.rejectReason}
@@ -104,7 +118,7 @@ export const MyMentoringRequestsPage: React.FC = () => {
                         )}
                         <div className="flex items-center justify-between gap-2 text-xs text-neutral-500">
                           <span className="flex items-center gap-1">
-                            <CalendarClock className="h-3.5 w-3.5" /> Deadline: {request.deadline ? new Date(request.deadline).toLocaleDateString('vi-VN') : 'Chưa đặt'}
+                            <CalendarClock className="h-3.5 w-3.5" /> Hạn phản hồi: {request.deadline ? new Date(request.deadline).toLocaleDateString('vi-VN') : 'Chưa đặt'}
                           </span>
                           <Badge variant="outline">{request.sourceType === 'POST' ? 'Mentoring Feed' : 'Tìm trực tiếp'}</Badge>
                         </div>
@@ -124,7 +138,17 @@ export const MyMentoringRequestsPage: React.FC = () => {
                             </Button>
                           </>
                         ) : request.status === 'ACCEPTED' ? (
-                          <Badge variant="success" dot>Mentoring Connection đã tạo</Badge>
+                          <div className="flex w-full items-center justify-between gap-2">
+                            <span className="text-xs text-neutral-600">Đã kết nối. Nhắn tin để chốt lịch buổi đầu.</span>
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline" onClick={() => setTab('classes')}>
+                                Lớp học
+                              </Button>
+                              <Button size="sm" onClick={() => navigate(`/chats?targetUser=${counterpartId}`)}>
+                                <MessageSquare className="mr-1 h-3.5 w-3.5" /> Nhắn tin
+                              </Button>
+                            </div>
+                          </div>
                         ) : (
                           <Button variant="outline" size="sm" onClick={() => navigate(`/users/${counterpartId}`)}>Xem hồ sơ</Button>
                         )}
@@ -135,6 +159,7 @@ export const MyMentoringRequestsPage: React.FC = () => {
               </div>
             )}
           </QueryBoundary>
+          )}
         </TabsContent>
       </Tabs>
 

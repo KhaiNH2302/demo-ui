@@ -40,6 +40,7 @@ const RULES: AccessRule[] = [
   { pattern: '/mentor/profile', access: 'member' },
   { pattern: '/mentor/posts', access: 'member' },
   { pattern: '/mentor/requests', access: 'member' },
+  { pattern: '/mentor/classes', access: 'member' },
 
   // ---- action: mở form, chặn khi gửi ----
   { pattern: '/groups/new', access: 'action' },
