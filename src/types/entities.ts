@@ -403,6 +403,8 @@ export interface ViolationReport {
 }
 
 // FE-03 Group
+export type GroupCategory = 'project' | 'study' | 'entertainment';
+
 export interface Group {
   id: string;
   ownerId: string;
@@ -416,6 +418,13 @@ export interface Group {
   memberCount: number;
   memberLimit: number;
   createdAt: string;
+  category?: GroupCategory;
+  targetGoal?: string;
+  rolesNeeded?: string[];
+  rolesFilled?: string[];
+  campus?: string;
+  location?: string;
+  pendingRequestsCount?: number;
 }
 
 export interface GroupMember {
@@ -430,8 +439,12 @@ export interface GroupJoinRequest {
   groupId: string;
   userId: string;
   message?: string;
+  appliedRole?: string;
   status: JoinRequestStatus;
   createdAt: string;
+  groupName?: string;
+  groupTopic?: string;
+  category?: GroupCategory;
 }
 
 export interface AiGroupMatch {

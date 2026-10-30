@@ -62,7 +62,7 @@ function editableSettings(body: Partial<Group>, memberCount: number) {
   if (body.topic !== undefined && body.topic.trim().length < 5) throw new GroupError('INVALID_TOPIC', 422, 'Chủ đề phải từ 5 ký tự.');
   if (body.joinMode !== undefined && !['direct', 'approval'].includes(body.joinMode)) throw new GroupError('INVALID_JOIN_MODE', 422, 'Chế độ tham gia không hợp lệ.');
   const allowed: Partial<Group> = {};
-  for (const field of ['name', 'purpose', 'topic', 'skills', 'activityTime', 'interests', 'joinMode', 'memberLimit'] as const) if (body[field] !== undefined) Object.assign(allowed, { [field]: body[field] });
+  for (const field of ['name', 'purpose', 'topic', 'skills', 'activityTime', 'interests', 'joinMode', 'memberLimit', 'category', 'targetGoal', 'rolesNeeded', 'rolesFilled', 'campus', 'location'] as const) if (body[field] !== undefined) Object.assign(allowed, { [field]: body[field] });
   return allowed;
 }
 export const groupHandlers = [
@@ -79,12 +79,30 @@ export const groupHandlers = [
     return groups;
   })),
   http.get('/api/v1/groups/mine', endpoint(async ({ request }) => {
-    await mockDelay(); const userId = getViewerId(request); seedGroups.forEach(syncGroupMembership);
+    await mockDelay();
+    const userId = getViewerId(request);
+    seedGroups.forEach(syncGroupMembership);
     const owned = new URL(request.url).searchParams.get('role') === 'owner';
-    return seedGroups.filter((group) => owned ? group.ownerId === userId : group.ownerId !== userId && groupMemberIds(group.id).includes(userId));
+    const filtered = seedGroups.filter((group) => owned ? group.ownerId === userId : group.ownerId !== userId && groupMemberIds(group.id).includes(userId));
+    return filtered.map((group) => ({
+      ...group,
+      pendingRequestsCount: seedJoinRequests.filter((r) => r.groupId === group.id && r.status === 'Pending').length,
+    }));
   })),
   http.get('/api/v1/join-requests/mine', endpoint(async ({ request }) => {
-    await mockDelay(); return seedJoinRequests.filter((item) => item.userId === getViewerId(request));
+    await mockDelay();
+    const userId = getViewerId(request);
+    return seedJoinRequests
+      .filter((item) => item.userId === userId)
+      .map((item) => {
+        const group = seedGroups.find((g) => g.id === item.groupId);
+        return {
+          ...item,
+          groupName: group?.name || item.groupId,
+          groupTopic: group?.topic,
+          category: group?.category,
+        };
+      });
   })),
   http.get('/api/v1/group-invitations', endpoint(async ({ request }) => {
     await mockDelay(); const userId = getViewerId(request);
@@ -97,22 +115,39 @@ export const groupHandlers = [
   http.post('/api/v1/groups', endpoint(async ({ request }) => {
     await mockDelay(); const user = authenticatedUser(request); const body = await request.json() as Partial<Group>; editableSettings(body, 1);
     if (!body.name || !body.topic || !body.purpose) throw new GroupError('INVALID_GROUP', 422, 'Điền tên, mục đích và chủ đề nhóm.');
-    const group: ManagedGroup = { id: 'grp_' + crypto.randomUUID(), ownerId: user.id, name: body.name.trim(), purpose: body.purpose, topic: body.topic.trim(), skills: body.skills || [], activityTime: body.activityTime || [], interests: body.interests || '', joinMode: body.joinMode || 'approval', memberCount: 1, memberLimit: body.memberLimit ?? 5, status: 'Active', createdAt: new Date().toISOString() };
+    const group: ManagedGroup = { id: 'grp_' + crypto.randomUUID(), ownerId: user.id, name: body.name.trim(), purpose: body.purpose, topic: body.topic.trim(), skills: body.skills || [], activityTime: body.activityTime || [], interests: body.interests || '', joinMode: body.joinMode || 'approval', memberCount: 1, memberLimit: body.memberLimit ?? 5, status: 'Active', category: body.category || 'project', targetGoal: body.targetGoal || '', rolesNeeded: body.rolesNeeded || [], rolesFilled: body.rolesFilled || ['Trưởng nhóm'], campus: body.campus || user.campus || 'Hòa Lạc', location: body.location || '', createdAt: new Date().toISOString() };
     seedGroups.unshift(group); seedGroupMembers.push({ groupId: group.id, userId: user.id, role: 'owner', joinedAt: group.createdAt }); ensureGroupConversation(group); return group;
   })),
   http.post('/api/v1/groups/:id/conversation', endpoint(({ params, request }) => {
-    const group = findGroup(params.id); const user = authenticatedUser(request); requireActive(group);
+    const group = findGroup(params.id);
+    const user = authenticatedUser(request);
+    requireActive(group);
     if (!groupMemberIds(group.id).includes(user.id)) throw new GroupError('FORBIDDEN', 403, 'Chỉ thành viên được xem chat nhóm.');
-    return ensureGroupConversation(group);
+    const conversation = ensureGroupConversation(group);
+    if (!seedMessages.some((m) => m.conversationId === conversation.id)) {
+      const now = new Date().toISOString();
+      seedMessages.push({
+        id: 'msg_welcome_' + conversation.id,
+        conversationId: conversation.id,
+        senderId: group.ownerId,
+        content: 'Chào mừng các bạn đã tham gia kênh chat nội bộ nhóm ' + group.name + '! Mọi người cùng thảo luận kế hoạch làm việc nhé.',
+        type: 'text',
+        status: 'sent',
+        createdAt: now,
+      });
+      conversation.lastMessage = 'Chào mừng các bạn đã tham gia kênh chat nội bộ nhóm ' + group.name + '!';
+      conversation.lastMessageAt = now;
+    }
+    return conversation;
   })),
   http.post('/api/v1/groups/:id/join-requests', endpoint(async ({ params, request }) => {
-    await mockDelay(); const body = await request.json() as { message?: string };
+    await mockDelay(); const body = await request.json() as { message?: string; appliedRole?: string };
     const user = authenticatedUser(request); const group = findGroup(params.id); requireActive(group);
     if (groupMemberIds(group.id).includes(user.id)) throw new GroupError('ALREADY_MEMBER', 409, 'Bạn đã là thành viên nhóm.');
     requireCapacity(group);
     if (seedJoinRequests.some((item) => item.groupId === group.id && item.userId === user.id && item.status === 'Pending')) throw new GroupError('REQUEST_PENDING', 409, 'Bạn đã gửi yêu cầu và đang chờ duyệt.');
     if (group.joinMode === 'direct') { addMember(group, user.id); notify(group.ownerId, group, 'Có thành viên mới', user.fullName + ' đã tham gia nhóm.'); return { joined: true }; }
-    const item: GroupJoinRequest = { id: 'jreq_' + crypto.randomUUID(), groupId: group.id, userId: user.id, message: body.message?.trim(), status: 'Pending', createdAt: new Date().toISOString() };
+    const item: GroupJoinRequest = { id: 'jreq_' + crypto.randomUUID(), groupId: group.id, userId: user.id, message: body.message?.trim(), appliedRole: body.appliedRole?.trim(), status: 'Pending', createdAt: new Date().toISOString() };
     seedJoinRequests.push(item); notify(group.ownerId, group, 'Có yêu cầu tham gia nhóm', user.fullName + ' muốn tham gia nhóm.', '/groups/' + group.id + '/manage'); return item;
   })),
   http.get('/api/v1/groups/:id/join-requests', endpoint(({ params, request }) => {

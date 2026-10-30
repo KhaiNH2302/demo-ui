@@ -2,6 +2,18 @@ import type { Conversation, Message } from '@/types/entities';
 
 export const seedConversations: Conversation[] = [
   {
+    id: 'conv_group_grp_11',
+    kind: 'group',
+    refId: 'grp_11',
+    title: 'CLB Cầu Lông FPTU Hòa Lạc · Kênh Chat Nội Bộ',
+    participantIds: ['usr_student_01', 'usr_student_08', 'usr_student_09'],
+    avatarUrl: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&w=120&q=80',
+    lastMessage: 'Tối mai 18h sân số 2 Nhà thi đấu nhé mọi người!',
+    lastMessageAt: '2026-09-25T17:30:00Z',
+    unreadCount: 1,
+    requestStatus: 'accepted',
+  },
+  {
     id: 'conv_01',
     kind: 'group',
     refId: 'grp_05',
@@ -138,6 +150,31 @@ export const seedConversations: Conversation[] = [
 ];
 
 export const seedMessages: Message[] = [
+  // Conversation grp_11
+  {
+    id: 'msg_grp11_1',
+    conversationId: 'conv_group_grp_11',
+    senderId: 'usr_student_08',
+    content: 'Chào mừng các bạn tham gia nhóm cầu lông FPTU Hòa Lạc! Nhóm mình giao lưu đánh đôi rèn luyện thể lực tối T3 & T5 nhé.',
+    status: 'read',
+    createdAt: '2026-09-25T15:00:00Z',
+  },
+  {
+    id: 'msg_grp11_2',
+    conversationId: 'conv_group_grp_11',
+    senderId: 'usr_student_09',
+    content: 'Dạ em chào anh Nam và mọi người! Sân nhà thi đấu mình đặt theo ca nào ạ?',
+    status: 'read',
+    createdAt: '2026-09-25T16:15:00Z',
+  },
+  {
+    id: 'msg_grp11_3',
+    conversationId: 'conv_group_grp_11',
+    senderId: 'usr_student_08',
+    content: 'Tối mai 18h sân số 2 Nhà thi đấu nhé mọi người!',
+    status: 'sent',
+    createdAt: '2026-09-25T17:30:00Z',
+  },
   // Conversation 01 (Group PRJ301)
   {
     id: 'msg_01',
