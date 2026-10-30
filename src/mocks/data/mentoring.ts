@@ -745,6 +745,7 @@ export const seedMentoringRequests: MentoringRequest[] = [
     packageId: 'pkg_m02_4',
     planSummary: 'Gói 4 buổi · 4 buổi × 90 phút · 440.000 ₫',
     totalSessions: 4,
+    classStartedAt: '2026-10-10T09:00:00Z',
     preferredTime: ['Thứ 3 (19:00 – 22:00)', 'Thứ 5 (19:00 – 22:00)'],
     deadline: '2026-10-10T23:59:59Z',
     status: 'ACCEPTED',
@@ -850,6 +851,7 @@ export const seedMentoringRequests: MentoringRequest[] = [
     deadline: '2026-10-20T23:59:59Z',
     status: 'ACCEPTED',
     totalSessions: 1,
+    classStartedAt: '2026-10-28T08:00:00Z',
     createdAt: '2026-09-26T14:00:00Z',
   },
 ];

@@ -1027,6 +1027,8 @@ export interface MentoringRequest {
   planSummary?: string;
   // Số buổi trong gói đã chọn (học thử/học lẻ = 1); dùng làm mốc cho tiến độ lớp học
   totalSessions?: number;
+  // Mentor bấm "Bắt đầu lớp học" sau khi hai bên đã chốt gói và giờ; chưa có thì mới chỉ là "Đã kết nối"
+  classStartedAt?: string;
   deadline?: string;
   connectionId?: string;
   status: MentoringRequestStatus;
@@ -1052,6 +1054,8 @@ export interface MentoringSession {
 // Một lớp học = một yêu cầu đã kết nối giữa Mentor và học viên
 export interface MentoringClass {
   request: MentoringRequest;
+  // Có giá trị khi Mentor đã bắt đầu lớp; chưa có thì lớp đang "Chờ bắt đầu"
+  startedAt?: string;
   mentorId: string;
   studentId: string;
   sessions: MentoringSession[];

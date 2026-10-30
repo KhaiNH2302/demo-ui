@@ -114,3 +114,37 @@ test('a review needs a connection and at least one confirmed session', async () 
 
   seedMentorReviews.splice(seedMentorReviews.findIndex((r) => r.id === ok.data.id), 1);
 });
+
+test('a connected request becomes a class only when the mentor starts it', async () => {
+  const request = {
+    id: 'mreq_test_start', studentId: STUDENT, mentorId: MENTOR, requesterId: STUDENT, recipientId: MENTOR,
+    topic: 'Test bắt đầu lớp', content: 'x', status: 'ACCEPTED', totalSessions: 2, createdAt: new Date().toISOString(),
+  };
+  seedMentoringRequests.push(request);
+  const startsAt = new Date(Date.now() + 86_400_000).toISOString();
+  try {
+    const listed = (await api('/mentoring/classes', STUDENT)).data.find((cls) => cls.request.id === request.id);
+    assert.equal(listed.startedAt, undefined);
+    assert.deepEqual(listed.sessions, []);
+
+    // Chưa bắt đầu thì chưa thêm buổi được; học viên không được bắt đầu
+    assert.equal((await api(`/mentoring/classes/${request.id}/sessions`, MENTOR, 'POST', { startsAt })).status, 409);
+    assert.equal((await api(`/mentoring/classes/${request.id}/start`, STUDENT, 'POST', { startsAt })).status, 403);
+    assert.equal((await api(`/mentoring/classes/${request.id}/start`, MENTOR, 'POST', { startsAt: 'sai' })).status, 422);
+
+    const started = await api(`/mentoring/classes/${request.id}/start`, MENTOR, 'POST', { startsAt, mode: 'offline', note: 'Buổi đầu' });
+    assert.equal(started.status, 200);
+    assert.ok(started.data.startedAt);
+    assert.equal(started.data.sessions.length, 1);
+    assert.equal(started.data.sessions[0].status, 'PLANNED');
+    assert.equal(started.data.sessions[0].mode, 'offline');
+
+    assert.equal((await api(`/mentoring/classes/${request.id}/start`, MENTOR, 'POST', { startsAt })).status, 409);
+    assert.equal((await api(`/mentoring/classes/${request.id}/sessions`, MENTOR, 'POST', { startsAt })).status, 200);
+    // Gói 2 buổi đã xếp đủ
+    assert.equal((await api(`/mentoring/classes/${request.id}/sessions`, MENTOR, 'POST', { startsAt })).status, 409);
+  } finally {
+    seedMentoringRequests.splice(seedMentoringRequests.indexOf(request), 1);
+    for (let i = seedClassSessions.length - 1; i >= 0; i--) if (seedClassSessions[i].requestId === request.id) seedClassSessions.splice(i, 1);
+  }
+});

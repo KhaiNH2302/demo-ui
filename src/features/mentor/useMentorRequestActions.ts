@@ -18,6 +18,7 @@ export function useMentorRequestActions(opts?: {
     queryClient.invalidateQueries({ queryKey: ['mentor', 'requests'] });
     queryClient.invalidateQueries({ queryKey: ['mentoring', 'requests'] });
     queryClient.invalidateQueries({ queryKey: ['mentoring', 'posts'] });
+    queryClient.invalidateQueries({ queryKey: ['mentoring', 'classes'] });
     queryClient.invalidateQueries({ queryKey: ['nav', 'counters'] });
   };
 
@@ -38,7 +39,7 @@ export function useMentorRequestActions(opts?: {
     mutationFn: (id: string) =>
       apiClient.post<{ request: MentoringRequest; connectionId: string }>(`/mentor/requests/${id}/accept`),
     onSuccess: (data) => {
-      toast.success('Đã kết nối', 'Học viên đã nhận thông báo. Nhắn tin để chốt lịch buổi đầu.');
+      toast.success('Đã kết nối', 'Nhắn tin để chốt gói và giờ, rồi bắt đầu lớp ở mục Lớp học.');
       refresh();
       opts?.onAccepted?.(data);
     },

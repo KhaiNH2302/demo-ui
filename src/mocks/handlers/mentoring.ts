@@ -29,6 +29,7 @@ import type {
 
 const toClass = (req: MentoringRequest): MentoringClass => ({
   request: req,
+  startedAt: req.classStartedAt,
   mentorId: req.mentorId,
   studentId: req.studentId,
   sessions: seedClassSessions
@@ -310,12 +311,38 @@ export const mentoringHandlers = [
     return HttpResponse.json({ data: classes });
   }),
 
+  // Mentor toàn quyền bắt đầu lớp sau khi hai bên đã nhắn tin chốt gói và giờ; buổi đầu được tạo cùng lúc
+  http.post('/api/v1/mentoring/classes/:requestId/start', async ({ params, request }) => {
+    await mockDelay();
+    const userId = getViewerId(request);
+    const req = seedMentoringRequests.find((item) => item.id === params.requestId && item.status === 'ACCEPTED');
+    if (!req) return classError('NOT_FOUND', 'Yêu cầu không tồn tại hoặc chưa được kết nối.', 404);
+    if (req.mentorId !== userId) return classError('FORBIDDEN', 'Chỉ Mentor được bắt đầu lớp học.', 403);
+    if (req.classStartedAt) return classError('ALREADY_STARTED', 'Lớp học đã được bắt đầu.', 409);
+    const body = (await request.json()) as { startsAt?: string; mode?: MentoringSession['mode']; note?: string };
+    if (!body.startsAt || Number.isNaN(new Date(body.startsAt).getTime())) {
+      return classError('VALIDATION_ERROR', 'Hãy chọn ngày giờ của buổi đầu tiên.', 422);
+    }
+    req.classStartedAt = new Date().toISOString();
+    seedClassSessions.push({
+      id: `msess_${Date.now()}`,
+      requestId: req.id,
+      startsAt: body.startsAt,
+      mode: body.mode || 'online',
+      note: body.note?.trim() || undefined,
+      status: 'PLANNED',
+      createdAt: req.classStartedAt,
+    });
+    return HttpResponse.json({ data: toClass(req) });
+  }),
+
   http.post('/api/v1/mentoring/classes/:requestId/sessions', async ({ params, request }) => {
     await mockDelay();
     const userId = getViewerId(request);
     const req = seedMentoringRequests.find((item) => item.id === params.requestId && item.status === 'ACCEPTED');
     if (!req) return classError('NOT_FOUND', 'Lớp học không tồn tại hoặc chưa được kết nối.', 404);
     if (req.mentorId !== userId) return classError('FORBIDDEN', 'Chỉ Mentor của lớp được thêm buổi học.', 403);
+    if (!req.classStartedAt) return classError('NOT_STARTED', 'Hãy bắt đầu lớp học trước khi thêm buổi.', 409);
     const body = (await request.json()) as { startsAt?: string; mode?: MentoringSession['mode']; note?: string };
     if (!body.startsAt || Number.isNaN(new Date(body.startsAt).getTime())) {
       return classError('VALIDATION_ERROR', 'Hãy chọn ngày giờ của buổi học.', 422);

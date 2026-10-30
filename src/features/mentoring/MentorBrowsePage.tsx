@@ -209,7 +209,7 @@ export const MentorBrowsePage: React.FC = () => {
                       )}
                       <p className="text-xs text-neutral-500">
                         {mentor.supportModes.map((mode) => MODE_LABELS[mode] || mode).join(' · ')}
-                        {mentor.sessionsCompleted ? ` · đã kèm ${mentor.sessionsCompleted} buổi` : ''}
+                        {mentor.menteesCount ? ` · ${mentor.menteesCount} học viên từng học` : ''}
                       </p>
                     </CardContent>
                     <CardFooter className="flex items-center justify-between border-t border-neutral-100 pt-4">

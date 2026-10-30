@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarClock, Check, Plus, Star } from 'lucide-react';
+import { CalendarClock, Check, MessageSquare, Plus, Star } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/cn';
 import { formatDateTime } from '@/lib/format';
@@ -51,7 +51,8 @@ const defaultStart = () => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
-const AddSessionDialog: React.FC<{ cls: MentoringClass | null; onClose: () => void }> = ({ cls, onClose }) => {
+// `starting`: buổi đầu tiên đồng thời bắt đầu lớp học; ngược lại chỉ thêm một buổi vào lớp đã bắt đầu
+const AddSessionDialog: React.FC<{ cls: MentoringClass | null; starting: boolean; onClose: () => void }> = ({ cls, starting, onClose }) => {
   const queryClient = useQueryClient();
   const [startsAt, setStartsAt] = useState(defaultStart);
   const [mode, setMode] = useState('online');
@@ -59,13 +60,13 @@ const AddSessionDialog: React.FC<{ cls: MentoringClass | null; onClose: () => vo
 
   const add = useMutation({
     mutationFn: () =>
-      apiClient.post(`/mentoring/classes/${cls?.request.id}/sessions`, {
+      apiClient.post(`/mentoring/classes/${cls?.request.id}/${starting ? 'start' : 'sessions'}`, {
         startsAt: new Date(startsAt).toISOString(),
         mode,
         note,
       }),
     onSuccess: () => {
-      toast.success('Đã thêm buổi học');
+      toast.success(starting ? 'Đã bắt đầu lớp học' : 'Đã thêm buổi học');
       queryClient.invalidateQueries({ queryKey: ['mentoring', 'classes'] });
       onClose();
     },
@@ -76,8 +77,12 @@ const AddSessionDialog: React.FC<{ cls: MentoringClass | null; onClose: () => vo
     <Dialog open={Boolean(cls)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Thêm buổi học</DialogTitle>
-          <DialogDescription>Học viên sẽ thấy buổi này trong mục Lớp học của họ.</DialogDescription>
+          <DialogTitle>{starting ? 'Bắt đầu lớp học' : 'Thêm buổi học'}</DialogTitle>
+          <DialogDescription>
+            {starting
+              ? 'Chọn ngày giờ buổi đầu tiên. Lớp học sẽ hiện trong mục Lớp học của học viên.'
+              : 'Học viên sẽ thấy buổi này trong mục Lớp học của họ.'}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <FormField label="Ngày giờ" required>
@@ -92,7 +97,9 @@ const AddSessionDialog: React.FC<{ cls: MentoringClass | null; onClose: () => vo
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button disabled={!startsAt} loading={add.isPending} onClick={() => add.mutate()}>Thêm buổi</Button>
+          <Button disabled={!startsAt} loading={add.isPending} onClick={() => add.mutate()}>
+            {starting ? 'Bắt đầu lớp' : 'Thêm buổi'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -107,7 +114,7 @@ export const ClassesPanel: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const userId = useAuthStore((state) => state.user?.id);
-  const [adding, setAdding] = useState<MentoringClass | null>(null);
+  const [adding, setAdding] = useState<{ cls: MentoringClass; starting: boolean } | null>(null);
 
   const classesQuery = useQuery({
     queryKey: ['mentoring', 'classes'],
@@ -125,15 +132,58 @@ export const ClassesPanel: React.FC = () => {
   });
   const busyId = act.isPending ? act.variables?.session.id : undefined;
 
-  const classes = classesQuery.data || [];
+  const allClasses = classesQuery.data || [];
+  const waiting = allClasses.filter((cls) => !cls.startedAt);
+  const classes = allClasses.filter((cls) => cls.startedAt);
 
   return (
     <>
       <QueryBoundary query={classesQuery}>
-        {classes.length === 0 ? (
+        {waiting.length > 0 && (
+          <section className="mb-8 space-y-3" aria-labelledby="waiting-classes">
+            <div>
+              <h2 id="waiting-classes" className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+                Đã kết nối, chờ bắt đầu <span className="font-normal text-neutral-400">{waiting.length}</span>
+              </h2>
+              <p className="text-sm text-neutral-500">Hai bên nhắn tin chốt gói và giờ học, rồi Mentor bắt đầu lớp.</p>
+            </div>
+            <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {waiting.map((cls) => {
+                const isMentorSide = cls.mentorId === userId;
+                const counterpartId = isMentorSide ? cls.studentId : cls.mentorId;
+                return (
+                  <li key={cls.request.id} className="space-y-3 rounded-2xl border border-dashed border-neutral-300 bg-surface p-5 dark:border-neutral-600">
+                    <UserMiniCard userId={counterpartId} showMajor />
+                    <div>
+                      <h3 className="text-base font-semibold leading-snug text-neutral-900 dark:text-neutral-100">{cls.request.topic}</h3>
+                      {cls.request.planSummary && <p className="text-sm text-neutral-500">{cls.request.planSummary}</p>}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm text-neutral-600">
+                        {isMentorSide ? 'Chốt xong với học viên thì bắt đầu lớp.' : 'Chờ Mentor xếp lịch buổi đầu tiên.'}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => navigate(`/chats?targetUser=${counterpartId}`)}>
+                          <MessageSquare className="mr-1 h-3.5 w-3.5" /> Nhắn tin
+                        </Button>
+                        {isMentorSide && (
+                          <Button size="sm" onClick={() => setAdding({ cls, starting: true })}>
+                            Bắt đầu lớp học
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+
+        {classes.length === 0 && waiting.length === 0 ? (
           <EmptyState
             title="Chưa có lớp học nào"
-            description="Khi một yêu cầu được chấp nhận, lớp học xuất hiện ở đây để hai bên ghi lại các buổi đã học."
+            description="Khi một yêu cầu được chấp nhận, bạn nhắn tin chốt lịch với đối phương, rồi Mentor bắt đầu lớp học tại đây."
             action={<Button onClick={() => navigate('/mentoring')}>Tìm lớp kèm</Button>}
           />
         ) : (
@@ -239,7 +289,7 @@ export const ClassesPanel: React.FC = () => {
                         : 'Đánh giá Mentor mở sau buổi đầu tiên bạn xác nhận.'}
                     </p>
                     {isMentorSide ? (
-                      <Button size="sm" variant="outline" disabled={full} onClick={() => setAdding(cls)}>
+                      <Button size="sm" variant="outline" disabled={full} onClick={() => setAdding({ cls, starting: false })}>
                         <Plus className="mr-1 h-3.5 w-3.5" /> Thêm buổi
                       </Button>
                     ) : (
@@ -257,7 +307,7 @@ export const ClassesPanel: React.FC = () => {
         )}
       </QueryBoundary>
 
-      <AddSessionDialog key={adding?.request.id ?? 'none'} cls={adding} onClose={() => setAdding(null)} />
+      <AddSessionDialog key={adding?.cls.request.id ?? 'none'} cls={adding?.cls ?? null} starting={adding?.starting ?? false} onClose={() => setAdding(null)} />
     </>
   );
 };

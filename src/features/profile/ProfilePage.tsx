@@ -600,8 +600,8 @@ export const ProfilePage: React.FC = () => {
                       ) : (
                         <span className="text-xs text-neutral-500">Mentor mới</span>
                       )}
-                      {mentorData?.sessionsCompleted ? (
-                        <span className="text-xs text-neutral-500">· đã kèm {mentorData.sessionsCompleted} buổi</span>
+                      {mentorData?.menteesCount ? (
+                        <span className="text-xs text-neutral-500">· {mentorData.menteesCount} học viên từng học</span>
                       ) : null}
                     </div>
                   )}

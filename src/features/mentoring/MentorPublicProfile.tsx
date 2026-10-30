@@ -348,7 +348,6 @@ export const MentorPublicProfile: React.FC<MentorPublicProfileProps> = ({
   const headline =
     profile.intro || (currentWork ? `${currentWork.position} tại ${currentWork.company}` : mentor.fields.slice(0, 2).join(' · '));
   const visibleSections = sections.filter((section) => section.visible).sort((a, b) => a.order - b.order);
-  const minutesPerSession = mentor.pricing?.minutesPerSession ?? 60;
   const averageRating = reviews.length
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
     : mentor.rating;
@@ -362,12 +361,9 @@ export const MentorPublicProfile: React.FC<MentorPublicProfileProps> = ({
     .sort((a, b) => b[1] - a[1])
     .slice(0, 4);
 
+  // Hồ sơ chỉ nêu hai điều học viên cần để tin: có bao nhiêu người từng học và họ đánh giá thế nào
   const stats = [
-    mentor.sessionsCompleted
-      ? { value: `${(mentor.sessionsCompleted * minutesPerSession).toLocaleString('vi-VN')} phút`, label: 'Tổng thời gian kèm' }
-      : null,
-    mentor.sessionsCompleted ? { value: String(mentor.sessionsCompleted), label: 'Buổi đã kèm' } : null,
-    mentor.menteesCount ? { value: String(mentor.menteesCount), label: 'Học viên đã kèm' } : null,
+    mentor.menteesCount ? { value: String(mentor.menteesCount), label: 'Học viên từng học' } : null,
     averageRating ? { value: averageRating.toFixed(1), label: `${reviewCount} đánh giá` } : null,
   ].filter((item): item is { value: string; label: string } => Boolean(item));
 
@@ -437,7 +433,7 @@ export const MentorPublicProfile: React.FC<MentorPublicProfileProps> = ({
         <div className="space-y-6 lg:col-span-8">
           {/* Số liệu kèm học */}
           {stats.length > 0 ? (
-            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-200 sm:grid-cols-4 dark:border-neutral-700/80 dark:bg-neutral-700/80">
+            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-200 dark:border-neutral-700/80 dark:bg-neutral-700/80">
               {stats.map((stat) => (
                 <div key={stat.label} className="bg-surface px-4 py-4">
                   <dd className="text-xl font-bold tabular-nums text-neutral-900 dark:text-neutral-100">{stat.value}</dd>
@@ -447,7 +443,7 @@ export const MentorPublicProfile: React.FC<MentorPublicProfileProps> = ({
             </dl>
           ) : (
             <p className="rounded-2xl border border-dashed border-neutral-300 px-4 py-3 text-sm text-neutral-600">
-              Mentor mới, chưa có buổi kèm nào. Buổi học thử là cách nhanh nhất để biết có hợp không.
+              Mentor mới, chưa có học viên hay đánh giá nào. Buổi học thử là cách nhanh nhất để biết có hợp không.
             </p>
           )}
 
