@@ -55,6 +55,7 @@ const ChatsPage = React.lazy(() => import('@/features/chat/ChatsPage'));
 // FE-02: Knowledge Sharing
 const KnowledgeHubPage = React.lazy(() => import('@/features/knowledge/KnowledgeHubPage'));
 const KnowledgePostDetailPage = React.lazy(() => import('@/features/knowledge/KnowledgePostDetailPage'));
+const StudentLifeComposePage = React.lazy(() => import('@/features/knowledge/StudentLifeComposePage'));
 const MyPostsPage = React.lazy(() => import('@/features/knowledge/MyPostsPage'));
 
 // FE-03: Group Finding
@@ -172,8 +173,8 @@ export const router = createBrowserRouter([
       // FE-02: Knowledge
       { path: 'knowledge', element: <KnowledgeHubPage /> },
       { path: 'knowledge/:id', element: <KnowledgePostDetailPage /> },
-      { path: 'knowledge/new', element: <Navigate to="/knowledge" replace /> },
-      { path: 'knowledge/:id/edit', element: <Navigate to="/knowledge" replace /> },
+      { path: 'knowledge/new', element: <ProtectedRoute><StudentLifeComposePage /></ProtectedRoute> },
+      { path: 'knowledge/:id/edit', element: <ProtectedRoute><StudentLifeComposePage /></ProtectedRoute> },
       { path: 'knowledge/me', element: <MyPostsPage /> },
 
       // FE-03: Groups

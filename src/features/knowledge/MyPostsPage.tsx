@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { ThreadComposer } from '@/components/shared/ThreadComposer';
 import { ThreadFeed } from '@/components/shared/ThreadFeed';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 import { apiClient } from '@/lib/apiClient';
 import { Plus, BookOpen, Bookmark } from 'lucide-react';
@@ -15,11 +13,8 @@ type TabStatus = 'published' | 'pending' | 'rejected' | 'saved';
 
 export default function MyPostsPage() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<TabStatus>('published');
-  const [editingPost, setEditingPost] = useState<KnowledgePost | null>(null);
-  const [showCreateDialog, setShowCreateDialog] = useState<boolean>(false);
 
   // My posts query
   const myPostsQuery = useQuery<KnowledgePost[]>({
@@ -58,11 +53,11 @@ export default function MyPostsPage() {
     <div className="max-w-2xl mx-auto space-y-6 pb-12">
       <PageHeader
         title="Bài viết của tôi"
-        description="Quản lý các thread kiến thức, tài liệu bạn đã đăng và bài viết đã lưu"
+        description="Những câu chuyện bạn đã chia sẻ và các bài viết bạn muốn xem lại"
         backHref="/me"
         actions={
-          <Button size="sm" onClick={() => setShowCreateDialog(true)} leftIcon={<Plus size={16} />}>
-            Đăng thread mới
+          <Button size="sm" onClick={() => navigate('/knowledge/new?returnTo=%2Fknowledge%2Fme')} leftIcon={<Plus size={16} />}>
+            Viết bài mới
           </Button>
         }
       />
@@ -83,12 +78,13 @@ export default function MyPostsPage() {
 
       {/* ThreadFeed (K-U.2) */}
       <ThreadFeed
+        key={activeTab}
         posts={displayedPosts}
         isLoading={isLoading}
         skeletonCount={3}
-        paging="pages"
+        paging="infinite"
         pageSize={20}
-        onEditPost={(p) => setEditingPost(p)}
+        onEditPost={(p) => navigate(`/knowledge/${p.id}/edit?returnTo=%2Fknowledge%2Fme`)}
         emptyIcon={activeTab === 'saved' ? Bookmark : BookOpen}
         emptyTitle={
           activeTab === 'saved'
@@ -101,7 +97,7 @@ export default function MyPostsPage() {
         }
         emptyDescription={
           activeTab === 'saved'
-            ? 'Bấm biểu tượng lưu trên bất kỳ thread nào để xem lại tại đây.'
+            ? 'Bấm biểu tượng lưu trên bài viết để xem lại tại đây.'
             : undefined
         }
         emptyAction={
@@ -110,49 +106,14 @@ export default function MyPostsPage() {
               Khám phá bảng tin
             </Button>
           ) : activeTab === 'published' ? (
-            <Button size="sm" onClick={() => setShowCreateDialog(true)}>
-              Đăng thread ngay
+            <Button size="sm" onClick={() => navigate('/knowledge/new?returnTo=%2Fknowledge%2Fme')}>
+              Viết bài ngay
             </Button>
           ) : undefined
         }
       />
 
-      {/* Create Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent size="lg">
-          <DialogHeader>
-            <DialogTitle>Đăng thread mới</DialogTitle>
-          </DialogHeader>
-          <ThreadComposer
-            variant="sheet"
-            onPosted={() => {
-              setShowCreateDialog(false);
-              queryClient.invalidateQueries({ queryKey: ['knowledge'] });
-            }}
-            onCancel={() => setShowCreateDialog(false)}
-          />
-        </DialogContent>
-      </Dialog>
 
-      {/* Edit Post Dialog */}
-      {editingPost && (
-        <Dialog open={!!editingPost} onOpenChange={(open) => !open && setEditingPost(null)}>
-          <DialogContent size="lg">
-            <DialogHeader>
-              <DialogTitle>Chỉnh sửa bài viết</DialogTitle>
-            </DialogHeader>
-            <ThreadComposer
-              post={editingPost}
-              variant="sheet"
-              onPosted={() => {
-                setEditingPost(null);
-                queryClient.invalidateQueries({ queryKey: ['knowledge'] });
-              }}
-              onCancel={() => setEditingPost(null)}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 }

@@ -251,7 +251,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                     <span>
                       Bài viết & Câu hỏi về <strong>"{searchQuery.trim()}"</strong>
                     </span>
-                    <span className="text-xs text-neutral-400">Kiến thức</span>
+                    <span className="text-xs text-neutral-400">Đời sống sinh viên</span>
                   </button>
                   <button
                     type="button"

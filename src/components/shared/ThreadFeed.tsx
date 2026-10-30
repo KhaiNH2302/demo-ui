@@ -1,22 +1,22 @@
-import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowUp, SearchX, type LucideIcon } from 'lucide-react';
-import { ThreadCard } from './ThreadCard';
-import { ReportDialog } from './ReportDialog';
-import { ConfirmDialog } from './ConfirmDialog';
-import { LoadingSkeleton } from './LoadingSkeleton';
-import { Pagination } from '@/components/ui/Pagination';
-import { useToast } from '@/components/ui/Toast';
-import { apiClient } from '@/lib/apiClient';
-import { cn } from '@/lib/cn';
-import type { KnowledgePost } from '@/types/entities';
+import React, { useEffect, useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowUp, SearchX, type LucideIcon } from "lucide-react";
+import { ThreadCard } from "./ThreadCard";
+import { ReportDialog } from "./ReportDialog";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { LoadingSkeleton } from "./LoadingSkeleton";
+import { Pagination } from "@/components/ui/Pagination";
+import { useToast } from "@/components/ui/Toast";
+import { apiClient } from "@/lib/apiClient";
+import { cn } from "@/lib/cn";
+import type { KnowledgePost } from "@/types/entities";
 
 export interface ThreadFeedProps {
   posts: KnowledgePost[];
   isLoading?: boolean;
   skeletonCount?: number;
-  density?: 'default' | 'compact';
-  paging?: 'pages' | 'infinite' | 'none';
+  density?: "default" | "compact";
+  paging?: "pages" | "infinite" | "none";
   page?: number;
   pageSize?: number;
   total?: number;
@@ -52,8 +52,8 @@ export const ThreadFeed: React.FC<ThreadFeedProps> = ({
   posts,
   isLoading = false,
   skeletonCount = 5,
-  density = 'default',
-  paging = 'none',
+  density = "default",
+  paging = "none",
   page = 1,
   pageSize = 20,
   total,
@@ -66,7 +66,7 @@ export const ThreadFeed: React.FC<ThreadFeedProps> = ({
   onSaveToggle,
   onPostDeleted,
   emptyIcon: EmptyIcon = SearchX,
-  emptyTitle = 'Chưa có bài viết nào trong mục này.',
+  emptyTitle = "Chưa có bài viết nào trong mục này.",
   emptyDescription,
   emptyAction,
   footerSlot,
@@ -74,6 +74,33 @@ export const ThreadFeed: React.FC<ThreadFeedProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const [visibleCount, setVisibleCount] = useState(pageSize);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const hasMore = paging === "infinite" && visibleCount < posts.length;
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (
+      !hasMore ||
+      isLoading ||
+      !target ||
+      typeof IntersectionObserver === "undefined"
+    )
+      return;
+    let requested = false;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (requested || !entries.some((entry) => entry.isIntersecting)) return;
+        requested = true;
+        observer.disconnect();
+        setVisibleCount((count) => Math.min(count + pageSize, posts.length));
+      },
+      { rootMargin: "0px 0px 400px 0px" },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hasMore, isLoading, visibleCount, pageSize, posts.length]);
 
   const [internalPage, setInternalPage] = useState<number>(1);
   const currentPage = onPageChange ? page : internalPage;
@@ -91,29 +118,33 @@ export const ThreadFeed: React.FC<ThreadFeedProps> = ({
 
   const defaultLikeMutation = useMutation({
     mutationFn: ({ id, liked }: { id: string; liked: boolean }) =>
-      liked ? apiClient.post(`/posts/${id}/like`) : apiClient.delete(`/posts/${id}/like`),
+      liked
+        ? apiClient.post(`/posts/${id}/like`)
+        : apiClient.delete(`/posts/${id}/like`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
-      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      queryClient.invalidateQueries({ queryKey: ["knowledge"] });
+      queryClient.invalidateQueries({ queryKey: ["feed"] });
     },
   });
 
   const defaultSaveMutation = useMutation({
     mutationFn: ({ id, saved }: { id: string; saved: boolean }) =>
-      saved ? apiClient.post(`/posts/${id}/save`) : apiClient.delete(`/posts/${id}/save`),
+      saved
+        ? apiClient.post(`/posts/${id}/save`)
+        : apiClient.delete(`/posts/${id}/save`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
-      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      queryClient.invalidateQueries({ queryKey: ["knowledge"] });
+      queryClient.invalidateQueries({ queryKey: ["feed"] });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiClient.delete(`/posts/${id}`),
     onSuccess: (_, deletedId) => {
-      toast({ variant: 'default', title: 'Đã xóa bài viết' });
-      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
-      queryClient.invalidateQueries({ queryKey: ['feed'] });
-      queryClient.invalidateQueries({ queryKey: ['profile-posts'] });
+      toast({ variant: "default", title: "Đã xóa bài viết" });
+      queryClient.invalidateQueries({ queryKey: ["knowledge"] });
+      queryClient.invalidateQueries({ queryKey: ["feed"] });
+      queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
       setDeletePostId(null);
       onPostDeleted?.(deletedId);
     },
@@ -121,9 +152,9 @@ export const ThreadFeed: React.FC<ThreadFeedProps> = ({
 
   if (isLoading) {
     return (
-      <div className={cn('space-y-4', className)}>
+      <div className={cn("space-y-4", className)}>
         <LoadingSkeleton
-          variant={density === 'compact' ? 'row-list' : 'thread-list'}
+          variant={density === "compact" ? "row-list" : "thread-list"}
           count={skeletonCount}
         />
       </div>
@@ -132,11 +163,13 @@ export const ThreadFeed: React.FC<ThreadFeedProps> = ({
 
   if (posts.length === 0) {
     return (
-      <div className={cn('py-12 text-center space-y-2.5', className)}>
+      <div className={cn("py-12 text-center space-y-2.5", className)}>
         <EmptyIcon size={32} className="mx-auto text-neutral-300" />
         <p className="text-sm font-medium text-neutral-700">{emptyTitle}</p>
         {emptyDescription && (
-          <p className="text-xs text-neutral-500 max-w-md mx-auto">{emptyDescription}</p>
+          <p className="text-xs text-neutral-500 max-w-md mx-auto">
+            {emptyDescription}
+          </p>
         )}
         {emptyAction && <div className="pt-2">{emptyAction}</div>}
       </div>
@@ -145,12 +178,14 @@ export const ThreadFeed: React.FC<ThreadFeedProps> = ({
 
   const totalItems = total ?? posts.length;
   const paginatedPosts =
-    paging === 'pages' && !onPageChange
+    paging === "pages" && !onPageChange
       ? posts.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-      : posts;
+      : paging === "infinite"
+        ? posts.slice(0, visibleCount)
+        : posts;
 
   return (
-    <div className={cn('space-y-2', className)}>
+    <div className={cn("space-y-2", className)}>
       {/* Viên "↑ n bài mới" (03-knowledge.md § K-U.2) */}
       {newPostsCount > 0 && onLoadNewPosts && (
         <div className="flex justify-center py-2">
@@ -166,7 +201,7 @@ export const ThreadFeed: React.FC<ThreadFeedProps> = ({
       )}
 
       {/* Danh sách ThreadCard + điểm chèn renderInsert */}
-      <div>
+      <div className={density === "compact" ? undefined : "space-y-4"}>
         {paginatedPosts.map((post, index) => {
           const isReported = reportedIds.includes(post.id);
           const insertedNode = renderInsert ? renderInsert(index) : null;
@@ -175,11 +210,15 @@ export const ThreadFeed: React.FC<ThreadFeedProps> = ({
             <React.Fragment key={post.id}>
               {isReported ? (
                 <div className="py-3 px-4 my-1 rounded-lg bg-neutral-50 border border-neutral-200 flex items-center justify-between text-xs text-neutral-600">
-                  <span>Bạn đã báo cáo nội dung này và tạm ẩn khỏi bảng tin.</span>
+                  <span>
+                    Bạn đã báo cáo nội dung này và tạm ẩn khỏi bảng tin.
+                  </span>
                   <button
                     type="button"
                     onClick={() =>
-                      setReportedIds((prev) => prev.filter((rid) => rid !== post.id))
+                      setReportedIds((prev) =>
+                        prev.filter((rid) => rid !== post.id),
+                      )
                     }
                     className="font-semibold text-brand-600 hover:underline cursor-pointer"
                   >
@@ -212,7 +251,7 @@ export const ThreadFeed: React.FC<ThreadFeedProps> = ({
       </div>
 
       {/* Phân trang số 20/trang (K0) */}
-      {paging === 'pages' && totalItems > pageSize && (
+      {paging === "pages" && totalItems > pageSize && (
         <div className="pt-4">
           <Pagination
             page={currentPage}
@@ -223,6 +262,30 @@ export const ThreadFeed: React.FC<ThreadFeedProps> = ({
         </div>
       )}
 
+      {paging === "infinite" &&
+        (hasMore ? (
+          <div ref={loadMoreRef} className="flex justify-center py-6">
+            <button
+              type="button"
+              onClick={() =>
+                setVisibleCount((count) =>
+                  Math.min(count + pageSize, posts.length),
+                )
+              }
+              className="rounded-full border border-neutral-200 px-4 py-2 text-xs font-medium text-neutral-500 hover:border-brand-300 hover:text-brand-600"
+            >
+              Xem thêm bài viết
+            </button>
+          </div>
+        ) : (
+          <p
+            role="status"
+            className="py-7 text-center text-xs text-neutral-400"
+          >
+            Bạn đã xem hết bài viết hiện có.
+          </p>
+        ))}
+
       {footerSlot}
 
       {/* ReportDialog dùng chung */}
@@ -232,11 +295,13 @@ export const ThreadFeed: React.FC<ThreadFeedProps> = ({
           onOpenChange={(open) => !open && setReportPost(null)}
           targetType="post"
           targetId={reportPost.id}
-          targetTitle={reportPost.title || reportPost.contentMd?.split('\n')[0]}
-          targetAuthorName={reportPost.authorName || 'Sinh viên'}
+          targetTitle={reportPost.title || reportPost.contentMd?.split("\n")[0]}
+          targetAuthorName={reportPost.authorName || "Sinh viên"}
           contentSnapshot={reportPost.contentMd?.slice(0, 120)}
           onReported={(id) => {
-            setReportedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+            setReportedIds((prev) =>
+              prev.includes(id) ? prev : [...prev, id],
+            );
           }}
         />
       )}

@@ -723,7 +723,7 @@ export const ProfilePage: React.FC = () => {
                   <div className="flex items-center justify-between p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700/80 bg-surface shadow-sm">
                     <span className="text-xs text-neutral-600 dark:text-neutral-400">
                       {isMentor
-                        ? 'Chia sẻ bài viết kiến thức, mẹo làm đồ án hoặc kinh nghiệm thực tập.'
+                        ? 'Chia sẻ chuyện quanh trường, kinh nghiệm sống hoặc một câu hỏi với cộng đồng.'
                         : 'Chia sẻ thắc mắc học tập, tìm đối tác đổi lớp hoặc thảo luận đồ án.'}
                     </span>
                     <Button

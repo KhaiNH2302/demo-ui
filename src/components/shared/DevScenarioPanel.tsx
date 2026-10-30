@@ -51,7 +51,7 @@ export const DevScenarioPanel: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-4 right-4 z-[99] max-w-[calc(100vw-2rem)]">
+    <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-4 right-4 z-40 max-w-[calc(100vw-2rem)]">
       {!isOpen ? (
         <Button
           variant="secondary"

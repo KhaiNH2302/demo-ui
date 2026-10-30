@@ -11,7 +11,7 @@ Chính sách này giải thích cách **Student Connection System (SCS)** thu th
 - **Thông tin tài khoản:** Họ và tên, email trường, MSSV, trường/cơ sở trực thuộc.
 - **Hồ sơ sinh viên:** Bio giới thiệu, kỹ năng (skills), sở thích (interests), mục tiêu học tập (goals).
 - **Lịch rảnh tự khai (Availability):** Các khung giờ rảnh trong tuần do bạn tự nhập.
-- **Dữ liệu hoạt động:** Lịch sử gửi/nhận yêu cầu đổi lớp, đơn ứng tuyển CLB, bài đăng kiến thức, tin nhắn trao đổi.
+- **Dữ liệu hoạt động:** Lịch sử gửi/nhận yêu cầu đổi lớp, đơn ứng tuyển CLB, bài đăng đời sống sinh viên, tin nhắn trao đổi.
 
 ### 2. Cách chúng tôi sử dụng dữ liệu & Thuật toán AI Matching
 - **Ghép nối đổi lớp:** Đối chiếu mã lớp và thời gian rảnh giữa 2 sinh viên để tính điểm tương thích đối ứng.

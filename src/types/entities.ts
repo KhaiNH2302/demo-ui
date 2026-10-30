@@ -36,7 +36,7 @@ import type {
   ProfileVisibility,
   ReportStatus,
   ReportTargetType,
-} from './status';
+} from "./status";
 
 export type {
   Role,
@@ -78,13 +78,15 @@ export type {
   ReportTargetType,
 };
 
-export type ClubRole = 'lead' | 'vice' | 'treasurer' | 'manager' | 'member' | MembershipRole;
-export type ClubCategory = 'Academic' | 'Art' | 'Sports' | 'Volunteer' | 'Tech' | 'Media';
+export type ClubRole =
+  "lead" | "vice" | "treasurer" | "manager" | "member" | MembershipRole;
+export type ClubCategory =
+  "Academic" | "Art" | "Sports" | "Volunteer" | "Tech" | "Media";
 
 export interface ScheduleSlot {
-  day: 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
+  day: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
   start: string; // "HH:mm"
-  end: string;   // "HH:mm"
+  end: string; // "HH:mm"
 }
 
 export interface User {
@@ -111,32 +113,32 @@ export interface User {
   createdAt: string;
 }
 
-export type Audience = 'public' | 'followers' | 'only_me';
+export type Audience = "public" | "followers" | "only_me";
 
 export type ProfileFieldKey =
-  | 'intro'
-  | 'about'
-  | 'gender'
-  | 'birthday'
-  | 'otherNames'
-  | 'favoriteQuote'
-  | 'languages'
-  | 'hobbies'
-  | 'currentCity'
-  | 'hometown'
-  | 'education'
-  | 'work'
-  | 'contact'
-  | 'links'
-  | 'lifeEvents'
-  | 'skills'
-  | 'interests'
-  | 'goals'
-  | 'availability';
+  | "intro"
+  | "about"
+  | "gender"
+  | "birthday"
+  | "otherNames"
+  | "favoriteQuote"
+  | "languages"
+  | "hobbies"
+  | "currentCity"
+  | "hometown"
+  | "education"
+  | "work"
+  | "contact"
+  | "links"
+  | "lifeEvents"
+  | "skills"
+  | "interests"
+  | "goals"
+  | "availability";
 
 export interface EducationEntry {
   id: string;
-  type: 'university' | 'highschool' | 'other';
+  type: "university" | "highschool" | "other";
   schoolName: string;
   campus?: string;
   major?: string;
@@ -162,7 +164,7 @@ export interface WorkEntry {
 
 export interface LifeEvent {
   id: string;
-  kind: 'scholarship' | 'internship' | 'award' | 'graduation' | 'other';
+  kind: "scholarship" | "internship" | "award" | "graduation" | "other";
   title: string;
   date: string;
   description?: string;
@@ -171,21 +173,21 @@ export interface LifeEvent {
 
 export interface ProfileLink {
   id: string;
-  type: 'github' | 'linkedin' | 'facebook' | 'portfolio' | 'website' | 'other';
+  type: "github" | "linkedin" | "facebook" | "portfolio" | "website" | "other";
   url: string;
   label?: string;
 }
 
 export interface StudentProfile {
   userId: string;
-  intro?: string;                 // tiểu sử ngắn ≤ 101 ký tự (hiện dưới tên)
-  about?: string;                 // giới thiệu dài ≤ 1000 ký tự (thay cho bio)
-  bio?: string;                   // backwards compatibility
+  intro?: string; // tiểu sử ngắn ≤ 101 ký tự (hiện dưới tên)
+  about?: string; // giới thiệu dài ≤ 1000 ký tự (thay cho bio)
+  bio?: string; // backwards compatibility
   coverUrl?: string;
-  gender?: 'male' | 'female' | 'other' | 'undisclosed';
-  birthday?: string;              // YYYY-MM-DD
-  birthdayAudience?: Audience;    // quyền cho ngày/tháng sinh
-  birthYearAudience?: Audience;   // quyền cho năm sinh
+  gender?: "male" | "female" | "other" | "undisclosed";
+  birthday?: string; // YYYY-MM-DD
+  birthdayAudience?: Audience; // quyền cho ngày/tháng sinh
+  birthYearAudience?: Audience; // quyền cho năm sinh
   otherNames?: string[];
   favoriteQuote?: string;
   languages?: string[];
@@ -219,7 +221,7 @@ export interface StudentProfile {
     showSchedule?: boolean;
     showClubs?: boolean;
     allowMentorRequests?: boolean;
-    whoCanMessage?: 'everyone' | 'connections' | 'nobody';
+    whoCanMessage?: "everyone" | "connections" | "nobody";
     profileVisibility?: ProfileVisibility;
   };
   fieldAudience?: Partial<Record<ProfileFieldKey, Audience>>;
@@ -309,7 +311,23 @@ export interface MediaImageItem {
   height?: number;
 }
 
-// FE-02 Knowledge (Threads model)
+export interface FoodReview {
+  placeName: string;
+  dish?: string;
+  spentPerPerson: number;
+  rating: number;
+  visitedOn?: string;
+  isDemo?: boolean;
+}
+
+export interface HousingExperience {
+  monthlyCost?: number;
+  duration?: string;
+  highlights?: string;
+  considerations?: string;
+}
+
+// FE-02 Student Life (community posts)
 export interface KnowledgePost {
   id: string;
   authorId: string;
@@ -321,11 +339,17 @@ export interface KnowledgePost {
   content?: string;
   subject?: string;
   subjectCode?: string;
+  demoContent?: { note?: string; sources?: { label: string; url: string }[] };
+  foodReview?: FoodReview;
+  housingExperience?: HousingExperience;
+  lifeTopic?: string;
+  campus?: string;
+  location?: string;
   tags: string[];
   images?: string[];
   gallery?: MediaImageItem[];
   attachments: { name: string; url: string; size: number }[];
-  visibility: 'school' | 'cross_school';
+  visibility: "school" | "cross_school";
   status: PostStatus;
   rejectReason?: string;
   likesCount?: number;
@@ -371,7 +395,7 @@ export interface ViolationReport {
   status: ReportStatus;
   reportCount?: number;
   autoHidden?: boolean;
-  resolution?: 'Dismissed' | 'ContentRemoved' | 'UserRestricted';
+  resolution?: "Dismissed" | "ContentRemoved" | "UserRestricted";
   resolutionNote?: string;
   createdAt: string;
   resolvedAt?: string;
@@ -397,7 +421,7 @@ export interface Group {
 export interface GroupMember {
   groupId: string;
   userId: string;
-  role: 'owner' | 'member';
+  role: "owner" | "member";
   joinedAt: string;
 }
 
@@ -494,7 +518,7 @@ export interface ClubRepresentativeRequest {
 export interface FormQuestion {
   id: string;
   label: string;
-  kind: 'short' | 'long' | 'single' | 'multi';
+  kind: "short" | "long" | "single" | "multi";
   options?: string[];
   required: boolean;
 }
@@ -526,9 +550,9 @@ export interface ClubOpportunity {
   tags: string[];
   startAt?: string;
   endAt?: string;
-  mode?: 'Online' | 'Offline' | 'Hybrid';
+  mode?: "Online" | "Offline" | "Hybrid";
   locationOrLink?: string;
-  confirmMode?: 'Instant' | 'Approval';
+  confirmMode?: "Instant" | "Approval";
   expectedCommitment?: string;
   positions?: OpportunityPosition[];
   quota: number;
@@ -563,7 +587,11 @@ export interface OpportunityResponse {
   };
   positionId?: string;
   positionName?: string;
-  answers: { questionId: string; questionLabel: string; value: string | string[] }[];
+  answers: {
+    questionId: string;
+    questionLabel: string;
+    value: string | string[];
+  }[];
   note?: string;
   attachment?: { name: string; size: string; url: string };
   status: OpportunityResponseStatus;
@@ -590,7 +618,7 @@ export interface ConnectionInvite {
   toUserName: string;
   toUserAvatar?: string;
   toUserMeta?: string;
-  sourceType: 'opportunity' | 'program';
+  sourceType: "opportunity" | "program";
   sourceId: string;
   sourceTitle: string;
   message: string;
@@ -618,11 +646,11 @@ export interface Recruitment {
 }
 export interface Interview {
   scheduledAt: string;
-  mode: 'online' | 'offline';
-  type?: 'online' | 'offline';
+  mode: "online" | "offline";
+  type?: "online" | "offline";
   location: string;
   locationOrLink?: string;
-  result?: 'pass' | 'fail';
+  result?: "pass" | "fail";
   note?: string;
 }
 export interface ClubApplication {
@@ -720,7 +748,7 @@ export interface ProgramSlot {
 }
 
 export interface ProgramChannel {
-  sourceType?: 'ManagerCreated' | 'StudentProposal';
+  sourceType?: "ManagerCreated" | "StudentProposal";
   proposalId?: string;
   id: string;
   type: ProgramType;
@@ -749,14 +777,14 @@ export interface ProgramChannel {
   }[];
   startAt: string;
   endAt: string;
-  mode: 'Online' | 'Offline' | 'Hybrid';
+  mode: "Online" | "Offline" | "Hybrid";
   locationOrLink: string;
   gatheringPoint?: string;
   beneficiaryAndGoal?: string;
   slots?: ProgramSlot[];
   preparationNotes?: string;
   safetyNotes?: string;
-  costInfo: 'Free' | string;
+  costInfo: "Free" | string;
   costDetails?: string;
   speakerInfo?: {
     name: string;
@@ -765,7 +793,7 @@ export interface ProgramChannel {
   };
   targetAudience?: string;
   prerequisites?: string;
-  confirmMode: 'Instant' | 'Approval';
+  confirmMode: "Instant" | "Approval";
   quota: number;
   confirmedCount: number;
   submittedCount?: number;
@@ -785,7 +813,7 @@ export interface ProgramRegistration {
   programTitle: string;
   programType: ProgramType;
   programStartAt: string;
-  programMode?: 'Online' | 'Offline' | 'Hybrid';
+  programMode?: "Online" | "Offline" | "Hybrid";
   programLocationOrLink?: string;
   organizerName?: string;
   studentId: string;
@@ -799,7 +827,11 @@ export interface ProgramRegistration {
   };
   slotId?: string;
   slotName?: string;
-  answers: { questionId: string; questionLabel: string; value: string | string[] }[];
+  answers: {
+    questionId: string;
+    questionLabel: string;
+    value: string | string[];
+  }[];
   note?: string;
   acknowledgedTerms: boolean;
   visibleToCoParticipants: boolean;
@@ -826,7 +858,7 @@ export interface ProgramProposal {
   id: string;
   studentId: string;
   studentName: string;
-  type: 'Volunteer' | 'Workshop';
+  type: "Volunteer" | "Workshop";
   title: string;
   description: string;
   goal: string;
@@ -836,10 +868,10 @@ export interface ProgramProposal {
   location: string;
   costInfo: string;
   safetyNotes: string;
-  mode?: 'Offline' | 'Online' | 'Hybrid';
+  mode?: "Offline" | "Online" | "Hybrid";
   contactInfo?: string;
   acknowledgedTerms?: boolean;
-  status: import('./status').ProgramProposalStatus;
+  status: import("./status").ProgramProposalStatus;
   reviewReason?: string;
   reviewedBy?: string;
   reviewedAt?: string;
@@ -865,8 +897,8 @@ export interface Mentor {
 
 export interface MentorProfileSection {
   id: string;
-  kind: 'builtin' | 'custom';
-  type: 'text' | 'list' | 'links';
+  kind: "builtin" | "custom";
+  type: "text" | "list" | "links";
   title: string;
   content: string | string[] | { label: string; url: string }[];
   visible: boolean;
@@ -891,8 +923,8 @@ export interface MentorPost {
   id: string;
   mentorId: string;
   authorId?: string;
-  authorRole?: 'student' | 'mentor';
-  postType?: 'NEED_MENTOR' | 'OFFER_MENTORING';
+  authorRole?: "student" | "mentor";
+  postType?: "NEED_MENTOR" | "OFFER_MENTORING";
   title: string;
   contentMd: string;
   content?: string;
@@ -902,7 +934,7 @@ export interface MentorPost {
   capacity?: number;
   filledCount?: number;
   deadline?: string;
-  status?: 'PUBLISHED' | 'FILLED' | 'EXPIRED' | 'CLOSED';
+  status?: "PUBLISHED" | "FILLED" | "EXPIRED" | "CLOSED";
   open?: boolean;
   likeCount: number;
   commentCount: number;
@@ -920,7 +952,7 @@ export interface MentoringRequest {
   mentorId: string;
   requesterId?: string;
   recipientId?: string;
-  sourceType?: 'DIRECT' | 'POST';
+  sourceType?: "DIRECT" | "POST";
   sourcePostId?: string;
   topic: string;
   content: string;
@@ -953,7 +985,14 @@ export interface Notification {
 
 export interface Conversation {
   id: string;
-  kind: 'swap' | 'mentoring' | 'club' | 'opportunity' | 'program' | 'group' | 'direct';
+  kind:
+    | "swap"
+    | "mentoring"
+    | "club"
+    | "opportunity"
+    | "program"
+    | "group"
+    | "direct";
   refId: string;
   title?: string;
   participantIds: string[];
@@ -961,7 +1000,7 @@ export interface Conversation {
   lastMessage?: string;
   lastMessageAt?: string;
   unreadCount?: number;
-  requestStatus?: 'pending' | 'accepted' | 'declined' | 'blocked';
+  requestStatus?: "pending" | "accepted" | "declined" | "blocked";
   requestedBy?: string;
   pinned?: boolean;
   archived?: boolean;
@@ -979,12 +1018,12 @@ export interface Message {
   conversationId: string;
   senderId: string;
   content: string;
-  type?: 'text' | 'image' | 'file' | 'link' | 'like';
+  type?: "text" | "image" | "file" | "link" | "like";
   images?: string[];
   attachments?: MessageAttachment[];
   reactions?: Record<string, string[]>;
   replyToMessageId?: string;
-  status?: 'sending' | 'sent' | 'read';
+  status?: "sending" | "sent" | "read";
   createdAt: string;
 }
 
@@ -1006,7 +1045,7 @@ export interface MentorApplication {
   personal: {
     avatarUrl: string;
     phone?: string;
-    currentRole: 'student' | 'alumni' | 'lecturer' | 'professional';
+    currentRole: "student" | "alumni" | "lecturer" | "professional";
     yearOrGraduation: string;
     workplace?: string;
     position?: string;
@@ -1019,7 +1058,7 @@ export interface MentorApplication {
     strongSubjects: { code: string; grade?: string }[];
   };
   experiences: {
-    type: 'internship' | 'job' | 'project' | 'ta' | 'club';
+    type: "internship" | "job" | "project" | "ta" | "club";
     title: string;
     org: string;
     role: string;
@@ -1027,8 +1066,14 @@ export interface MentorApplication {
     to?: string;
     description: string;
   }[];
-  skills: { name: string; level?: 'basic' | 'good' | 'expert' }[];
-  achievements: { name: string; issuer: string; year: number; url?: string; fileUrl?: string }[];
+  skills: { name: string; level?: "basic" | "good" | "expert" }[];
+  achievements: {
+    name: string;
+    issuer: string;
+    year: number;
+    url?: string;
+    fileUrl?: string;
+  }[];
   focus: {
     areas: string[];
     subjects: string[];
@@ -1042,7 +1087,7 @@ export interface MentorApplication {
   };
   availability: {
     slots: ScheduleSlot[];
-    modes: ('online' | 'offline' | 'chat')[];
+    modes: ("online" | "offline" | "chat")[];
     location?: string;
     sessionMinutes: 30 | 45 | 60 | 90;
   };
@@ -1056,7 +1101,12 @@ export interface MentorApplication {
   reviewNote?: string;
   flaggedSections?: string[];
   rejectReasonCode?: string;
-  history: { status: MentorApplicationStatus; at: string; by?: string; note?: string }[];
+  history: {
+    status: MentorApplicationStatus;
+    at: string;
+    by?: string;
+    note?: string;
+  }[];
   createdAt: string;
   submittedAt?: string;
   decidedAt?: string;
@@ -1065,7 +1115,7 @@ export interface MentorApplication {
 // Module Opportunity (O1)
 export interface Opportunity {
   id: string;
-  type: 'club' | 'group' | 'mentor' | 'program';
+  type: "club" | "group" | "mentor" | "program";
   title: string;
   subtitle: string;
   organizationName: string;
@@ -1140,7 +1190,7 @@ export interface SystemSettings {
     maxAnnouncementsPerDay: number;
   };
   appearance?: {
-    fontScale: 'sm' | 'md' | 'lg' | 'xl';
+    fontScale: "sm" | "md" | "lg" | "xl";
   };
   autoModerationThreshold: number;
   moderationThreshold?: number;
@@ -1158,8 +1208,8 @@ export interface SchoolAffiliationRequest {
   major: string;
   cohort: string;
   evidenceUrl?: string;
-  evidenceType?: 'student_card' | 'portal_screenshot' | 'enrollment_cert';
-  status: import('./status').SchoolAffiliationStatus;
+  evidenceType?: "student_card" | "portal_screenshot" | "enrollment_cert";
+  status: import("./status").SchoolAffiliationStatus;
   submittedAt: string;
   reviewedAt?: string;
   reviewedBy?: string;

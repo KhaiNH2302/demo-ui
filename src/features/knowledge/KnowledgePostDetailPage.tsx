@@ -74,7 +74,7 @@ export default function KnowledgePostDetailPage() {
   };
 
   const postDetailQuery = useQuery<{ post: KnowledgePost; comments: Comment[] }>({
-    queryKey: ['knowledge', 'detail', id],
+    queryKey: ['knowledge', 'detail', id, user?.id],
     queryFn: () => apiClient.get(`/posts/${id}`),
   });
 
@@ -84,28 +84,33 @@ export default function KnowledgePostDetailPage() {
     onSuccess: () => {
       setReplyText('');
       setReplyingTo(null);
-      queryClient.invalidateQueries({ queryKey: ['knowledge', 'detail', id] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
       toast({ variant: 'success', title: 'Đã gửi phản hồi' });
     },
+    onError: () => toast({ variant: 'error', title: 'Chưa gửi được bình luận. Bạn thử lại nhé.' }),
   });
 
   const acceptAnswerMutation = useMutation({
     mutationFn: (commentId: string) =>
       apiClient.put(`/posts/${id}/accepted-answer`, { commentId }),
     onSuccess: () => {
-      toast({ variant: 'success', title: 'Đã chọn câu trả lời hay nhất' });
-      queryClient.invalidateQueries({ queryKey: ['knowledge', 'detail', id] });
+      toast({ variant: 'success', title: 'Đã cập nhật phản hồi hữu ích' });
+      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
     },
   });
 
   const likeMutation = useMutation({
     mutationFn: ({ postId, liked }: { postId: string; liked: boolean }) =>
       liked ? apiClient.post(`/posts/${postId}/like`) : apiClient.delete(`/posts/${postId}/like`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['knowledge'] }),
   });
 
   const saveMutation = useMutation({
     mutationFn: ({ postId, saved }: { postId: string; saved: boolean }) =>
       saved ? apiClient.post(`/posts/${postId}/save`) : apiClient.delete(`/posts/${postId}/save`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['knowledge'] }),
   });
 
   const deleteMutation = useMutation({
@@ -133,7 +138,7 @@ export default function KnowledgePostDetailPage() {
           Bài viết không tồn tại hoặc đã bị gỡ
         </h3>
         <Button variant="outline" size="sm" onClick={() => navigate('/knowledge')}>
-          Về trang Chia sẻ kiến thức
+          Về Đời sống sinh viên
         </Button>
       </div>
     );
@@ -200,6 +205,7 @@ export default function KnowledgePostDetailPage() {
               saveMutation.mutate({ postId: pId, saved })
             )}
             onDelete={() => setDeleteDialogOpen(true)}
+            onEdit={() => navigate(`/knowledge/${id}/edit`)}
             onReport={guard('report', () =>
               setReportTarget({
                 type: 'post',
@@ -234,7 +240,7 @@ export default function KnowledgePostDetailPage() {
         <div className="divide-y divide-neutral-100">
           {comments.length === 0 ? (
             <div className="text-center py-12 px-5 sm:px-6 text-xs text-neutral-500">
-              Chưa có câu trả lời nào. Hãy là người đầu tiên tham gia thảo luận.
+              Chưa có bình luận nào. Hãy là người đầu tiên tham gia thảo luận.
             </div>
           ) : (
             visibleComments.map((comment) => {
@@ -261,7 +267,7 @@ export default function KnowledgePostDetailPage() {
                     <div className="flex items-center justify-between p-2.5 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-semibold text-emerald-900 mb-3 shadow-2xs">
                       <div className="flex items-center gap-2">
                         <CheckCheck size={16} className="text-emerald-600 shrink-0" />
-                        <span>Câu trả lời đúng & hữu ích nhất (Được người hỏi chọn & ghim lên đầu)</span>
+                        <span>Phản hồi được người hỏi đánh dấu hữu ích</span>
                       </div>
                       {isAuthor && (
                         <button
@@ -269,7 +275,7 @@ export default function KnowledgePostDetailPage() {
                           onClick={() => acceptAnswerMutation.mutate(comment.id)}
                           className="text-[11px] text-emerald-700 hover:underline font-normal cursor-pointer"
                         >
-                          Bỏ ghim
+                          Bỏ đánh dấu
                         </button>
                       )}
                     </div>
@@ -315,7 +321,7 @@ export default function KnowledgePostDetailPage() {
                             onClick={() => acceptAnswerMutation.mutate(comment.id)}
                             className="text-xs h-7 gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 shrink-0 font-medium"
                           >
-                            <CheckCheck size={13} className="text-emerald-600" /> Chọn câu trả lời đúng nhất
+                            <CheckCheck size={13} className="text-emerald-600" /> Đánh dấu đã hỗ trợ
                           </Button>
                         )}
                       </div>
@@ -475,6 +481,8 @@ export default function KnowledgePostDetailPage() {
                   Đăng nhập
                 </Button>
               </div>
+            ) : post.status !== 'Published' ? (
+              <p className="py-2 text-center text-xs text-neutral-500">Bạn có thể bình luận sau khi bài viết được đăng công khai.</p>
             ) : (
               <form onSubmit={handleSubmitReply} className="flex items-center gap-3">
                 <Avatar

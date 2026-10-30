@@ -225,7 +225,7 @@ export const newModulesHandlers = [
     const posts = seedKnowledgePosts
       .filter(
         (p: KnowledgePost) =>
-          (p.contentMd || p.title || '').toLowerCase().includes(q) ||
+          [p.title, p.contentMd, p.location, p.campus].join(' ').toLowerCase().includes(q) ||
           (p.subject && p.subject.toLowerCase().includes(q))
       )
       .slice(0, 10);

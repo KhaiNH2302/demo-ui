@@ -57,7 +57,7 @@ export const BottomTabBar: React.FC = () => {
           <span className="mt-1">Trang chủ</span>
         </NavLink>
 
-        {/* 2. Kiến thức */}
+        {/* 2. Đời sống */}
         <NavLink
           to="/knowledge"
           className={() =>
@@ -68,7 +68,7 @@ export const BottomTabBar: React.FC = () => {
           }
         >
           <BookOpen size={20} className={activeTab === 'knowledge' ? 'text-brand-600' : 'text-neutral-500'} />
-          <span className="mt-1">Kiến thức</span>
+          <span className="mt-1">Đời sống</span>
         </NavLink>
 
         {/* 3. Nút Tạo mới ở giữa (nhô cao 8px) */}

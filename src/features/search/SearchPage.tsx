@@ -66,7 +66,7 @@ export const SearchPage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Tìm kiếm toàn hệ thống"
-        description="Tra cứu bài viết kiến thức, bạn học, câu lạc bộ, nhóm kết nối và sự kiện trong trường"
+        description="Tìm câu chuyện đời sống, bạn học, câu lạc bộ, nhóm kết nối và sự kiện trong trường"
       />
 
       {/* Main Search Input Form */}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   UsersRound,
   AlertCircle,
@@ -10,7 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { ThreadComposer } from '@/components/shared/ThreadComposer';
+import { PostCreateEntry } from '@/components/shared/PostCreateEntry';
 import { ThreadFeed } from '@/components/shared/ThreadFeed';
 import { FeedInsert } from '@/components/shared/FeedInsert';
 import { EntityRow } from '@/components/shared/EntityRow';
@@ -20,6 +20,7 @@ import { LegalDialog } from '@/components/shared/LegalDialog';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { lifeTopicLabel } from '@/lib/studentLife';
 import { apiClient } from '@/lib/apiClient';
 import { formatRelativeTime, getInitials } from '@/lib/format';
 import {
@@ -214,7 +215,6 @@ function getTodayFormatted(): string {
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const isGuest = !user;
 
@@ -288,23 +288,22 @@ export const DashboardPage: React.FC = () => {
   });
 
   const followingSubjectsQuery = useQuery<string[]>({
-    queryKey: ['subjects', 'following'],
+    queryKey: ['life-topics', user?.id],
     enabled: !isGuest,
-    queryFn: () => apiClient.get('/subjects/following'),
+    queryFn: () => apiClient.get('/community/topics/following'),
   });
 
   const feedQuery = useQuery<KnowledgePost[]>({
-    queryKey: ['feed', feedTab],
+    queryKey: ['feed', feedTab, followingSubjectsQuery.data],
     queryFn: async () => {
       const res = await apiClient.get<{ data: KnowledgePost[] } | KnowledgePost[]>('/posts');
       const posts: KnowledgePost[] = Array.isArray(res) ? res : (res as any)?.data || [];
       const visible = posts.filter((p) => p.status === 'Published');
       if (feedTab === 'following') {
-        const followed = followingSubjectsQuery.data || ['CSD201', 'SWP391'];
+        const followed = followingSubjectsQuery.data || ['housing', 'experience'];
         return visible.filter(
           (p) =>
-            (p.subject && followed.includes(p.subject)) ||
-            (p.subjectCode && followed.includes(p.subjectCode)),
+            (p.lifeTopic && followed.includes(p.lifeTopic)),
         );
       }
       return visible;
@@ -317,15 +316,9 @@ export const DashboardPage: React.FC = () => {
   const spaces = isGuest ? [] : spacesQuery.data || DEFAULT_SPACES;
 
   const unansweredQuestions = posts.filter(
-    (p) => p.type === 'question' && !p.isSolved && p.commentCount <= 1,
+    (p) => p.type === 'question' && !p.isSolved,
   );
 
-  const handlePostCreated = (newPost: KnowledgePost) => {
-    queryClient.setQueryData<KnowledgePost[]>(['feed', feedTab], (prev = []) => [
-      newPost,
-      ...prev,
-    ]);
-  };
 
   const givenName = user?.fullName
     ? user.fullName.trim().split(/\s+/).slice(-2).join(' ')
@@ -420,7 +413,7 @@ export const DashboardPage: React.FC = () => {
         {isGuest && (
           <div className="px-4 py-3 rounded-lg border border-brand-200 bg-brand-50/50 flex flex-wrap items-center justify-between gap-3 text-sm">
             <span className="text-neutral-700">
-              Bạn đang xem bảng tin với tư cách khách. Đăng nhập để đăng bài, theo dõi môn học và nhận gợi ý riêng.
+              Bạn đang xem bảng tin với tư cách khách. Đăng nhập để đăng bài, theo dõi chủ đề và nhận gợi ý riêng.
             </span>
             <div className="flex items-center gap-3 shrink-0 text-xs font-semibold">
               <Link to="/login" className="text-brand-600 hover:underline">
@@ -500,7 +493,7 @@ export const DashboardPage: React.FC = () => {
         )}
 
         {/* Composer */}
-        <ThreadComposer onPosted={handlePostCreated} />
+        <PostCreateEntry />
 
         {/* Feed Tab SegmentedControl */}
         <div className="sticky top-14 z-10 bg-surface/95 backdrop-blur-xs py-2 border-b border-neutral-200 flex items-center justify-between">
@@ -518,7 +511,7 @@ export const DashboardPage: React.FC = () => {
             to="/knowledge"
             className="text-xs font-semibold text-brand-600 hover:text-brand-700 hover:underline flex items-center gap-1"
           >
-            <Compass size={14} /> Khám phá môn học
+            <Compass size={14} /> Khám phá đời sống
           </Link>
         </div>
 
@@ -530,13 +523,13 @@ export const DashboardPage: React.FC = () => {
           paging="none"
           emptyTitle={
             feedTab === 'following'
-              ? 'Chưa có bài thảo luận nào trong các môn bạn đang theo dõi.'
+              ? 'Chưa có bài thảo luận nào trong các chủ đề bạn đang theo dõi.'
               : 'Bảng tin chưa có bài viết mới.'
           }
           emptyAction={
             <Link to="/knowledge">
               <Button variant="outline" size="sm">
-                Theo dõi thêm môn học
+                Theo dõi chủ đề
               </Button>
             </Link>
           }
@@ -552,7 +545,7 @@ export const DashboardPage: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <HelpCircle size={16} className="text-brand-600" />
                       <h4 className="text-xs font-semibold text-neutral-900">
-                        Các bạn đang cần giúp · {followingSubjectsQuery.data?.[0] || 'CSD201'}
+                        Bạn có kinh nghiệm không?
                       </h4>
                     </div>
                     <Link
@@ -573,10 +566,10 @@ export const DashboardPage: React.FC = () => {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <Badge tier="neutral" size="sm">
-                              {q.subject || 'CSD201'}
+                              {lifeTopicLabel(q.lifeTopic)}
                             </Badge>
                             <span className="text-xs text-neutral-500">
-                              chưa có trả lời · {formatRelativeTime(q.createdAt)}
+                              đang cần hỗ trợ · {formatRelativeTime(q.createdAt)}
                             </span>
                           </div>
                           <p className="text-xs font-semibold text-neutral-900 line-clamp-1">
@@ -684,7 +677,7 @@ export const DashboardPage: React.FC = () => {
         <div className="bg-surface border border-neutral-200 rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-neutral-900">
-              {isGuest ? 'Môn học nổi bật' : 'Môn bạn theo dõi'}
+              {isGuest ? 'Chủ đề đời sống' : 'Chủ đề bạn theo dõi'}
             </h3>
             <Link to="/knowledge" className="text-xs font-medium text-brand-600 hover:underline">
               Thêm
@@ -692,15 +685,15 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap gap-1.5">
-            {(followingSubjectsQuery.data || ['CSD201', 'SWP391', 'PRJ301', 'DBI202']).map(
+            {(followingSubjectsQuery.data || ['housing', 'experience']).map(
               (subj) => (
-                <Link key={subj} to={`/knowledge?subject=${subj}`}>
+                <Link key={subj} to={`/knowledge?topic=${subj}`}>
                   <Badge
                     tier="neutral"
                     size="md"
                     className="hover:bg-brand-50 hover:text-brand-700 hover:border-brand-200 transition-colors cursor-pointer"
                   >
-                    {subj}
+                    {lifeTopicLabel(subj)}
                   </Badge>
                 </Link>
               ),

@@ -7,7 +7,7 @@ export interface FaqItem {
 
 export const faqCategories = [
   { key: 'account', label: 'Tài khoản & Xác minh' },
-  { key: 'knowledge', label: 'Chia sẻ kiến thức' },
+  { key: 'knowledge', label: 'Đời sống sinh viên' },
   { key: 'groups', label: 'Tìm nhóm kết nối' },
   { key: 'clubs', label: 'Câu lạc bộ' },
   { key: 'mentoring', label: 'Mentoring' },
@@ -36,7 +36,7 @@ export const faqList: FaqItem[] = [
     category: 'knowledge',
     question: 'Tại sao bài viết của tôi lại ở trạng thái "Đang chờ kiểm duyệt"?',
     answer:
-      'Để duy trì chất lượng học thuật và phòng chống nội dung độc hại, hệ thống có cơ chế kiểm duyệt tự động dựa trên từ khóa và quy định cộng đồng. Các bài viết cần rà soát thêm sẽ được Quản trị viên duyệt trong vòng 24 giờ trước khi hiển thị công khai.',
+      'Để duy trì chất lượng thảo luận và phòng chống nội dung độc hại, hệ thống có cơ chế kiểm duyệt tự động dựa trên từ khóa và quy định cộng đồng. Các bài viết cần rà soát thêm sẽ được Quản trị viên duyệt trong vòng 24 giờ trước khi hiển thị công khai.',
   },
   {
     id: 'knowledge-formats',

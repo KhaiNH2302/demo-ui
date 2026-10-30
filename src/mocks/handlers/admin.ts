@@ -33,7 +33,7 @@ export const adminHandlers = [
           pendingPrograms: seedProgramChannels.filter((p) => p.status === 'PendingReview').length,
         },
         moduleActivity: [
-          { module: 'Knowledge Sharing', count: 89 },
+          { module: 'Đời sống sinh viên', count: 89 },
           { module: 'Câu lạc bộ (FE-04)', count: 64 },
           { module: 'Tình nguyện & Workshop (FE-06)', count: 48 },
           { module: 'Mentoring (FE-05)', count: 56 },

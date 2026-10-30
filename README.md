@@ -1,5 +1,7 @@
 # SCS UI demo
 
+**Bản Đời sống sinh viên:** xem [hướng sản phẩm và các luồng demo](STUDENT_LIFE.md). Chạy tại `/knowledge`; bài viết được tổ chức theo chủ đề đời sống và campus.
+
 React + TypeScript + Vite, dùng MSW để mô phỏng API. Repo chưa chứa backend chạy PostgreSQL/MongoDB.
 
 ## Chạy và kiểm tra

@@ -48,7 +48,7 @@ export type AccountStatus = UserAccountStatus;
 export type SwapRequestStatus = 'Open' | 'Connected' | 'Cancelled' | 'open' | 'connected' | 'cancelled' | 'Draft' | 'Matched' | 'PendingConfirmation' | 'Completed' | 'Expired';
 export type SwapConnectionStatus = 'Pending' | 'Confirmed' | 'Rejected' | 'Cancelled' | 'pending' | 'confirmed' | 'rejected' | 'cancelled';
 
-export type PostType = 'discussion' | 'question' | 'document' | 'experience' | 'Question' | 'Note' | 'Experience' | 'Resource';
+export type PostType = 'review' | 'discussion' | 'question' | 'document' | 'experience' | 'Question' | 'Note' | 'Experience' | 'Resource';
 export type PostCategory =
   | 'knowledge'
   | 'study_experience'

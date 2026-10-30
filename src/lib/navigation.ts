@@ -1,5 +1,5 @@
 import {
-  BookOpen,
+  MessageCircle,
   UsersRound,
   GraduationCap,
   Flag,
@@ -36,14 +36,14 @@ export interface NavSection {
 
 export const NAV_SECTIONS: NavSection[] = [
   {
-    title: 'HỌC TẬP',
+    title: 'KẾT NỐI SINH VIÊN',
     items: [
       {
         key: 'knowledge',
-        label: 'Kiến thức',
+        label: 'Đời sống sinh viên',
         href: '/knowledge',
         to: '/knowledge',
-        icon: BookOpen,
+        icon: MessageCircle,
         badgeType: 'dot',
       },
       {

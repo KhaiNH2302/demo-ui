@@ -236,7 +236,7 @@ export const MentorApplyIntroPage: React.FC = () => {
             'Sinh viên từ năm 3 trở lên (hoặc cựu sinh viên / giảng viên / chuyên gia)',
             'Điểm trung bình tích lũy GPA đạt từ 2.8 / 4.0 trở lên',
             'Không có vi phạm quy chế học vụ hoặc kỷ luật tại trường',
-            'Đã có ít nhất 3 bài viết chia sẻ hoặc câu trả lời hữu ích trên Knowledge Sharing',
+            'Có kinh nghiệm học tập phù hợp và sẵn sàng hỗ trợ sinh viên khóa dưới',
           ].map((cond, idx) => (
             <div key={idx} className="flex items-center gap-3 text-xs sm:text-sm text-neutral-700">
               <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />

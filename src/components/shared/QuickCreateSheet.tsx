@@ -49,7 +49,7 @@ export const QuickCreateSheet: React.FC<QuickCreateSheetProps> = ({
     {
       key: 'knowledge',
       title: 'Đặt câu hỏi / Chia sẻ bài viết',
-      description: 'Đăng câu hỏi học thuật, ghi chú môn học hoặc kinh nghiệm thực tập',
+      description: 'Chia sẻ chuyện quanh trường, hỏi kinh nghiệm sống và trò chuyện',
       icon: BookOpen,
       onClick: () => {
         onOpenChange(false);
