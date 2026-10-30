@@ -12,8 +12,6 @@ import { createGroupDialogAction } from './groupDialog';
 import { CoverHeader } from '@/components/shared/CoverHeader';
 import { AvatarStack } from '@/components/shared/AvatarStack';
 import { UserMiniCard } from '@/components/shared/UserMiniCard';
-import { ChatWindow } from '@/components/shared/ChatWindow';
-import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Card, CardContent, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -31,11 +29,9 @@ import {
   LogOut,
   CheckCircle,
   MessageSquare,
-  Info,
   Target,
   MapPin,
   Briefcase,
-  ExternalLink,
 } from 'lucide-react';
 import type { Group, GroupMember, GroupJoinRequest, Conversation } from '@/types/entities';
 
@@ -51,7 +47,7 @@ export const GroupDetailPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
 
-  const [activeTab, setActiveTab] = useState<'info' | 'chat'>('info');
+  const [openingChat, setOpeningChat] = useState(false);
   const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
   const [joinMessage, setJoinMessage] = useState('');
   const [appliedRole, setAppliedRole] = useState('');
@@ -74,11 +70,18 @@ export const GroupDetailPage: React.FC = () => {
   const isOwner = !!user && user.id === group?.ownerId;
   const isClosed = group?.status === 'Closed';
   const isMember = !!user && !isClosed && (isOwner || !!group?.members?.some((member) => member.userId === user.id));
-  const groupConversationQuery = useQuery<Conversation>({
-    queryKey: ['chat', 'group', id],
-    queryFn: () => apiClient.post<Conversation>(`/groups/${id}/conversation`),
-    enabled: !!id && isMember,
-  });
+
+  const handleOpenChat = async () => {
+    try {
+      setOpeningChat(true);
+      const conv = await apiClient.post<Conversation>(`/groups/${id}/conversation`);
+      navigate(`/chats/${conv.id}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Không thể mở kênh chat.');
+    } finally {
+      setOpeningChat(false);
+    }
+  };
 
   const joinMutation = useMutation({
     mutationFn: ({ message, role }: { message?: string; role?: string }) =>
@@ -104,20 +107,15 @@ export const GroupDetailPage: React.FC = () => {
     onSuccess: () => {
       toast.success('Bạn đã rời nhóm.');
       setLeaveOpen(false);
-      setActiveTab('info');
       invalidateGroupQueries(queryClient);
     },
     onError: (error: Error) => toast.error(error.message || 'Không thể rời nhóm.'),
   });
+
   const myRequests = myRequestsQuery.data || [];
   const myPendingRequest = myRequests.find((r) => r.groupId === id && r.status === 'Pending');
 
   const isFull = group ? group.memberCount >= group.memberLimit : false;
-
-  const tabOptions = [
-    { value: 'info', label: 'Thông tin nhóm', icon: Info },
-    ...(isMember ? [{ value: 'chat', label: 'Kênh chat nội bộ', icon: MessageSquare }] : []),
-  ];
 
   return (
     <QueryBoundary queries={[groupQuery]}>
@@ -135,11 +133,11 @@ export const GroupDetailPage: React.FC = () => {
               isMember ? (
                 <div className="flex items-center gap-2">
                   <Button
-                    variant={activeTab === 'chat' ? 'secondary' : 'primary'}
-                    onClick={() => setActiveTab(activeTab === 'chat' ? 'info' : 'chat')}
+                    variant="primary"
+                    onClick={handleOpenChat}
+                    loading={openingChat}
                   >
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    {activeTab === 'chat' ? 'Thông tin nhóm' : 'Kênh chat nội bộ'}
+                    <MessageSquare className="w-4 h-4 mr-2" /> Kênh chat nội bộ
                   </Button>
                   {isOwner && (
                     <Button variant="outline" onClick={() => navigate(`/groups/${id}/manage`)}>
@@ -181,12 +179,12 @@ export const GroupDetailPage: React.FC = () => {
               <div className="flex items-center gap-2.5">
                 {isMember && (
                   <Button
-                    variant={activeTab === 'chat' ? 'secondary' : 'primary'}
+                    variant="secondary"
                     size="sm"
-                    onClick={() => setActiveTab(activeTab === 'chat' ? 'info' : 'chat')}
+                    onClick={handleOpenChat}
+                    loading={openingChat}
                   >
-                    <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
-                    {activeTab === 'chat' ? 'Thông tin nhóm' : 'Kênh chat nội bộ'}
+                    <MessageSquare className="w-3.5 h-3.5 mr-1.5 text-brand-600" /> Kênh chat nội bộ
                   </Button>
                 )}
                 <AvatarStack
@@ -198,228 +196,173 @@ export const GroupDetailPage: React.FC = () => {
             }
           />
 
-          {/* Segmented Control Tabs */}
-          {isMember && (
-            <div className="flex items-center justify-between pb-1 flex-wrap gap-2">
-              <SegmentedControl
-                options={tabOptions}
-                value={activeTab}
-                onValueChange={(v) => setActiveTab(v as 'info' | 'chat')}
-                size="md"
-              />
-              {activeTab === 'chat' && groupConversationQuery.data && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate(`/chats/${groupConversationQuery.data.id}`)}
-                  className="text-xs text-brand-600 hover:text-brand-700"
-                >
-                  <ExternalLink className="w-3.5 h-3.5 mr-1" /> Mở toàn màn hình trong mục Tin nhắn
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* Content Area */}
-          {activeTab === 'chat' && isMember ? (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-3.5 py-2.5 bg-brand-50/70 dark:bg-neutral-800/70 border border-brand-200 dark:border-neutral-700 rounded-xl text-xs">
-                <div className="flex items-center gap-2 text-brand-900 dark:text-brand-100 font-medium truncate">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  <span className="truncate">Kênh chat trực tuyến nhóm: <strong>{group.name}</strong></span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActiveTab('info')}
-                    className="text-xs h-7"
-                  >
-                    Quay lại thông tin
-                  </Button>
-                  {groupConversationQuery.data && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/chats/${groupConversationQuery.data.id}`)}
-                      className="text-xs h-7 gap-1"
-                    >
-                      <ExternalLink className="w-3 h-3" /> Mở toàn màn hình
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <div className="h-[560px] rounded-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden bg-surface shadow-xs">
-                <QueryBoundary query={groupConversationQuery}>
-                  {groupConversationQuery.data && (
-                    <ChatWindow
-                      conversationId={groupConversationQuery.data.id}
-                      conversation={groupConversationQuery.data}
-                    />
-                  )}
-                </QueryBoundary>
-              </div>
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="space-y-6 pt-6">
-                {/* Owner Info & Location */}
-                <div className="p-4 rounded-lg bg-[var(--surface-muted)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <span className="text-xs text-[var(--text-muted)] block mb-1">Trưởng nhóm sáng lập:</span>
-                    <UserMiniCard userId={group.ownerId} showMajor />
-                  </div>
-                  {group.location && (
-                    <div className="text-xs text-neutral-600 flex items-center gap-1.5">
-                      <MapPin className="w-4 h-4 text-primary shrink-0" />
-                      <span>{group.location}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Role Matrix: Roles Needed vs Filled */}
-                {group.rolesNeeded && group.rolesNeeded.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-[var(--text-main)] mb-2 flex items-center gap-1.5">
-                      <Briefcase className="w-4 h-4 text-primary" /> Vị trí nhóm đang cần tuyển & Đã có
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {group.rolesNeeded.map((role, idx) => (
-                        <span
-                          key={idx}
-                          className="px-2.5 py-1 text-xs font-semibold rounded-md bg-emerald-50 text-emerald-800 border border-emerald-300"
-                        >
-                          🔍 Cần tuyển: {role}
-                        </span>
-                      ))}
-                      {group.rolesFilled?.map((role, idx) => (
-                        <span
-                          key={idx}
-                          className="px-2.5 py-1 text-xs font-medium rounded-md bg-neutral-100 text-neutral-600 border border-neutral-200"
-                        >
-                          ✓ Đã có: {role}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Skills required */}
-                {group.skills && group.skills.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-[var(--text-main)] mb-2 flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-primary" /> Kỹ năng & Yêu cầu mong muốn
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {group.skills.map((skill, idx) => (
-                        <Badge key={idx} variant="neutral">
-                          {skill}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Activity Time */}
-                {group.activityTime && group.activityTime.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-[var(--text-main)] mb-2 flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-primary" /> Khung giờ sinh hoạt / Họp nhóm
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {group.activityTime.map((slot: any, idx) => (
-                        <span
-                          key={idx}
-                          className="px-2.5 py-1 text-xs rounded bg-[var(--surface-sunken)] text-[var(--text-muted)] font-mono"
-                        >
-                          {typeof slot === 'string' ? slot : `${slot.day}: ${slot.start}-${slot.end}`}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Interests & Description */}
-                {group.interests && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-[var(--text-main)] mb-2 flex items-center gap-1.5">
-                      <BookOpen className="w-4 h-4 text-primary" /> Mô tả & Cam kết làm việc
-                    </h3>
-                    <p className="text-sm text-[var(--text-muted)] whitespace-pre-line bg-[var(--surface-card)] p-3 rounded-md border border-[var(--border-subtle)]">
-                      {group.interests}
-                    </p>
-                  </div>
-                )}
-
-                {/* Members List */}
+          {/* Main Group Content Card */}
+          <Card>
+            <CardContent className="space-y-6 pt-6">
+              {/* Owner Info & Location */}
+              <div className="p-4 rounded-lg bg-[var(--surface-muted)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-semibold text-[var(--text-main)] mb-3 flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-primary" /> Danh sách thành viên ({group.members?.length || 0})
+                  <span className="text-xs text-[var(--text-muted)] block mb-1">Trưởng nhóm sáng lập:</span>
+                  <UserMiniCard userId={group.ownerId} showMajor />
+                </div>
+                {group.location && (
+                  <div className="text-xs text-neutral-600 flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-primary shrink-0" />
+                    <span>{group.location}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Role Matrix: Roles Needed vs Filled */}
+              {group.rolesNeeded && group.rolesNeeded.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-[var(--text-main)] mb-2 flex items-center gap-1.5">
+                    <Briefcase className="w-4 h-4 text-primary" /> Vị trí nhóm đang cần tuyển & Đã có
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {group.members?.map((m) => (
-                      <div key={m.userId} className="p-3 border border-[var(--border-subtle)] rounded-lg flex items-center justify-between">
-                        <UserMiniCard userId={m.userId} />
-                        {m.role === 'owner' && <Badge variant="attention">Chủ nhóm</Badge>}
-                      </div>
+                  <div className="flex flex-wrap gap-2">
+                    {group.rolesNeeded.map((role, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-1 text-xs font-semibold rounded-md bg-emerald-50 text-emerald-800 border border-emerald-300"
+                      >
+                        🔍 Cần tuyển: {role}
+                      </span>
+                    ))}
+                    {group.rolesFilled?.map((role, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-1 text-xs font-medium rounded-md bg-neutral-100 text-neutral-600 border border-neutral-200"
+                      >
+                        ✓ Đã có: {role}
+                      </span>
                     ))}
                   </div>
                 </div>
-              </CardContent>
+              )}
 
-              <CardFooter className="flex items-center justify-end border-t border-[var(--border-subtle)] pt-4">
-                {isClosed ? (
-                  <span className="text-sm text-neutral-500">Nhóm đã đóng{group.closedReason ? `: ${group.closedReason}` : '.'}</span>
-                ) : isOwner ? (
+              {/* Skills required */}
+              {group.skills && group.skills.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-[var(--text-main)] mb-2 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-primary" /> Kỹ năng & Yêu cầu mong muốn
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {group.skills.map((skill, idx) => (
+                      <Badge key={idx} variant="neutral">
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Activity Time */}
+              {group.activityTime && group.activityTime.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-[var(--text-main)] mb-2 flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-primary" /> Khung giờ sinh hoạt / Họp nhóm
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {group.activityTime.map((slot: any, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-1 text-xs rounded bg-[var(--surface-sunken)] text-[var(--text-muted)] font-mono"
+                      >
+                        {typeof slot === 'string' ? slot : `${slot.day}: ${slot.start}-${slot.end}`}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Interests & Description */}
+              {group.interests && (
+                <div>
+                  <h3 className="text-sm font-semibold text-[var(--text-main)] mb-2 flex items-center gap-1.5">
+                    <BookOpen className="w-4 h-4 text-primary" /> Mô tả & Cam kết làm việc
+                  </h3>
+                  <p className="text-sm text-[var(--text-muted)] whitespace-pre-line bg-[var(--surface-card)] p-3 rounded-md border border-[var(--border-subtle)]">
+                    {group.interests}
+                  </p>
+                </div>
+              )}
+
+              {/* Members List */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--text-main)] mb-3 flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-primary" /> Danh sách thành viên ({group.members?.length || 0})
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {group.members?.map((m) => (
+                    <div key={m.userId} className="p-3 border border-[var(--border-subtle)] rounded-lg flex items-center justify-between">
+                      <UserMiniCard userId={m.userId} />
+                      {m.role === 'owner' && <Badge variant="attention">Chủ nhóm</Badge>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+
+            <CardFooter className="flex items-center justify-end border-t border-[var(--border-subtle)] pt-4">
+              {isClosed ? (
+                <span className="text-sm text-neutral-500">Nhóm đã đóng{group.closedReason ? `: ${group.closedReason}` : '.'}</span>
+              ) : isOwner ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleOpenChat}
+                    loading={openingChat}
+                  >
+                    <MessageSquare className="w-4 h-4 mr-1.5" /> Mở kênh chat nội bộ
+                  </Button>
                   <Button onClick={() => navigate(`/groups/${id}/manage`)}>
                     <Settings className="w-4 h-4 mr-2" /> Vào trang quản lý nhóm
                   </Button>
-                ) : isMember ? (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
-                    <span className="flex items-center text-sm text-[var(--status-success-fg)] font-medium">
-                      <CheckCircle className="w-4 h-4 mr-1.5" /> Bạn đã là thành viên chính thức của nhóm
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => setActiveTab('chat')}
-                      >
-                        <MessageSquare className="w-4 h-4 mr-1.5" /> Mở kênh chat nội bộ
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => setLeaveOpen(true)}>
-                        <LogOut className="w-3.5 h-3.5 mr-1" /> Rời nhóm
-                      </Button>
-                    </div>
+                </div>
+              ) : isMember ? (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+                  <span className="flex items-center text-sm text-[var(--status-success-fg)] font-medium">
+                    <CheckCircle className="w-4 h-4 mr-1.5" /> Bạn đã là thành viên chính thức của nhóm
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleOpenChat}
+                      loading={openingChat}
+                    >
+                      <MessageSquare className="w-4 h-4 mr-1.5" /> Mở kênh chat nội bộ
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setLeaveOpen(true)}>
+                      <LogOut className="w-3.5 h-3.5 mr-1" /> Rời nhóm
+                    </Button>
                   </div>
-                ) : myPendingRequest ? (
-                  <Button disabled variant="secondary">
-                    <Clock className="w-4 h-4 mr-2" /> Đang chờ trưởng nhóm xét duyệt
-                  </Button>
-                ) : isFull ? (
-                  <Button disabled variant="outline">
-                    Nhóm đã đủ thành viên
-                  </Button>
-                ) : group.joinMode === 'direct' ? (
-                  <Button onClick={() => joinMutation.mutate({})} loading={joinMutation.isPending}>
-                    <UserPlus className="w-4 h-4 mr-2" /> Tham gia ngay
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => {
-                      setAppliedRole(group.rolesNeeded?.[0] || '');
-                      setIsJoinDialogOpen(true);
-                    }}
-                  >
-                    <UserPlus className="w-4 h-4 mr-2" /> Gửi yêu cầu tham gia
-                  </Button>
-                )}
-              </CardFooter>
-            </Card>
-          )}
+                </div>
+              ) : myPendingRequest ? (
+                <Button disabled variant="secondary">
+                  <Clock className="w-4 h-4 mr-2" /> Đang chờ trưởng nhóm xét duyệt
+                </Button>
+              ) : isFull ? (
+                <Button disabled variant="outline">
+                  Nhóm đã đủ thành viên
+                </Button>
+              ) : group.joinMode === 'direct' ? (
+                <Button onClick={() => joinMutation.mutate({})} loading={joinMutation.isPending}>
+                  <UserPlus className="w-4 h-4 mr-2" /> Tham gia ngay
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => {
+                    setAppliedRole(group.rolesNeeded?.[0] || '');
+                    setIsJoinDialogOpen(true);
+                  }}
+                >
+                  <UserPlus className="w-4 h-4 mr-2" /> Gửi yêu cầu tham gia
+                </Button>
+              )}
+            </CardFooter>
+          </Card>
 
           {/* Leave Group Dialog */}
           <ConfirmDialog
