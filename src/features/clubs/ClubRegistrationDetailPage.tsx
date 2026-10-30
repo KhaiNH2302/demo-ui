@@ -6,13 +6,9 @@ import {
   AlertTriangle,
   ArrowLeft,
   Bell,
-  CalendarPlus,
   CheckCircle2,
   Clock,
   Edit3,
-  Mail,
-  MessageSquare,
-  User,
   XCircle,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -24,13 +20,17 @@ import {
   type CoParticipantItem,
 } from '@/components/shared/CoParticipantsPanel';
 import { OPPORTUNITY_TYPE_LABELS } from '@/components/shared/OpportunityCard';
+import { useAuthStore } from '@/store/authStore';
 import { apiClient } from '@/lib/apiClient';
+import { RecruitmentNextSteps } from './RecruitmentNextSteps';
+import { formatClubDate, isResultOverdue } from './recruitment';
 import { toast } from '@/components/ui/Toast';
 import { ErrorState } from '@/components/shared/ErrorState';
-import type { ClubOpportunity, OpportunityResponse } from '@/types/entities';
+import type { ClubOpportunity, ClubRepresentative, OpportunityResponse } from '@/types/entities';
 
 interface RegistrationDetailData extends OpportunityResponse {
   opportunity?: ClubOpportunity | null;
+  contact?: (ClubRepresentative & { email?: string }) | null;
   coParticipants?: CoParticipantItem[];
 }
 
@@ -41,10 +41,11 @@ export const ClubRegistrationDetailPage: React.FC = () => {
   }>();
   const responseId = respId || paramResponseId;
   const queryClient = useQueryClient();
+  const userId = useAuthStore(state => state.user?.id);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
   const { data: resp, isLoading, isError, refetch } = useQuery<RegistrationDetailData>({
-    queryKey: ['club-registration', responseId],
+    queryKey: ['club-registration', responseId, userId],
     queryFn: () => apiClient.get(`/clubs/registrations/${responseId}`),
     enabled: !!responseId,
   });
@@ -76,6 +77,12 @@ export const ClubRegistrationDetailPage: React.FC = () => {
     },
   });
 
+  const remindMutation = useMutation({
+    mutationFn: () => apiClient.post<{ alreadySent: boolean }>(`/clubs/registrations/${responseId}/remind`),
+    onSuccess: data => { queryClient.invalidateQueries({ queryKey: ['notifications'] }); toast.success(data.alreadySent ? 'Bạn đã gửi nhắc nhở trong 24 giờ qua.' : 'Đã gửi nhắc nhở tới đại diện CLB'); },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   if (isError) return <ErrorState title="Không thể tải dữ liệu" onRetry={() => refetch()} />;
   if (isLoading) {
     return <Card className="h-72 animate-pulse bg-neutral-100" />;
@@ -97,6 +104,7 @@ export const ClubRegistrationDetailPage: React.FC = () => {
   }
 
   const canWithdraw =
+    resp.status === 'Draft' ||
     resp.status === 'Submitted' ||
     resp.status === 'UnderReview' ||
     resp.status === 'NeedsMoreInfo' ||
@@ -106,14 +114,12 @@ export const ClubRegistrationDetailPage: React.FC = () => {
   const isConfirmedOrAccepted =
     resp.status === 'Confirmed' || resp.status === 'Accepted';
 
-  // Hạn trả kết quả dự kiến và kiểm tra quá hạn
-  const expectedResultDeadline = (resp.opportunity as unknown as { resultDeadline?: string })?.resultDeadline || '2026-10-14';
-  const isPastResultDeadline = new Date(expectedResultDeadline).getTime() < Date.now();
-  const isUnreviewedOverdue = isPastResultDeadline && (resp.status === 'Submitted' || resp.status === 'UnderReview');
+  const expectedResultDeadline = resp.opportunity?.resultDeadline;
+  const isUnreviewedOverdue = isResultOverdue(resp, resp.opportunity);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           to="/clubs?tab=registrations"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900"
@@ -123,15 +129,6 @@ export const ClubRegistrationDetailPage: React.FC = () => {
         </Link>
 
         <div className="flex items-center gap-2">
-          <Link to={resp.conversationId ? `/chats/${resp.conversationId}` : '/chats'}>
-            <Button
-              variant="secondary"
-              size="sm"
-              leftIcon={<MessageSquare className="h-4 w-4" />}
-            >
-              Trao đổi với Đại diện CLB
-            </Button>
-          </Link>
           {canWithdraw && (
             <Button
               variant="danger"
@@ -158,12 +155,12 @@ export const ClubRegistrationDetailPage: React.FC = () => {
             >
               {resp.opportunityTitle}
             </Link>
-            <div className="text-caption text-neutral-500 mt-1 flex items-center gap-2">
-              <span>Ngày nộp: {new Date(resp.submittedAt || Date.now()).toLocaleDateString('vi-VN')}</span>
+            <div className="text-caption text-neutral-600 mt-1 flex flex-wrap items-center gap-2">
+              <span>Ngày nộp: {resp.submittedAt ? formatClubDate(resp.submittedAt) : 'Chưa gửi'}</span>
               <span>·</span>
               <span>
                 Hạn trả kết quả dự kiến:{' '}
-                <strong>{new Date(expectedResultDeadline).toLocaleDateString('vi-VN')}</strong>
+                <strong>{formatClubDate(expectedResultDeadline)}</strong>
               </span>
             </div>
           </div>
@@ -184,17 +181,18 @@ export const ClubRegistrationDetailPage: React.FC = () => {
               <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
               <div>
                 <div className="font-bold text-amber-900">
-                  CLB chưa phản hồi đúng hạn (Hạn dự kiến: {new Date(expectedResultDeadline).toLocaleDateString('vi-VN')})
+                  CLB chưa phản hồi đúng hạn (Hạn dự kiến: {formatClubDate(expectedResultDeadline)})
                 </div>
                 <p className="mt-1 text-caption text-amber-800 leading-relaxed">
-                  Đã quá hạn thông báo kết quả nhưng CLB chưa hoàn tất duyệt hồ sơ. Đây là sự chậm trễ từ phía ban tuyển dụng CLB, hoàn toàn không phải lỗi của bạn. Hệ thống đã tự động gửi thông báo nhắc nhở tới đại diện CLB.
+                  Đã quá hạn thông báo kết quả nhưng CLB chưa hoàn tất duyệt hồ sơ. Đây là sự chậm trễ từ phía ban tuyển dụng CLB, hoàn toàn không phải lỗi của bạn. Bạn có thể gửi nhắc nhở tới đại diện CLB ngay tại đây.
                 </p>
               </div>
             </div>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => toast.success('Đã gửi thêm lời nhắc ưu tiên tới Ban chủ nhiệm CLB!')}
+              onClick={() => remindMutation.mutate()}
+              loading={remindMutation.isPending}
               leftIcon={<Bell className="h-3.5 w-3.5 text-amber-700" />}
               className="shrink-0 border-amber-300 bg-white hover:bg-amber-100 text-amber-900"
             >
@@ -203,57 +201,7 @@ export const ClubRegistrationDetailPage: React.FC = () => {
           </div>
         )}
 
-        {/* Khi trạng thái chuyển sang [Được nhận] / [Confirmed]: Hiển thị Người phụ trách và Onboarding */}
-        {isConfirmedOrAccepted && (
-          <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50/80 to-brand-50/50 border border-emerald-200 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-bold text-emerald-800">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                <span>Chúc mừng! Bạn đã trúng tuyển vào {resp.clubName}</span>
-              </div>
-              <span className="px-2.5 py-0.5 rounded-full text-caption font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                Tiếp nhận thành công
-              </span>
-            </div>
-
-            <div className="p-3.5 bg-white rounded-lg border border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-sm shrink-0">
-                  <User className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-neutral-900">
-                    Người phụ trách: Nguyễn Hoàng Nam
-                  </div>
-                  <div className="text-caption text-neutral-500">
-                    Trưởng ban Tuyển dụng &amp; Onboarding · {resp.clubName}
-                  </div>
-                  <div className="text-caption text-neutral-600 flex items-center gap-3 mt-1">
-                    <span className="inline-flex items-center gap-1">
-                      <Mail className="h-3 w-3 text-neutral-400" /> namnh.fu@fpt.edu.vn
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <Link to={resp.conversationId ? `/chats/${resp.conversationId}` : '/chats'}>
-                  <Button variant="primary" size="sm" leftIcon={<MessageSquare className="h-4 w-4" />}>
-                    Nhắn tin trao đổi
-                  </Button>
-                </Link>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => toast.success('Đã thêm lịch Onboarding & Buổi gặp mặt đầu tiên vào Lịch cá nhân!')}
-                  leftIcon={<CalendarPlus className="h-4 w-4" />}
-                >
-                  Thêm lịch onboarding vào lịch
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        {isConfirmedOrAccepted && <RecruitmentNextSteps responseId={resp.id} opportunity={resp.opportunity} contact={resp.contact}/>}
 
         {/* Feedback Alert Banner */}
         {resp.status === 'NeedsMoreInfo' && (
@@ -377,7 +325,7 @@ export const ClubRegistrationDetailPage: React.FC = () => {
             </h3>
             <div className="space-y-4">
               {resp.history.map((h, idx) => (
-                <div key={idx} className="relative pl-5 border-l-2 border-neutral-200 pb-1">
+                <div key={idx} className="relative pl-5 border-l border-neutral-200 pb-1">
                   <span className="absolute -left-[5px] top-1.5 h-2 w-2 rounded-full bg-brand-600" />
                   <div className="flex items-center justify-between gap-2">
                     <StatusBadge group="opportunityResponse" status={h.status} />

@@ -656,6 +656,18 @@ export const seedClubOpportunities: ClubOpportunity[] = [
   },
 ];
 
+// Keep the recruitment demo usable on any date, while retaining a late-result example.
+const recruitmentDemoDate = (days: number) => new Date(Date.now() + days * 86400000).toISOString();
+for (const opportunity of seedClubOpportunities.filter(item => item.type !== 'Event')) {
+  const late = opportunity.id === 'opp_07';
+  opportunity.registrationDeadline = recruitmentDemoDate(late ? -5 : 7);
+  opportunity.resultDeadline = recruitmentDemoDate(late ? -2 : 10);
+  opportunity.commitmentType = opportunity.type === 'MemberRecruitment' ? 'semester' : 'short';
+  opportunity.department = opportunity.id === 'opp_02' ? 'tech' : opportunity.id === 'opp_03' ? 'media' : opportunity.id === 'opp_07' ? 'logistics' : 'other';
+  opportunity.contactUserId = seedClubs.find(club => club.id === opportunity.clubId)?.representatives?.[0]?.userId;
+  opportunity.onboarding = { startAt: recruitmentDemoDate(12), endAt: new Date(Date.now() + 12 * 86400000 + 3600000).toISOString(), location: 'Phòng sinh hoạt CLB, campus Hòa Lạc' };
+}
+
 export const seedOpportunityResponses: OpportunityResponse[] = [
   {
     id: 'resp_01',

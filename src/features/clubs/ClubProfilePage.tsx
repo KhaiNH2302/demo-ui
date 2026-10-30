@@ -38,6 +38,8 @@ import { apiClient } from '@/lib/apiClient';
 import { useAuthStore } from '@/store/authStore';
 import { useViewer } from '@/lib/viewer';
 import { useGuardedAction } from '@/lib/guestGate';
+import { ClubFollowButton } from './ClubRecruitmentActions';
+import { isRecruitment, isRecruitmentOpen } from './recruitment';
 import { toast } from '@/components/ui/Toast';
 import type { Club, ClubOpportunity, MediaImageItem } from '@/types/entities';
 
@@ -123,8 +125,8 @@ export const ClubProfilePage: React.FC = () => {
     );
   }
 
-  const openOpps = (club.opportunities || []).filter((o) => o.status === 'Published');
-  const closedOpps = (club.opportunities || []).filter((o) => o.status !== 'Published');
+  const openOpps = (club.opportunities || []).filter((o) => isRecruitmentOpen(o));
+  const closedOpps = (club.opportunities || []).filter((o) => isRecruitment(o) && !isRecruitmentOpen(o) && o.status !== 'Draft');
   const clubGallery =
     club.gallery && club.gallery.length > 0 ? club.gallery : gallery;
 
@@ -160,6 +162,7 @@ export const ClubProfilePage: React.FC = () => {
         badge={<StatusBadge group="club" status={club.status || 'Active'} />}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
+            <ClubFollowButton clubId={club.id}/>
             {isRep && (
               <>
                 <Button
@@ -176,7 +179,7 @@ export const ClubProfilePage: React.FC = () => {
                     size="sm"
                     leftIcon={<Plus className="h-4 w-4" />}
                   >
-                    Tạo cơ hội mới
+                    Tạo đợt tuyển
                   </Button>
                 </Link>
               </>
@@ -193,15 +196,17 @@ export const ClubProfilePage: React.FC = () => {
         }
       />
 
-      {/* Underline Tabs: Giới thiệu · Cơ hội đang mở · Đã diễn ra (05-social-patterns.md #7) */}
+      <p className="text-sm text-neutral-600">Theo dõi CLB để nhận thông báo khi có đợt tuyển mới. <Link to="/programs" className="text-brand-700 underline">Xem sự kiện tại Hoạt động</Link>.</p>
+
+      {/* Underline Tabs: Giới thiệu · Đợt tuyển đang mở · Các đợt tuyển trước (05-social-patterns.md #7) */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'about' | 'open' | 'past')}>
         <TabsList>
           <TabsTrigger value="about">Giới thiệu</TabsTrigger>
           <TabsTrigger value="open">
-            Cơ hội đang mở ({openOpps.length})
+            Đợt tuyển đang mở ({openOpps.length})
           </TabsTrigger>
           <TabsTrigger value="past">
-            Đã diễn ra ({closedOpps.length})
+            Các đợt tuyển trước ({closedOpps.length})
           </TabsTrigger>
         </TabsList>
 
@@ -230,7 +235,7 @@ export const ClubProfilePage: React.FC = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-neutral-900">
-                      Cơ hội đang mở ({openOpps.length})
+                      Đợt tuyển đang mở ({openOpps.length})
                     </h3>
                     <button
                       type="button"

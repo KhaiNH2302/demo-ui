@@ -100,10 +100,10 @@ export const QuickCreateSheet: React.FC<QuickCreateSheetProps> = ({
         },
     {
       key: 'club',
-      title: hasRepresentedClub ? 'Đăng hoạt động CLB mới' : 'Yêu cầu đại diện CLB',
+      title: hasRepresentedClub ? 'Tạo đợt tuyển CLB' : 'Yêu cầu đại diện CLB',
       description: hasRepresentedClub
-        ? 'Mở đăng ký sự kiện, tuyển thành viên hoặc tuyển cộng tác viên cho CLB'
-        : 'Xác minh quyền đại diện để quản lý hồ sơ và đăng hoạt động cho CLB của bạn',
+        ? 'Tuyển thành viên hoặc cộng tác viên cho CLB bạn đại diện'
+        : 'Xác minh quyền đại diện để quản lý hồ sơ và tuyển dụng cho CLB',
       icon: Building2,
       onClick: () => {
         onOpenChange(false);

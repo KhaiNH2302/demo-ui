@@ -604,6 +604,15 @@ export interface ClubOpportunity {
   locationOrLink?: string;
   confirmMode?: "Instant" | "Approval";
   expectedCommitment?: string;
+  department?: 'tech' | 'media' | 'logistics' | 'events' | 'other';
+  commitmentType?: 'short' | 'semester';
+  contactUserId?: string;
+  onboarding?: {
+    startAt: string;
+    endAt: string;
+    location: string;
+    description?: string;
+  } | null;
   positions?: OpportunityPosition[];
   quota: number;
   used: number;

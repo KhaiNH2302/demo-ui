@@ -6,6 +6,7 @@ import { getViewerId } from '@/mocks/utils';
 import type { ClubOpportunity, OpportunityResponse } from '@/types/entities';
 import type { OpportunityResponseStatus } from '@/types/status';
 import { clubRegistrationUnavailable } from '@/features/programs/rules';
+import { recruitmentContact, syncRecruitmentReminders } from './engagementMocks';
 
 const error = (message: string, status = 400, code = 'CLUB_INVALID_REQUEST') => HttpResponse.json({ error: { code, message } }, { status });
 const actor = (request: Request) => request.headers.get('Authorization')?.startsWith('Bearer mock_jwt_token_') ? seedUsers.find((user) => user.id === getViewerId(request) && user.status.toLowerCase() === 'active') : undefined;
@@ -30,7 +31,8 @@ export const clubRegistrationHandlers = [
     if (response.studentId !== user?.id && !canRepresentClub(user?.id, response.clubId)) return error('Bạn không được xem đơn đăng ký này.', 403, 'FORBIDDEN');
     const opportunity = seedClubOpportunities.find((item) => item.id === response.opportunityId);
     const coParticipants = occupied(response.status) ? seedOpportunityResponses.filter((item) => item.opportunityId === response.opportunityId && occupied(item.status) && item.visibleToCoParticipants && item.studentId !== user?.id).map((item) => ({ userId: item.studentId, fullName: item.profileSnapshot.fullName, studentCode: item.profileSnapshot.studentCode, major: item.profileSnapshot.major, cohort: item.profileSnapshot.cohort, avatarUrl: item.profileSnapshot.avatarUrl, positionOrSlot: item.positionName })) : [];
-    return HttpResponse.json({ data: { ...response, opportunity, coParticipants } });
+    syncRecruitmentReminders();
+    return HttpResponse.json({ data: { ...response, opportunity, coParticipants, contact: recruitmentContact(opportunity) } });
   }),
   http.post('/api/v1/clubs/opportunities/:oppId/register', async ({ request, params }) => {
     const user = actor(request), body = await request.json() as Pick<OpportunityResponse, 'positionId' | 'answers' | 'note' | 'visibleToCoParticipants'> & { isDraft?: boolean };
@@ -39,6 +41,7 @@ export const clubRegistrationHandlers = [
     if (!opportunity) return error('Không tìm thấy cơ hội CLB.', 404, 'NOT_FOUND');
     if (canRepresentClub(user.id, opportunity.clubId)) return error('Đại diện CLB không đăng ký cơ hội của chính CLB mình.', 403, 'FORBIDDEN');
     const existing = seedOpportunityResponses.find((item) => item.opportunityId === opportunity.id && item.studentId === user.id);
+    const previousStatus = existing?.status;
     const unavailable = clubRegistrationUnavailable(opportunity, existing, body.positionId || '');
     if (unavailable) return error(unavailable, 409);
     if (!body.isDraft && opportunity.questions.some((question) => question.required && !body.answers?.some((answer) => answer.questionId === question.id && (Array.isArray(answer.value) ? answer.value.length > 0 : answer.value.trim().length > 0)))) return error('Vui lòng trả lời đủ câu hỏi bắt buộc.');
@@ -47,8 +50,8 @@ export const clubRegistrationHandlers = [
     const now = new Date().toISOString(), position = opportunity.positions?.find((item) => item.id === body.positionId);
     const response: OpportunityResponse = { id: existing?.id || crypto.randomUUID(), opportunityId: opportunity.id, opportunityTitle: opportunity.title, opportunityType: opportunity.type, clubId: opportunity.clubId, clubName: opportunity.clubName, clubLogo: opportunity.clubLogo, studentId: user.id, profileSnapshot: { fullName: user.fullName, studentCode: user.studentCode || '', email: user.email, major: user.major || '', cohort: user.cohort || '', avatarUrl: user.avatarUrl }, positionId: position?.id, positionName: position?.name, answers: body.answers || [], note: body.note, status, visibleToCoParticipants: body.visibleToCoParticipants === true, submittedAt: now, updatedAt: now, history: [...(existing?.history || []), { status, at: now, actorName: user.fullName, note: body.isDraft ? 'Lưu bản nháp' : 'Gửi đăng ký' }] };
     if (existing) Object.assign(existing, response); else seedOpportunityResponses.unshift(response);
-    opportunity.hasResponses = true;
-    if (!body.isDraft) opportunity.submittedCount = (opportunity.submittedCount || 0) + 1;
+    if (!body.isDraft) opportunity.hasResponses = true;
+    if (!body.isDraft && (!previousStatus || ['Draft', 'Withdrawn', 'Cancelled'].includes(previousStatus))) opportunity.submittedCount = (opportunity.submittedCount || 0) + 1;
     if (occupied(status)) changeSeats(opportunity, response, 1);
     if (!body.isDraft) notify(response, status === 'Confirmed' ? 'Đã xác nhận đăng ký cơ hội CLB' : 'Đã nhận đăng ký cơ hội CLB');
     return HttpResponse.json({ data: response }, { status: 201 });
@@ -85,7 +88,7 @@ export const clubRegistrationHandlers = [
     if (!['Submitted', 'UnderReview', 'NeedsMoreInfo'].includes(response.status)) return error('Đơn không còn chờ duyệt.', 409);
     const accepted = opportunity.type === 'Event' ? 'Confirmed' : 'Accepted';
     if (!['UnderReview', 'NeedsMoreInfo', 'Rejected', accepted].includes(body.status)) return error('Trạng thái quyết định không phù hợp loại cơ hội.');
-    if (!['Published', 'Closed'].includes(opportunity.status) || Date.parse(opportunity.resultDeadline || opportunity.startAt || opportunity.registrationDeadline) <= Date.now()) return error('Đã hết hạn trả kết quả hoặc cơ hội đã đóng vòng đời.', 409);
+    if (!['Published', 'Closed'].includes(opportunity.status) || (opportunity.type === 'Event' && Date.parse(opportunity.startAt || opportunity.registrationDeadline) <= Date.now())) return error('Cơ hội đã đóng vòng đời.', 409);
     if (['NeedsMoreInfo', 'Rejected'].includes(body.status) && !body.feedbackNote?.trim()) return error('Vui lòng nhập lý do phản hồi.');
     const position = opportunity.positions?.find((item) => item.id === response.positionId);
     if (body.status === accepted && (opportunity.used >= opportunity.quota || (position && position.registeredCount >= position.quota))) return error('Đã hết chỉ tiêu tổng hoặc chỉ tiêu vị trí.', 409);

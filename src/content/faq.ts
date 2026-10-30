@@ -61,7 +61,7 @@ export const faqList: FaqItem[] = [
     category: 'clubs',
     question: 'Quy trình xét tuyển vào Câu lạc bộ diễn ra như thế nào?',
     answer:
-      'Khi ứng tuyển vào đợt tuyển của CLB, đơn của bạn sẽ trải qua các bước: Đã nộp → Cần bổ sung (nếu thiếu thông tin) → Sơ loại hồ sơ → Phỏng vấn → Trúng tuyển. Bạn có thể theo dõi tiến độ tại mục "Đơn ứng tuyển CLB".',
+      'Chọn đợt tuyển thành viên hoặc cộng tác viên trong mục Câu lạc bộ, gửi hồ sơ và theo dõi tại tab "Đơn của tôi". CLB có thể chuyển đơn sang Đang xem xét, yêu cầu bổ sung, nhận hoặc từ chối kèm phản hồi. Nếu quá hạn dự kiến, đơn hiển thị "CLB chưa phản hồi đúng hạn" và bạn có thể gửi nhắc nhở. Sau khi được nhận, đơn hiển thị đầu mối liên hệ và lịch gặp mặt nếu CLB đã công bố.',
   },
 
   // 6. Mentoring
