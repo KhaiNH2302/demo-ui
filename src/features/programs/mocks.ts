@@ -107,15 +107,15 @@ export const programHandlers = [
     } else {
       if (!isManager(user)) return error('Chỉ Manager được duyệt đề xuất.', 403, 'FORBIDDEN');
       if (proposal.status !== 'PendingReview' || !['Approved','Rejected'].includes(body.status || '')) return error('Đề xuất không còn chờ duyệt.', 409);
-      if (!body.reviewReason?.trim()) return error('Vui lòng nhập lý do quyết định.');
+      if (body.status === 'Rejected' && !body.reviewReason?.trim()) return error('Vui lòng nhập lý do từ chối.');
       if (body.status === 'Approved') {
         const start = Math.max(Date.parse(proposal.suggestedStartAt), Date.now() + 7 * 86400000);
         const program = makeProgram(user!, { onlineUnlimited: proposal.onlineUnlimited, type: proposal.type, clubId: proposal.clubId, title: proposal.title, description: proposal.description, summary: proposal.goal, targetAudience: proposal.targetAudience, slots: proposal.mode === 'Hybrid' ? [{id: crypto.randomUUID(), name: 'Tham gia trực tiếp', attendanceMode: 'Offline', timeRange: 'Theo lịch chương trình', quota: proposal.offlineQuota!, confirmedCount: 0}, {id: crypto.randomUUID(), name: 'Tham gia online', attendanceMode: 'Online', timeRange: 'Theo lịch chương trình', unlimited: proposal.onlineUnlimited, quota: proposal.onlineUnlimited ? 0 : proposal.onlineQuota!, confirmedCount: 0}] : undefined, quota: proposal.expectedParticipants, startAt: new Date(start).toISOString(), endAt: new Date(start+7200000).toISOString(), registrationDeadline: new Date(start-86400000).toISOString(), locationOrLink: proposal.location, mode: proposal.mode, safetyNotes: proposal.safetyNotes, status: 'Draft' });
         program.sourceType = 'StudentProposal'; program.proposalId = proposal.id;
         seedProgramChannels.unshift(program); proposal.programId = program.id;
       }
-      proposal.status = body.status!; proposal.reviewedBy = user!.id; proposal.reviewReason = body.reviewReason.trim(); proposal.reviewedAt = new Date().toISOString();
-      notify(proposal.studentId, 'Đề xuất chương trình đã có kết quả', proposal.title + ': ' + proposal.reviewReason, '/programs/proposals');
+      proposal.status = body.status!; proposal.reviewedBy = user!.id; proposal.reviewReason = body.status === 'Rejected' ? body.reviewReason?.trim() : undefined; proposal.reviewedAt = new Date().toISOString();
+      notify(proposal.studentId, 'Đề xuất chương trình đã có kết quả', proposal.title + ': ' + (proposal.status === 'Approved' ? 'Đã chấp thuận' : proposal.reviewReason), '/programs/proposals');
     }
     proposal.updatedAt = new Date().toISOString();
     return HttpResponse.json({ data: proposal });

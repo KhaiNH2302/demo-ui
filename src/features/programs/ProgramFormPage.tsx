@@ -1,6 +1,5 @@
 import { HybridQuotaFields } from './HybridQuotaFields';
 import { ActivityContentField } from './ActivityContentFields';
-import { ActivityNavigation } from './ActivityNavigation';
 import React, { useEffect, useState } from 'react';
 import { Navigate, Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -59,7 +58,7 @@ export const ProgramFormPage: React.FC = () => {
     }
   }, [searchParams]);
   const [type, setType] = useState<ProgramType>(user?.roles.includes('club_rep') ? 'Event' : 'Workshop');
-  
+
   const [clubId, setClubId] = useState(representedClubs[0]?.clubId || '');
   const [onlineLink, setOnlineLink] = useState('');
   const [offlineQuota, setOfflineQuota] = useState(30);
@@ -213,7 +212,7 @@ export const ProgramFormPage: React.FC = () => {
           ? 'Đã lưu bản nháp kênh chương trình'
           : 'Đã công bố chương trình trực tiếp!'
       );
-      navigate('/programs?tab=organizing');
+      navigate('/admin/programs');
     },
   });
 
@@ -232,13 +231,13 @@ export const ProgramFormPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <ActivityNavigation />
+
       <Link
-        to="/programs"
+        to="/admin/programs"
         className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900"
       >
         <ArrowLeft className="h-4 w-4" />
-        <span>Quay lại Tình nguyện &amp; Workshop</span>
+        <span>Quay lại quản lý hoạt động</span>
       </Link>
 
       <div>

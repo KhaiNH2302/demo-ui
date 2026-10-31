@@ -1,5 +1,5 @@
+import { ProgramProposalsPage } from './ProgramProposalsPage';
 import { programUnlimited } from './rules';
-import { ActivityNavigation } from './ActivityNavigation';
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -17,7 +17,6 @@ import {
   AlertCircle,
   ExternalLink,
 } from 'lucide-react';
-import { PageHeader } from '@/components/shared/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -30,7 +29,7 @@ import { ProgramCard, PROGRAM_TYPE_LABELS } from '@/components/shared/ProgramCar
 import { apiClient } from '@/lib/apiClient';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from '@/components/ui/Toast';
-import type { ProgramChannel, ProgramRegistration } from '@/types/entities';
+import type { ProgramChannel, ProgramRegistration, ProgramProposal } from '@/types/entities';
 
 export const ProgramsExplorePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -39,12 +38,16 @@ export const ProgramsExplorePage: React.FC = () => {
   const { user } = useAuthStore();
   const isGuest = !user;
   const isManager = Boolean(user?.roles.includes('event_manager'));
-  const activeTab = selectedTab === 'organizing' && !isManager ? 'explore' : selectedTab;
+  const canPropose = Boolean(user?.roles.some(r => r.toLowerCase() === 'student' || r === 'club_rep'));
+  const activeTab = ['explore','registrations', ...(canPropose && !isManager ? ['proposals'] : [])].includes(selectedTab) ? selectedTab : 'explore';
+  const { data: proposals = [] } = useQuery<ProgramProposal[]>({queryKey: ['program-proposals', isManager ? 'review' : user?.id], queryFn: () => apiClient.get(`/programs/proposals${isManager ? '?review=true' : ''}`), enabled: Boolean(user) && (canPropose && !isManager)});
 
   const [q, setQ] = useState('');
   const [onlyOpen, setOnlyOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState('all');
   const [modeFilter, setModeFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const { data: programs = [], isLoading } = useQuery<ProgramChannel[]>({
     queryKey: ['programs', typeFilter, modeFilter, q],
@@ -58,12 +61,6 @@ export const ProgramsExplorePage: React.FC = () => {
     queryKey: ['programs', 'registrations', 'me'],
     queryFn: () => apiClient.get('/programs/registrations/me'),
     enabled: !isGuest,
-  });
-
-  const { data: myOrganized = [] } = useQuery<ProgramChannel[]>({
-    queryKey: ['programs', 'mine'],
-    queryFn: () => apiClient.get('/programs?mine=true'),
-    enabled: !isGuest && isManager,
   });
 
   const withdrawRegMutation = useMutation({
@@ -84,43 +81,37 @@ export const ProgramsExplorePage: React.FC = () => {
       .map((r) => [r.programId, r])
   );
 
-  const displayedPrograms = programs.filter(p => !onlyOpen || (p.status === 'Published' && Date.parse(p.registrationDeadline) > Date.now() && (programUnlimited(p) || p.confirmedCount < p.quota)));
+  const displayedPrograms = programs.filter(p => {
+    const from = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : -Infinity;
+    const to = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : Infinity;
+    const overlapsDates = Date.parse(p.startAt) <= to && Date.parse(p.endAt || p.startAt) >= from;
+    const available = p.status === 'Published' && Date.parse(p.registrationDeadline) > Date.now() && (programUnlimited(p) || p.confirmedCount < p.quota);
+    return overlapsDates && (!onlyOpen || available);
+  });
 
   return (
     <div className="space-y-6">
-      <ActivityNavigation />
-      <PageHeader
-        variant="band"
-        icon={HeartHandshake}
-        title="Hoạt động"
-        description="Tìm hoạt động phù hợp với bạn. Chọn ca, kiểm tra điều kiện và theo dõi kết quả tại một nơi."
-        actions={
-          <div className="flex gap-2">{!isGuest && <Link to={isManager ? '/programs/new' : '/programs/proposals'}><Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>{isManager ? 'Tạo chương trình' : 'Đề xuất của tôi'}</Button></Link>}{user?.roles.includes('event_manager') && <Link to="/programs/proposals/review"><Button variant="secondary">Xét duyệt đề xuất</Button></Link>}</div>
-        }
-      />
+
 
       <Tabs
         value={isGuest ? 'explore' : activeTab}
         onValueChange={(val) => setSearchParams({ tab: val })}
       >
         {!isGuest && (
-          <TabsList>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200"><TabsList className="w-auto min-w-0 flex-1 border-b-0 overflow-x-auto">
             <TabsTrigger value="explore">
               Khám phá ({programs.length})
             </TabsTrigger>
             <TabsTrigger value="registrations">
               Đăng ký của tôi ({myRegistrations.length})
             </TabsTrigger>
-            {isManager && <TabsTrigger value="organizing">Chương trình tôi quản lý ({myOrganized.length})</TabsTrigger>}
-          </TabsList>
+            {(canPropose && !isManager) && <TabsTrigger value="proposals">Đề xuất ({isManager ? proposals.filter(p => p.status === 'PendingReview').length : proposals.length})</TabsTrigger>}
+          </TabsList></div>
         )}
 
-        {/* Activity discovery and capacity overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-5">
-          {[['Hoạt động đang hiển thị', programs.length], ['Đã xác nhận tham gia', myRegistrations.filter(r => r.status === 'Confirmed').length], ['Hồ sơ chờ xét', myRegistrations.filter(r => r.status === 'Submitted').length]].map(([label, value]) => <Card key={String(label)} className="p-4"><p className="text-sm text-neutral-500">{label}</p><p className="mt-1 text-2xl font-bold text-neutral-900">{value}</p></Card>)}
-        </div>
         <TabsContent value="explore" className="space-y-5">
-          <Card className="p-4 flex flex-col md:flex-row items-stretch md:items-center gap-3">
+          <Card className="p-4 space-y-4" aria-label="Bộ lọc hoạt động">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
             <div className="relative flex-1">
               <Search className="h-4 w-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
@@ -154,14 +145,21 @@ export const ProgramsExplorePage: React.FC = () => {
                 <option value="Hybrid">Hybrid</option>
               </Select>
             </div>
-          </Card>
+            </div>
+
+          <div className="flex flex-wrap items-end gap-3 text-sm">
+            <span className="self-center font-medium text-neutral-700">Thời gian diễn ra</span>
+            <label className="space-y-1"><span className="block text-xs text-neutral-500">Từ ngày</span><Input type="date" aria-label="Thời gian diễn ra từ ngày" value={dateFrom} max={dateTo || undefined} onChange={e => setDateFrom(e.target.value)} /></label>
+            <label className="space-y-1"><span className="block text-xs text-neutral-500">Đến ngày</span><Input type="date" aria-label="Thời gian diễn ra đến ngày" value={dateTo} min={dateFrom || undefined} onChange={e => setDateTo(e.target.value)} /></label>
+          </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
             <label className="flex items-center gap-2"><input type="checkbox" checked={onlyOpen} onChange={e => setOnlyOpen(e.target.checked)} />Chỉ hiện hoạt động còn chỗ và chưa hết hạn</label>
-            <button className="text-brand-600 underline" onClick={() => { setQ(''); setTypeFilter('all'); setModeFilter('all'); setOnlyOpen(false); }}>Xóa bộ lọc</button>
+            <Button type="button" variant="primary" size="sm" onClick={() => { setQ(''); setTypeFilter('all'); setModeFilter('all'); setOnlyOpen(false); setDateFrom(''); setDateTo(''); }}>Xóa bộ lọc</Button>
           </div>
+          </Card>
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 auto-rows-fr gap-4">
               {[1, 2, 3, 4].map((i) => (
                 <Card key={i} className="h-56 animate-pulse bg-neutral-100" />
               ))}
@@ -170,11 +168,11 @@ export const ProgramsExplorePage: React.FC = () => {
             <EmptyState
               icon={HeartHandshake}
               title="Không tìm thấy chương trình phù hợp"
-              description="Thử thay đổi bộ lọc hoặc gửi ý tưởng chương trình tại mục Đề xuất của tôi."
+              description="Thử thay đổi bộ lọc hoặc gửi ý tưởng chương trình tại tab Đề xuất."
             />
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 auto-rows-fr gap-4">
                 {displayedPrograms.map((prog) => {
                   const myReg = myRegMap.get(prog.id);
                   return (
@@ -190,6 +188,8 @@ export const ProgramsExplorePage: React.FC = () => {
             </>
           )}
         </TabsContent>
+
+          <TabsContent value="proposals">{(canPropose && !isManager) && <ProgramProposalsPage review={isManager} embedded />}</TabsContent>
 
           {/* TAB 2: ĐĂNG KÝ CỦA TÔI (PG4) */}
           <TabsContent value="registrations" className="space-y-3">
@@ -307,9 +307,9 @@ export const ProgramsExplorePage: React.FC = () => {
                           </Button>
                         </Link>
                         {reg.organizerName && (
-                          <Link to="/chats">
+                          <Link to={isConfirmed ? `/chats/program-group-${reg.programId}` : "/chats"}>
                             <Button variant="ghost" size="sm" leftIcon={<MessageSquare size={13} />}>
-                              Nhắn tin BTC
+                              {isConfirmed ? 'Nhóm hoạt động' : 'Nhắn tin BTC'}
                             </Button>
                           </Link>
                         )}
@@ -369,90 +369,6 @@ export const ProgramsExplorePage: React.FC = () => {
             )}
           </TabsContent>
 
-          {/* TAB 3: CHƯƠNG TRÌNH EVENT MANAGER QUẢN LÝ */}
-          <TabsContent value="organizing" className="space-y-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-card-title text-neutral-900">
-                  Chương trình do bạn phụ trách
-                </h3>
-                <p className="text-caption text-neutral-500">
-                  Manager trực tiếp tạo, công bố và quản lý chương trình.
-                </p>
-              </div>
-              <Link to="/programs/new">
-                <Button variant="primary" size="sm" leftIcon={<Plus className="h-4 w-4" />}>
-                  Tạo chương trình
-                </Button>
-              </Link>
-            </div>
-
-            {myOrganized.length === 0 ? (
-              <EmptyState
-                icon={Users}
-                title="Bạn chưa tổ chức kênh chương trình nào"
-                description="Khởi xướng một chiến dịch tình nguyện hoặc buổi workshop chia sẻ kiến thức cho cộng đồng."
-              />
-            ) : (
-              <div className="space-y-3">
-                {myOrganized.map((prog) => (
-                  <Card
-                    key={prog.id}
-                    className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                  >
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-caption font-semibold text-brand-600">
-                          {PROGRAM_TYPE_LABELS[prog.type]}
-                        </span>
-                        <span className="text-neutral-300">·</span>
-                        <span className="text-caption text-neutral-500">
-                          Manager phụ trách
-                        </span>
-                      </div>
-                      <Link
-                        to={`/programs/${prog.id}`}
-                        className="text-card-title text-neutral-900 hover:text-brand-600 block truncate"
-                      >
-                        {prog.title}
-                      </Link>
-                      <div className="text-caption text-neutral-500 flex items-center gap-3">
-                        <span>
-                          Đã xác nhận: <strong>{prog.confirmedCount}/{programUnlimited(prog) ? 'Không giới hạn online' : prog.quota}</strong>
-                        </span>
-                        <span>
-                          Diễn ra: {new Date(prog.startAt).toLocaleDateString('vi-VN')}
-                        </span>
-                      </div>
-                      {prog.status === 'Rejected' && prog.rejectionReason && (
-                        <p className="text-caption text-tier-danger-text mt-1">
-                          Phản hồi từ Admin: {prog.rejectionReason}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <StatusBadge group="programChannel" status={prog.status} />
-                      <Link to={`/programs/${prog.id}/edit`}>
-                        <Button variant="ghost" size="sm">
-                          Chỉnh sửa
-                        </Button>
-                      </Link>
-                      <Link to={`/programs/manage/${prog.id}`}>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          leftIcon={<Settings className="h-3.5 w-3.5" />}
-                        >
-                          Quản lý kênh
-                        </Button>
-                      </Link>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
       </Tabs>
 
 

@@ -38,6 +38,7 @@ export interface ActivityCardProps {
   actionSlot?: React.ReactNode;
   mediaSlot?: React.ReactNode;
   unlimited?: boolean;
+  uniformHeight?: boolean;
   density?: 'default' | 'compact';
   className?: string;
 }
@@ -67,6 +68,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   actionSlot,
   mediaSlot,
   unlimited,
+  uniformHeight = false,
   density = 'default',
   className,
 }) => {
@@ -141,7 +143,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
               <p className="text-xs text-neutral-500 truncate">{organizer.name}</p>
               <Link
                 to={href}
-                className="block text-sm font-semibold text-neutral-900 group-hover:text-brand-600 line-clamp-2 leading-snug"
+                className={cn("block text-sm font-semibold text-neutral-900 group-hover:text-brand-600 line-clamp-2 leading-snug", uniformHeight && "min-h-[2.75em]")}
               >
                 {title}
               </Link>
@@ -175,6 +177,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
       <div
         className={cn(
           'border-t border-neutral-100 flex items-center justify-between gap-2 text-xs',
+          uniformHeight && 'min-h-24 shrink-0',
           isCompact ? 'px-3.5 py-2.5' : 'px-4 py-3',
         )}
       >

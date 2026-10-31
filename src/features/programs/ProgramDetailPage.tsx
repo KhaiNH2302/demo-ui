@@ -1,5 +1,5 @@
 import { programUnlimited } from './rules';
-import { ActivityNavigation } from './ActivityNavigation';
+import { NewMessageDialog } from '@/features/chat/components/NewMessageDialog';
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -36,6 +36,7 @@ import { toast } from '@/components/ui/Toast';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { programRegistrationUnavailable } from './rules';
 import type {
+  Conversation,
   ProgramAnnouncement,
   ProgramChannel,
   ProgramRegistration,
@@ -56,12 +57,13 @@ export const ProgramDetailPage: React.FC = () => {
   const canOpenProfile = viewer.can('profile.open');
   const guard = useGuardedAction();
   const [reportOpen, setReportOpen] = useState(false);
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
   const [newFaqQuestion, setNewFaqQuestion] = useState('');
   const [faqs, setFaqs] = useState([
     {
       id: 'faq-1',
       question: 'Chương trình có cấp Giấy chứng nhận (Certificate) hoặc cộng điểm rèn luyện không?',
-      answer: 'Có. Tất cả sinh viên tham gia đầy đủ ca đã đăng ký và quét QR check-in sẽ được cấp Certificate điện tử sau 3 ngày làm việc.',
+      answer: 'Có. Tất cả sinh viên tham gia đầy đủ ca đã đăng ký sẽ được cấp Certificate điện tử sau 3 ngày làm việc.',
       author: 'Sinh viên K18',
     },
     {
@@ -96,6 +98,18 @@ export const ProgramDetailPage: React.FC = () => {
 
 
 
+  const messageOrganizer = useMutation({
+    mutationFn: async () => {
+      const conversations = await apiClient.get<Conversation[]>('/conversations');
+      return conversations.find(c => c.kind === 'direct' && c.participantIds.includes(prog!.organizer.userId));
+    },
+    onSuccess: (conversation) => {
+      if (conversation) navigate(`/chats/${conversation.id}`);
+      else setMessageDialogOpen(true);
+    },
+    onError: (error: Error) => toast.error(error.message || 'Không thể mở cuộc trò chuyện với BTC'),
+  });
+
   if (isError || (!isLoading && !prog)) return <ErrorState title="Không thể tải chương trình" onRetry={() => refetch()} />;
   if (isLoading || !prog) {
     return <Card className="h-80 animate-pulse bg-neutral-100" />;
@@ -120,8 +134,8 @@ export const ProgramDetailPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <ActivityNavigation />
-      {prog.mode === 'Hybrid' && <Card className="p-4 space-y-3"><h2 className="font-semibold">Hai hình thức tham gia</h2><div className="grid sm:grid-cols-2 gap-3">{prog.slots?.map(s => <div key={s.id} className="rounded-lg border border-neutral-200 p-3"><strong>{s.attendanceMode === 'Online' ? 'Online' : 'Trực tiếp'}</strong><p className="text-sm">{s.confirmedCount}/{s.unlimited ? 'Không giới hạn' : s.quota} đã xác nhận · {s.unlimited ? 'Không giới hạn' : `Còn ${Math.max(0,s.quota-s.confirmedCount)} chỗ`}</p></div>)}</div>{prog.onlineLink ? <a href={prog.onlineLink} target="_blank" rel="noopener noreferrer" className="text-brand-600 underline">Mở phòng online</a> : <p className="text-sm text-neutral-500">Link online được cung cấp cho người đã xác nhận nhóm Online.</p>}</Card>}
+      {messageDialogOpen && <NewMessageDialog open onOpenChange={setMessageDialogOpen} defaultTargetUser={{ id: prog.organizer.userId, fullName: prog.organizer.fullName, avatarUrl: prog.organizer.avatarUrl, major: prog.organizer.major || 'Ban tổ chức' }} />}
+
 
       <div className="flex items-center justify-between gap-3">
         <Link
@@ -394,16 +408,19 @@ export const ProgramDetailPage: React.FC = () => {
 
           {/* Cột trái: Mục Hỏi đáp chung trước khi đăng ký */}
           <Card className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <HelpCircle className="h-5 w-5 text-brand-600" />
                 <h3 className="text-section-title text-neutral-900">
                   Hỏi đáp chung trước khi đăng ký
                 </h3>
               </div>
-              <span className="text-caption text-neutral-500">
-                {faqs.length} câu hỏi
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-caption text-neutral-500">{faqs.length} câu hỏi</span>
+                {user?.id !== prog.organizer.userId && <Button variant="outline" size="sm" disabled={messageOrganizer.isPending} leftIcon={<MessageSquare size={15} />} onClick={guard('nhắn tin Ban tổ chức', () => messageOrganizer.mutate())}>
+                  {messageOrganizer.isPending ? 'Đang mở...' : 'Nhắn tin BTC'}
+                </Button>}
+              </div>
             </div>
             <p className="text-caption text-neutral-600">
               Sinh viên có thể đặt câu hỏi để làm rõ yêu cầu công việc, địa điểm hoặc chính sách cấp chứng nhận trước khi nộp đơn.
@@ -536,14 +553,14 @@ export const ProgramDetailPage: React.FC = () => {
                   </Button>
                 </Link>
                 {myReg.status === 'Confirmed' && (
-                  <Link to="/chats" className="block">
+                  <Link to={`/chats/program-group-${prog.id}`} className="block">
                     <Button
                       variant="secondary"
                       size="sm"
                       className="w-full"
                       leftIcon={<MessageSquare className="h-4 w-4" />}
                     >
-                      Nhắn tin cho người tổ chức
+                      Nhóm hoạt động
                     </Button>
                   </Link>
                 )}
