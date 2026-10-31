@@ -156,6 +156,8 @@ export type MentoringRequestStatus =
   | 'PENDING_MENTOR_RESPONSE'
   | 'ACCEPTED'
   | 'REJECTED'
+  | 'ENDED'
+  | 'EXPIRED'
   | 'pending'
   | 'accepted'
   | 'rejected'

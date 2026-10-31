@@ -1,4 +1,6 @@
 import { clubRegistrationHandlers, canRepresentClub } from '@/features/clubs/mocks';
+import { clubEngagementHandlers, notifyRecruitmentPublished, syncRecruitmentReminders } from '@/features/clubs/engagementMocks';
+import { isRecruitment, validateRecruitment } from '@/features/clubs/recruitment';
 import { http, HttpResponse } from 'msw';
 import {
   seedClubs,
@@ -20,6 +22,7 @@ function getCurrentUserId(request: Request): string {
 }
 
 export const clubHandlers = [
+  ...clubEngagementHandlers,
   // 1. Clubs Directory (CL1b, CL2)
   http.get('/api/v1/clubs', async ({ request }) => {
     await mockDelay();
@@ -56,6 +59,7 @@ export const clubHandlers = [
   // 2. Club Opportunities Discovery & Detail (CL1, CL3, CL7, CL8, CL9)
   http.get('/api/v1/clubs/opportunities', async ({ request }) => {
     await mockDelay();
+    syncRecruitmentReminders();
     const url = new URL(request.url);
     const type = url.searchParams.get('type');
     const category = url.searchParams.get('category');
@@ -163,11 +167,13 @@ export const clubHandlers = [
     const body = (await request.json()) as Partial<ClubOpportunity>;
     const club = seedClubs.find((c) => c.id === body.clubId);
     if (!request.headers.get('Authorization')?.startsWith('Bearer mock_jwt_token_') || !user || !club || !canRepresentClub(userId, club.id)) return HttpResponse.json({ error: { code: 'FORBIDDEN', message: 'Chỉ đại diện CLB được tạo cơ hội của CLB mình.' } }, { status: 403 });
-    if (!body.title?.trim() || !body.description?.trim() || !Number.isInteger(body.quota) || Number(body.quota) < 1 || !Number.isFinite(Date.parse(body.registrationDeadline || '')) || Date.parse(body.registrationDeadline || '') <= Date.now()) return HttpResponse.json({ error: { code: 'CLUB_INVALID_REQUEST', message: 'Kiểm tra nội dung, chỉ tiêu và hạn đăng ký.' } }, { status: 400 });
+    const errors = validateRecruitment(body, Date.now(), body.status !== 'Draft');
+    if (Object.keys(errors).length) return HttpResponse.json({ error: { code: 'CLUB_INVALID_REQUEST', message: Object.values(errors)[0], details: errors } }, { status: 400 });
+    if (body.contactUserId && !club.representatives?.some(rep => rep.userId === body.contactUserId)) return HttpResponse.json({ error: { code: 'CLUB_INVALID_REQUEST', message: 'Người phụ trách phải là đại diện của CLB.' } }, { status: 400 });
 
     if (!['Event','MemberRecruitment','CollaboratorRecruitment'].includes(body.type || 'Event') || !['Draft','Published'].includes(body.status || 'Published') || body.positions?.some((position) => !position.name.trim() || !Number.isInteger(position.quota) || position.quota < 1)) return HttpResponse.json({ error: { code: 'CLUB_INVALID_REQUEST', message: 'Kiểm tra loại cơ hội, trạng thái và chỉ tiêu vị trí.' } }, { status: 400 });
     const newOpp: ClubOpportunity = {
-      id: `opp_${Date.now()}`,
+      id: `opp_${crypto.randomUUID()}`,
       clubId: club.id,
       clubName: club.name,
       clubCode: club.code,
@@ -175,7 +181,7 @@ export const clubHandlers = [
       clubCategory: club.category,
       createdById: user.id,
       createdByName: user.fullName,
-      type: body.type || 'Event',
+      type: body.type || 'MemberRecruitment',
       title: body.title || 'Cơ hội mới',
       summary: body.summary || '',
       description: body.description || '',
@@ -184,8 +190,14 @@ export const clubHandlers = [
       endAt: body.endAt,
       mode: body.mode,
       locationOrLink: body.locationOrLink,
-      confirmMode: body.confirmMode || 'Instant',
+      confirmMode: 'Approval',
       expectedCommitment: body.expectedCommitment,
+      department: body.department,
+      commitmentType: body.commitmentType,
+      contactUserId: body.contactUserId,
+      onboarding: body.onboarding,
+      coverImageUrl: body.coverImageUrl,
+      gallery: body.gallery,
       positions: body.positions?.map((position) => ({ ...position, registeredCount: 0 })),
       quota: body.quota || 30,
       used: 0,
@@ -201,6 +213,7 @@ export const clubHandlers = [
     };
 
     seedClubOpportunities.unshift(newOpp);
+    if (newOpp.status === 'Published') notifyRecruitmentPublished(newOpp);
     return HttpResponse.json({ data: newOpp });
   }),
 
@@ -217,7 +230,7 @@ export const clubHandlers = [
     if (!request.headers.get('Authorization')?.startsWith('Bearer mock_jwt_token_') || !canRepresentClub(getCurrentUserId(request), opp.clubId)) return HttpResponse.json({ error: { code: 'FORBIDDEN', message: 'Chỉ đại diện CLB phụ trách được quản lý cơ hội.' } }, { status: 403 });
     if (opp.status === 'Cancelled' || (opp.status === 'Expired' && body.status !== 'Cancelled')) return HttpResponse.json({ error: { code: 'CLUB_INVALID_REQUEST', message: 'Cơ hội đã kết thúc vòng đời.' } }, { status: 409 });
     if (body.status && (!['Draft','Published','Closed','Cancelled'].includes(body.status) || (body.status === 'Draft' && opp.status !== 'Draft'))) return HttpResponse.json({ error: { code: 'CLUB_INVALID_REQUEST', message: 'Chuyển trạng thái cơ hội không hợp lệ.' } }, { status: 409 });
-    if ((body.status === 'Published' || (opp.status === 'Published' && body.registrationDeadline)) && Date.parse(body.registrationDeadline || opp.registrationDeadline) <= Date.now()) return HttpResponse.json({ error: { code: 'CLUB_INVALID_REQUEST', message: 'Hạn đăng ký phải trong tương lai khi công bố.' } }, { status: 400 });
+    if ((body.status === 'Published' || (opp.status === 'Published' && body.registrationDeadline !== undefined && body.registrationDeadline !== opp.registrationDeadline)) && Date.parse(body.registrationDeadline || opp.registrationDeadline) <= Date.now()) return HttpResponse.json({ error: { code: 'CLUB_INVALID_REQUEST', message: 'Hạn đăng ký phải trong tương lai khi công bố.' } }, { status: 400 });
     if (body.clubId || body.createdById || body.used !== undefined || body.hasResponses !== undefined || body.id !== undefined || body.submittedCount !== undefined || body.createdByName !== undefined || body.clubName !== undefined) return HttpResponse.json({ error: { code: 'CLUB_INVALID_REQUEST', message: 'Không được thay chủ sở hữu hoặc sửa chỉ tiêu đã dùng.' } }, { status: 400 });
     if (body.quota !== undefined && (!Number.isInteger(body.quota) || body.quota < Math.max(1, opp.used))) return HttpResponse.json({ error: { code: 'CLUB_CAPACITY_INVALID', message: 'Chỉ tiêu không được thấp hơn số đã nhận.' } }, { status: 409 });
     if (body.status === 'Cancelled' && !body.cancelReason?.trim()) return HttpResponse.json({ error: { code: 'CLUB_INVALID_REQUEST', message: 'Nhập lý do hủy cơ hội.' } }, { status: 400 });
@@ -227,7 +240,17 @@ export const clubHandlers = [
       body.positions = body.positions.map((position) => ({ ...position, registeredCount: opp.positions?.find((old) => old.id === position.id)?.registeredCount || 0 }));
       if (body.positions.some((position) => !Number.isInteger(position.quota) || position.quota < Math.max(1, position.registeredCount))) return HttpResponse.json({ error: { code: 'CLUB_CAPACITY_INVALID', message: 'Chỉ tiêu vị trí không hợp lệ.' } }, { status: 409 });
     }
+    if (isRecruitment(opp)) {
+      const next = { ...opp, ...body };
+      const publishing = body.status === 'Published' && opp.status !== 'Published';
+      const errors = validateRecruitment(next, Date.now(), publishing);
+      if (Object.keys(errors).length) return HttpResponse.json({ error: { code: 'CLUB_INVALID_REQUEST', message: Object.values(errors)[0], details: errors } }, { status: 400 });
+      if ((next.status === 'Published' || next.status === 'Closed') && (!next.description.trim() || !Number.isFinite(Date.parse(next.resultDeadline || '')) || Date.parse(next.resultDeadline || '') < Date.parse(next.registrationDeadline))) return HttpResponse.json({ error: { code: 'CLUB_INVALID_REQUEST', message: 'Đợt tuyển công khai cần nội dung và hạn trả kết quả hợp lệ.' } }, { status: 400 });
+      if (body.contactUserId && !seedClubs.find(c => c.id === opp.clubId)?.representatives?.some(rep => rep.userId === body.contactUserId)) return HttpResponse.json({ error: { code: 'CLUB_INVALID_REQUEST', message: 'Người phụ trách phải là đại diện của CLB.' } }, { status: 400 });
+    }
+    const wasDraft = opp.status === 'Draft';
     Object.assign(opp, body, { updatedAt: new Date().toISOString() });
+    if (wasDraft && opp.status === 'Published') notifyRecruitmentPublished(opp);
     if (body.status === 'Cancelled') seedOpportunityResponses.filter((response) => response.opportunityId === opp.id && ['Submitted','UnderReview','NeedsMoreInfo','Confirmed','Accepted'].includes(response.status)).forEach((response) => {
       if (['Confirmed','Accepted'].includes(response.status)) { opp.used = Math.max(0,opp.used-1); const position = opp.positions?.find((item) => item.id === response.positionId); if (position) position.registeredCount = Math.max(0,position.registeredCount-1); }
       response.status = 'Cancelled'; response.visibleToCoParticipants = false; response.updatedAt = opp.updatedAt;

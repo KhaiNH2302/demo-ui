@@ -27,3 +27,14 @@ export const TIME_PRESETS = [
   'Chiều Thứ 7 & Chủ nhật (14:00 – 16:30)',
   'Linh hoạt, thỏa thuận theo tuần',
 ];
+
+// Các cơ sở của Trường Đại học FPT, dùng khi học gặp tại trường
+export const CAMPUSES = [
+  { value: 'hanoi', label: 'Hà Nội (Hòa Lạc)' },
+  { value: 'hcm', label: 'TP. Hồ Chí Minh' },
+  { value: 'danang', label: 'Đà Nẵng' },
+  { value: 'cantho', label: 'Cần Thơ' },
+  { value: 'quynhon', label: 'Quy Nhơn' },
+] as const;
+
+export const campusLabel = (value?: string) => CAMPUSES.find((campus) => campus.value === value)?.label;

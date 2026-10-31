@@ -4,7 +4,6 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { FormField } from '@/components/shared/FormField';
 import { TagInput } from '@/components/shared/TagInput';
-import { ScheduleInput } from '@/components/shared/ScheduleInput';
 import { AIResultCard } from '@/components/shared/AIResultCard';
 import { AIFallbackBanner } from '@/components/shared/AIFallbackBanner';
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton';
@@ -17,6 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Switch } from '@/components/ui/Switch';
 import { Input } from '@/components/ui/Input';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/Popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
 import { Textarea } from '@/components/ui/Textarea';
 import { toast } from '@/components/ui/Toast';
@@ -25,6 +25,7 @@ import { cn } from '@/lib/cn';
 import { CAMPUS_OPTIONS as campusOptions } from '@/lib/campuses';
 import {
   UsersRound,
+  Users,
   Plus,
   Sparkles,
   SlidersHorizontal,
@@ -67,7 +68,7 @@ export default function GroupsFindPage() {
   const { user } = useAuthStore();
   const [selectedCategory, setSelectedCategory] = useState<'all' | GroupCategory>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
   const [selectedCampus, setSelectedCampus] = useState('all');
   const [selectedGoal, setSelectedGoal] = useState('all');
   const [onlyAvailable, setOnlyAvailable] = useState(false);
@@ -173,7 +174,6 @@ export default function GroupsFindPage() {
     <div className="space-y-6 max-w-5xl mx-auto">
       <PageHeader
         title="Tìm nhóm đồ án, môn học & giải trí"
-        description="Nền tảng ghép nhóm sinh viên: minh bạch mục tiêu, rõ ràng vị trí còn thiếu và kết nối đồng đội phù hợp."
         actions={
           <div className="flex items-center gap-2">
             <Link to="/groups/me">
@@ -250,21 +250,122 @@ export default function GroupsFindPage() {
               Tìm kiếm
             </Button>
 
-            <Button
-              type="button"
-              variant={showAdvancedFilters ? 'primary' : 'outline'}
-              className={cn('h-10 px-3.5 flex items-center gap-1.5', showAdvancedFilters ? '' : 'text-neutral-700')}
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            >
-              <SlidersHorizontal size={15} />
-              <span>Bộ lọc nâng cao</span>
-              {activeAdvancedCount > 0 && (
-                <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[11px] bg-brand-100 text-brand-800 font-bold">
-                  {activeAdvancedCount}
-                </span>
-              )}
-              {showAdvancedFilters ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </Button>
+            <Popover open={filterPopoverOpen} onOpenChange={setFilterPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant={filterPopoverOpen || activeAdvancedCount > 0 ? 'primary' : 'outline'}
+                  className={cn(
+                    'h-10 px-3.5 flex items-center gap-1.5',
+                    filterPopoverOpen || activeAdvancedCount > 0 ? '' : 'text-neutral-700'
+                  )}
+                >
+                  <SlidersHorizontal size={15} />
+                  <span>Bộ lọc nâng cao</span>
+                  {activeAdvancedCount > 0 && (
+                    <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[11px] bg-white text-brand-800 font-bold">
+                      {activeAdvancedCount}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+
+              <PopoverContent
+                align="end"
+                sideOffset={8}
+                collisionPadding={12}
+                className="w-[340px] sm:w-[400px] max-h-[calc(100vh-140px)] p-0 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-surface shadow-2xl z-50 flex flex-col overflow-hidden"
+              >
+                {/* Header cố định */}
+                <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-900/60">
+                  <div className="flex items-center gap-1.5 font-semibold text-sm text-neutral-900 dark:text-neutral-100">
+                    <SlidersHorizontal size={15} className="text-brand-600" />
+                    <span>Bộ lọc nâng cao</span>
+                    {activeAdvancedCount > 0 && (
+                      <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-brand-100 text-brand-700 font-bold">
+                        {activeAdvancedCount}
+                      </span>
+                    )}
+                  </div>
+                  {activeAdvancedCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleResetFilters}
+                      className="text-xs text-brand-600 hover:text-brand-700 font-medium cursor-pointer"
+                    >
+                      Đặt lại
+                    </button>
+                  )}
+                </div>
+
+                {/* Body cuộn linh hoạt khi chiều cao màn hình nhỏ */}
+                <div className="p-4 space-y-3.5 flex-1 overflow-y-auto overscroll-contain">
+                  <FormField label="Cơ sở / Campus">
+                    <Select
+                      options={campusOptions}
+                      value={selectedCampus}
+                      onValueChange={setSelectedCampus}
+                    />
+                  </FormField>
+
+                  <FormField label="Mục tiêu cam kết">
+                    <Select
+                      options={goalOptions}
+                      value={selectedGoal}
+                      onValueChange={setSelectedGoal}
+                    />
+                  </FormField>
+
+                  <FormField label="Kỹ năng mong muốn">
+                    <TagInput
+                      value={skills}
+                      onChange={setSkills}
+                      suggestions={['React', 'TypeScript', 'Node.js', 'UI/UX']}
+                      placeholder="Nhập kỹ năng rồi bấm Enter..."
+                    />
+                  </FormField>
+
+                  <label className="flex items-center gap-2.5 text-xs font-semibold text-neutral-800 dark:text-neutral-200 cursor-pointer pt-0.5">
+                    <input
+                      type="checkbox"
+                      checked={onlyAvailable}
+                      onChange={(e) => setOnlyAvailable(e.target.checked)}
+                      className="rounded border-neutral-300 text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer"
+                    />
+                    <span>Chỉ hiện nhóm còn chỗ trống</span>
+                  </label>
+
+                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200 dark:border-neutral-700">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-neutral-800 dark:text-neutral-200">
+                      <Sparkles size={14} className="text-brand-600" /> Ghép nối AI thông minh
+                    </div>
+                    <Switch checked={useAi} onCheckedChange={setUseAi} />
+                  </div>
+                </div>
+
+                {/* Footer cố định - Luôn hiển thị nút Áp dụng và Đóng */}
+                <div className="shrink-0 px-4 py-3 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-900/60 flex items-center justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFilterPopoverOpen(false)}
+                    className="text-xs"
+                  >
+                    Đóng
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setFilterPopoverOpen(false);
+                      handleSearch();
+                    }}
+                    className="text-xs"
+                  >
+                    Áp dụng
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
 
             {(searchQuery || activeAdvancedCount > 0) && (
               <Button
@@ -280,62 +381,6 @@ export default function GroupsFindPage() {
             )}
           </div>
         </div>
-
-        {/* Collapsible Advanced Filters Panel */}
-        {showAdvancedFilters && (
-          <Card className="border border-neutral-200 bg-neutral-50/70 p-4 shadow-xs space-y-4 animate-in fade-in-50 duration-200">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <FormField label="Cơ sở / Campus">
-                <Select
-                  options={campusOptions}
-                  value={selectedCampus}
-                  onValueChange={setSelectedCampus}
-                />
-              </FormField>
-
-              <FormField label="Mục tiêu cam kết">
-                <Select
-                  options={goalOptions}
-                  value={selectedGoal}
-                  onValueChange={setSelectedGoal}
-                />
-              </FormField>
-
-              <div className="space-y-2 pt-1 sm:pt-6">
-                <label className="flex items-center gap-2 text-xs font-semibold text-neutral-800 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={onlyAvailable}
-                    onChange={(e) => setOnlyAvailable(e.target.checked)}
-                    className="rounded border-neutral-300 text-brand-600 focus:ring-brand-500"
-                  />
-                  <span>Chỉ hiện nhóm còn chỗ trống</span>
-                </label>
-
-                <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-neutral-200">
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-neutral-800">
-                    <Sparkles size={14} className="text-brand-600" /> Ghép nối AI thông minh
-                  </div>
-                  <Switch checked={useAi} onCheckedChange={setUseAi} />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-neutral-200/80">
-              <FormField label="Kỹ năng của bạn">
-                <TagInput
-                  value={skills}
-                  onChange={setSkills}
-                  suggestions={['React', 'TypeScript', 'Node.js', 'Java', 'UI/UX', 'Python', 'Cầu lông', 'Valorant']}
-                />
-              </FormField>
-
-              <FormField label="Khung giờ rảnh của bạn">
-                <ScheduleInput value={availability} onChange={setAvailability} />
-              </FormField>
-            </div>
-          </Card>
-        )}
       </div>
 
       {/* Main Results Container */}
@@ -376,115 +421,78 @@ export default function GroupsFindPage() {
                   : 'attention';
 
               const cardBody = (
-                <Card key={group.id} className="p-4 sm:p-5 hover:border-brand-300 transition-all shadow-xs space-y-3.5 bg-surface">
-                  {/* Top Row: Category + Goal + Campus Badges */}
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                    <div className="space-y-1.5 flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <Badge tier={categoryBadgeTier as any} size="sm" className="font-semibold">
-                          {categoryLabel}
-                        </Badge>
-                        {group.targetGoal && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                            <Target size={11} /> {group.targetGoal}
-                          </span>
-                        )}
-                        {group.campus && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-neutral-100 text-neutral-700">
-                            <MapPin size={11} /> {group.campus}
-                          </span>
-                        )}
-                        <Badge tier="neutral" size="sm">
-                          {group.joinMode === 'direct' ? 'Vào trực tiếp' : 'Duyệt hồ sơ'}
-                        </Badge>
-                      </div>
-                      <h3 className="text-base font-bold text-neutral-900 line-clamp-1">{group.name}</h3>
-                      <p className="text-xs text-neutral-600 line-clamp-2 leading-relaxed">{group.topic}</p>
-                    </div>
-
-                    {/* Quota Progress & Avatars */}
-                    <div className="flex flex-col items-start sm:items-end gap-1.5 shrink-0 min-w-[150px] p-2.5 rounded-lg bg-neutral-50 border border-neutral-100">
-                      <div className="flex items-center justify-between w-full text-xs gap-2">
-                        <span className={cn('font-bold', isFull ? 'text-red-600' : 'text-emerald-700')}>
-                          {isFull ? 'Đã đủ thành viên' : `Còn trống ${emptySlots} chỗ`}
+                <Card key={group.id} className="p-4 hover:border-brand-300 transition-all shadow-xs space-y-3 bg-surface">
+                  {/* Top: Badges & Quota */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge tier={categoryBadgeTier as any} size="sm" className="font-semibold">
+                        {categoryLabel}
+                      </Badge>
+                      {group.targetGoal && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                          <Target size={11} /> {group.targetGoal}
                         </span>
-                        <span className="text-neutral-500 font-medium">
-                          {group.memberCount}/{group.memberLimit}
+                      )}
+                      {group.campus && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-neutral-100 text-neutral-600">
+                          <MapPin size={11} /> {group.campus}
                         </span>
-                      </div>
-                      <div className="w-full bg-neutral-200 rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className={cn('h-full transition-all', isFull ? 'bg-red-500' : 'bg-emerald-500')}
-                          style={{ width: `${percent}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between w-full pt-0.5">
-                        <span className="text-[11px] text-neutral-400">Thành viên:</span>
-                        <AvatarStack
-                          users={[{ name: owner.fullName }, { name: 'Thành viên' }]}
-                          max={3}
-                          size="sm"
-                        />
-                      </div>
+                      )}
                     </div>
+                    <span className={cn('text-xs font-semibold px-2.5 py-0.5 rounded-full', isFull ? 'bg-red-50 text-red-600' : 'bg-neutral-100 text-neutral-700')}>
+                      <Users size={12} className="inline mr-1" />
+                      {group.memberCount}/{group.memberLimit} thành viên
+                    </span>
                   </div>
 
-                  {/* Role Matrix: Roles filled and Roles needed */}
-                  {group.rolesNeeded && group.rolesNeeded.length > 0 && (
-                    <div className="p-2.5 rounded-lg bg-neutral-50/80 border border-neutral-200 text-xs space-y-1.5">
-                      <div className="text-[11px] font-semibold text-neutral-700">Vị trí nhóm đang khuyết:</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {group.rolesNeeded.map((role) => (
+                  {/* Title & Topic */}
+                  <div>
+                    <h3 className="text-base font-bold text-neutral-900 hover:text-brand-600 transition-colors line-clamp-1">
+                      <Link to={`/groups/${group.id}`}>{group.name}</Link>
+                    </h3>
+                    <p className="text-xs text-neutral-600 line-clamp-1 mt-0.5 leading-relaxed">{group.topic}</p>
+                  </div>
+
+                  {/* Key Role needed (chỉ hiển thị vị trí cần tuyển nếu nhóm chưa đầy) */}
+                  {group.rolesNeeded && group.rolesNeeded.length > 0 && !isFull && (
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <span className="text-[11px] text-neutral-500 font-medium">Cần tuyển:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {group.rolesNeeded.slice(0, 2).map((role) => (
                           <span
                             key={role}
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 rounded px-2 py-0.5"
+                            className="px-2 py-0.5 text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 rounded"
                           >
-                            🔍 Tuyển: {role}
+                            🔍 {role}
                           </span>
                         ))}
-                        {group.rolesFilled?.map((role) => (
-                          <span
-                            key={role}
-                            className="inline-flex items-center gap-1 text-[11px] font-medium bg-neutral-200/60 text-neutral-600 rounded px-2 py-0.5"
-                          >
-                            ✓ {role}
-                          </span>
-                        ))}
+                        {group.rolesNeeded.length > 2 && (
+                          <span className="text-[11px] text-neutral-400">+{group.rolesNeeded.length - 2}</span>
+                        )}
                       </div>
                     </div>
                   )}
 
-                  {/* Tags: Skills needed & Activity time */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                    <span className="text-[11px] font-semibold text-neutral-500 mr-0.5">Kỹ năng/Yêu cầu:</span>
-                    {group.skills.map((s) => (
-                      <span
-                        key={s}
-                        className="text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200 rounded px-2 py-0.5"
-                      >
-                        {s}
-                      </span>
-                    ))}
+                  {/* Footer: Owner & Actions */}
+                  <div className="flex items-center justify-between pt-2.5 border-t border-neutral-100 text-xs">
+                    <span className="text-[11px] text-neutral-500 truncate max-w-[200px]">
+                      Trưởng nhóm: <strong className="text-neutral-700 font-medium">{owner.fullName}</strong>
+                    </span>
 
-                    {group.activityTime && group.activityTime.length > 0 && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200 rounded px-2 py-0.5 ml-auto">
-                        <Clock size={11} /> {group.activityTime[0].day} {group.activityTime[0].start}-{group.activityTime[0].end}
-                      </span>
-                    )}
-                  </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Link to={`/groups/${group.id}`}>
+                        <Button size="sm" variant="outline" className="text-xs">
+                          Chi tiết
+                        </Button>
+                      </Link>
 
-                  {/* Footer Row: Owner Mini Card + Action Buttons */}
-                  <div className="flex items-center justify-between pt-3 border-t border-neutral-100 text-xs">
-                    <UserMiniCard user={owner} size="sm" subtitle="Trưởng nhóm" linkToProfile={false} />
-
-                    <div className="flex items-center gap-2">
                       {isFull ? (
-                        <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-neutral-100 text-neutral-500">
-                          Đã đủ thành viên
+                        <span className="text-xs text-neutral-400 font-medium px-2 py-1">
+                          Đã đủ
                         </span>
                       ) : hasApplied ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <CheckCircle2 size={13} className="text-emerald-600" /> Đã gửi yêu cầu
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <CheckCircle2 size={13} className="text-emerald-600" /> Đã gửi
                         </span>
                       ) : (
                         <Button
@@ -494,17 +502,12 @@ export default function GroupsFindPage() {
                             setSelectedJoinGroup(group);
                             setAppliedRole(group.rolesNeeded?.[0] || '');
                           }}
+                          className="text-xs"
                           leftIcon={<UserCheck size={14} />}
                         >
-                          Xin tham gia
+                          Xin vào
                         </Button>
                       )}
-
-                      <Link to={`/groups/${group.id}`}>
-                        <Button size="sm" variant="outline" rightIcon={<ArrowRight size={14} />}>
-                          Chi tiết
-                        </Button>
-                      </Link>
                     </div>
                   </div>
                 </Card>

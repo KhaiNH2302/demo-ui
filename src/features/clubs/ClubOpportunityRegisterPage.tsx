@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -25,7 +25,7 @@ export const ClubOpportunityRegisterPage: React.FC = () => {
   const { user, isRepresentativeOf } = useAuthStore();
 
   const { data: opp, isLoading, isError, refetch } = useQuery<OpportunityWithMyResponse>({
-    queryKey: ['club-opportunity', oppId],
+    queryKey: ['club-opportunity', oppId, user?.id],
     queryFn: () => apiClient.get(`/clubs/opportunities/${oppId}`),
     enabled: !!oppId,
   });
@@ -35,9 +35,11 @@ export const ClubOpportunityRegisterPage: React.FC = () => {
   const [note, setNote] = useState('');
   const [visibleToCoParticipants, setVisibleToCoParticipants] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const hydrated = useRef('');
 
   useEffect(() => {
-    if (opp) {
+    if (opp && hydrated.current !== `${opp.id}:${user?.id}`) {
+      hydrated.current = `${opp.id}:${user?.id}`;
       if (opp.myResponse) {
         setPositionId(opp.myResponse.positionId || '');
         const map: Record<string, string | string[]> = {};
@@ -47,11 +49,11 @@ export const ClubOpportunityRegisterPage: React.FC = () => {
         setAnswers(map);
         setNote(opp.myResponse.note || '');
         setVisibleToCoParticipants(opp.myResponse.visibleToCoParticipants);
-      } else if (opp.positions && opp.positions.length > 0 && !positionId) {
+      } else if (opp.positions && opp.positions.length > 0) {
         setPositionId(opp.positions.find((position) => position.registeredCount < position.quota)?.id || '');
       }
     }
-  }, [opp]);
+  }, [opp, user?.id]);
 
   const submitMutation = useMutation({
     mutationFn: (isDraft: boolean) => {
@@ -86,7 +88,7 @@ export const ClubOpportunityRegisterPage: React.FC = () => {
     return <Card className="h-72 animate-pulse bg-neutral-100" />;
   }
 
-  const unavailable = clubRegistrationUnavailable(opp, opp.myResponse, positionId) || (isRepresentativeOf(opp.clubId) ? 'Đại diện CLB không đăng ký cơ hội của chính CLB mình.' : null);
+  const unavailable = clubRegistrationUnavailable(opp, opp.myResponse) || (isRepresentativeOf(opp.clubId) ? 'Đại diện CLB không đăng ký cơ hội của chính CLB mình.' : null);
   if (unavailable) return <div className="space-y-4"><ErrorState title="Không thể đăng ký" message={unavailable} /><Link to={`/clubs/opportunities/${opp.id}`} className="text-brand-600">Quay lại cơ hội</Link></div>;
 
   const isSupplementMode = opp.myResponse?.status === 'NeedsMoreInfo';
@@ -94,6 +96,10 @@ export const ClubOpportunityRegisterPage: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const nextErrors: Record<string, string> = {};
+    if (opp.positions?.length) {
+      const selected = opp.positions.find(position => position.id === positionId);
+      if (!selected || selected.registeredCount >= selected.quota) nextErrors.position = 'Chọn một vị trí còn chỉ tiêu.';
+    }
     (opp.questions || []).forEach((q) => {
       if (q.required) {
         const val = answers[q.id];
@@ -176,12 +182,12 @@ export const ClubOpportunityRegisterPage: React.FC = () => {
         </Card>
 
         {/* Position Selector for CollaboratorRecruitment */}
-        {opp.type === 'CollaboratorRecruitment' &&
+        {opp.type !== 'Event' &&
           opp.positions &&
           opp.positions.length > 0 && (
             <Card className="p-5 space-y-3">
               <h3 className="text-card-title text-neutral-900">
-                2. Chọn vị trí Cộng tác viên mong muốn <span className="text-tier-danger-text">*</span>
+                Chọn vị trí / ban mong muốn <span className="text-tier-danger-text">*</span>
               </h3>
               <div className="space-y-2">
                 {opp.positions.map((pos) => (
@@ -192,6 +198,7 @@ export const ClubOpportunityRegisterPage: React.FC = () => {
                     <input
                       type="radio"
                       name="opp-position"
+                      disabled={pos.registeredCount >= pos.quota}
                       checked={positionId === pos.id}
                       onChange={() => setPositionId(pos.id)}
                       className="mt-1 text-brand-600 focus:ring-brand-500"
@@ -208,6 +215,7 @@ export const ClubOpportunityRegisterPage: React.FC = () => {
                   </label>
                 ))}
               </div>
+              {errors.position && <p role="alert" className="text-sm text-tier-danger-text">{errors.position}</p>}
             </Card>
           )}
 

@@ -39,7 +39,10 @@ export const AdminShell: React.FC = () => {
   const { resolvedTheme, toggleTheme } = useThemeStore();
 
   // Manager chỉ thấy module được cấp; School Admin chỉ thấy Dashboard & Xác thực SV trường; Admin duy nhất thấy toàn bộ.
-  const managerPermissions = user?.adminPermissions?.length ? user.adminPermissions : ['dashboard'];
+  const managerPermissions = [...new Set([
+    ...(user?.adminPermissions?.length ? user.adminPermissions : ['dashboard']),
+    ...(user?.roles.includes('event_manager') ? ['programs'] : []),
+  ])];
   const operationsNavItems = [
     { to: '/admin', label: 'Tổng quan', icon: LayoutDashboard, end: true, permission: 'dashboard' },
     { to: '/admin/school-affiliations', label: 'Xác thực SV trường', icon: UserCheck, schoolAdmin: true, permission: 'school_affiliations' },

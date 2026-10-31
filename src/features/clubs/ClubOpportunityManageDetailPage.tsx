@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -30,27 +30,33 @@ import { apiClient } from '@/lib/apiClient';
 import { toast } from '@/components/ui/Toast';
 import { useAuthStore } from '@/store/authStore';
 import { ErrorState } from '@/components/shared/ErrorState';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { formatClubDate, isResultOverdue } from './recruitment';
 import type { ClubOpportunity, OpportunityResponse } from '@/types/entities';
 import type { OpportunityResponseStatus } from '@/types/status';
 
 export const ClubOpportunityManageDetailPage: React.FC = () => {
   const { oppId } = useParams<{ oppId: string }>();
   const queryClient = useQueryClient();
-  const { isRepresentativeOf } = useAuthStore();
+  const navigate = useNavigate();
+  const { user, isRepresentativeOf } = useAuthStore();
 
   const [selectedResponse, setSelectedResponse] = useState<OpportunityResponse | null>(null);
   const [feedbackNote, setFeedbackNote] = useState('');
   const [closeReasonOpen, setCloseReasonOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [search, setSearch] = useState('');
 
   const { data: opp, isLoading, isError, refetch } = useQuery<ClubOpportunity>({
-    queryKey: ['club-opportunity', oppId],
+    queryKey: ['club-opportunity', oppId, user?.id],
     queryFn: () => apiClient.get(`/clubs/opportunities/${oppId}`),
     enabled: !!oppId,
   });
 
-  const { data: responses = [], isError: responsesError, refetch: refetchResponses } = useQuery<OpportunityResponse[]>({
-    queryKey: ['club-opportunity-responses', oppId],
+  const { data: responses = [], isPending: responsesLoading, isError: responsesError, refetch: refetchResponses } = useQuery<OpportunityResponse[]>({
+    queryKey: ['club-opportunity-responses', oppId, user?.id],
     queryFn: () => apiClient.get(`/clubs/opportunities/${oppId}/responses`),
     enabled: !!oppId && !!opp && isRepresentativeOf(opp.clubId),
   });
@@ -69,6 +75,8 @@ export const ClubOpportunityManageDetailPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['club-opportunity-responses', oppId] });
       queryClient.invalidateQueries({ queryKey: ['club-opportunity', oppId] });
+      queryClient.invalidateQueries({ queryKey: ['clubs'] });
+      queryClient.invalidateQueries({ queryKey: ['club-registration'] });
       setSelectedResponse(null);
       setFeedbackNote('');
       toast.success('Đã cập nhật kết quả phản hồi cho sinh viên');
@@ -86,6 +94,12 @@ export const ClubOpportunityManageDetailPage: React.FC = () => {
     },
   });
 
+  const openConversation = useMutation({
+    mutationFn: (responseId: string) => apiClient.post<{ id: string }>(`/clubs/registrations/${responseId}/conversation`),
+    onSuccess: data => { queryClient.invalidateQueries({ queryKey: ['chat', 'conversations'] }); navigate(`/chats/${data.id}`); },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   if (isError || (!isLoading && !opp)) return <ErrorState title="Không thể tải cơ hội CLB" onRetry={() => refetch()} />;
   if (isLoading || !opp) {
     return <Card className="h-72 animate-pulse bg-neutral-100" />;
@@ -93,19 +107,21 @@ export const ClubOpportunityManageDetailPage: React.FC = () => {
 
   if (!isRepresentativeOf(opp.clubId)) return <ErrorState title="Cần quyền đại diện CLB" message="Bạn không có quyền quản lý cơ hội của CLB này." />;
   if (responsesError) return <ErrorState title="Không thể tải đăng ký" onRetry={() => refetchResponses()} />;
+  if (responsesLoading) return <p role="status">Đang tải hồ sơ ứng tuyển…</p>;
 
-  const confirmedList = responses.filter(
+  const filteredResponses = responses.filter(response => (statusFilter === 'all' || response.status === statusFilter) && `${response.profileSnapshot.fullName} ${response.profileSnapshot.studentCode} ${response.positionName || ''}`.toLocaleLowerCase('vi').includes(search.toLocaleLowerCase('vi')));
+  const overdueCount = responses.filter(response => isResultOverdue(response, opp)).length;
+
+  const confirmedList = filteredResponses.filter(
     (r) => r.status === 'Confirmed' || r.status === 'Accepted'
   );
 
   const handleExportCsv = () => {
     const headers = ['Họ tên,MSSV,Email,Ngành,Khóa,Vị trí,Trạng thái'];
-    const rows = confirmedList.map(
-      (r) =>
-        `"${r.profileSnapshot.fullName}","${r.profileSnapshot.studentCode}","${r.profileSnapshot.email}","${r.profileSnapshot.major}","${r.profileSnapshot.cohort}","${r.positionName || ''}","${r.status}"`
-    );
+    const cell = (value: string) => '"' + (/^[=+@-]/.test(value) ? "'" : '') + value.replace(/"/g, '""') + '"';
+    const rows = confirmedList.map(r => [r.profileSnapshot.fullName, r.profileSnapshot.studentCode, r.profileSnapshot.email, r.profileSnapshot.major, r.profileSnapshot.cohort, r.positionName || '', r.status].map(cell).join(','));
     const csv = [headers, ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -174,6 +190,8 @@ export const ClubOpportunityManageDetailPage: React.FC = () => {
         </div>
       </Card>
 
+      {overdueCount > 0 && <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">Có {overdueCount} hồ sơ chưa nhận kết quả đúng hẹn ({formatClubDate(opp.resultDeadline)}). Bạn vẫn có thể xử lý đơn; sinh viên sẽ nhận thông báo khi có quyết định.</div>}
+      <div className="flex flex-col gap-3 sm:flex-row"><Input aria-label="Tìm hồ sơ ứng tuyển" placeholder="Tìm tên, MSSV, vị trí…" value={search} onChange={event => setSearch(event.target.value)}/><Select aria-label="Lọc trạng thái hồ sơ" value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="all">Tất cả trạng thái</option><option value="Submitted">Mới nộp</option><option value="UnderReview">Đang xem xét</option><option value="NeedsMoreInfo">Cần bổ sung</option><option value="Accepted">Được nhận</option><option value="Rejected">Từ chối</option><option value="Withdrawn">Đã rút</option></Select></div>
       <Tabs defaultValue="responses">
         <TabsList>
           <TabsTrigger value="responses">
@@ -186,9 +204,9 @@ export const ClubOpportunityManageDetailPage: React.FC = () => {
 
         {/* TAB 1: ALL RESPONSES */}
         <TabsContent value="responses" className="space-y-4">
-          {responses.length === 0 ? (
+          {filteredResponses.length === 0 ? (
             <EmptyState
-              title="Chưa có sinh viên nào gửi đăng ký"
+              title="Không có hồ sơ phù hợp"
               description="Khi sinh viên gửi đơn, danh sách sẽ hiển thị tại đây để bạn xem xét."
             />
           ) : (
@@ -199,8 +217,8 @@ export const ClubOpportunityManageDetailPage: React.FC = () => {
                     <tr>
                       <th className="py-3 px-4">Sinh viên</th>
                       <th className="py-3 px-4">Ngành / Khóa</th>
-                      {opp.type === 'CollaboratorRecruitment' && (
-                        <th className="py-3 px-4">Vị trí CTV</th>
+                      {Boolean(opp.positions?.length) && (
+                        <th className="py-3 px-4">Vị trí / Ban</th>
                       )}
                       <th className="py-3 px-4">Ngày gửi</th>
                       <th className="py-3 px-4">Trạng thái</th>
@@ -208,7 +226,7 @@ export const ClubOpportunityManageDetailPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
-                    {responses.map((r) => (
+                    {filteredResponses.map((r) => (
                       <tr key={r.id} className="hover:bg-neutral-50/70">
                         <td className="py-3 px-4">
                           <div className="font-semibold text-neutral-900">
@@ -221,7 +239,7 @@ export const ClubOpportunityManageDetailPage: React.FC = () => {
                         <td className="py-3 px-4 text-neutral-600">
                           {r.profileSnapshot.major} · {r.profileSnapshot.cohort}
                         </td>
-                        {opp.type === 'CollaboratorRecruitment' && (
+                        {Boolean(opp.positions?.length) && (
                           <td className="py-3 px-4 text-neutral-700 font-medium">
                             {r.positionName || '—'}
                           </td>
@@ -294,15 +312,15 @@ export const ClubOpportunityManageDetailPage: React.FC = () => {
                       {r.positionName ? ` · ${r.positionName}` : ''}
                     </div>
                   </div>
-                  <Link to="/chats">
                     <Button
                       variant="secondary"
                       size="sm"
                       leftIcon={<MessageSquare className="h-3.5 w-3.5" />}
+                      loading={openConversation.isPending && openConversation.variables === r.id}
+                      onClick={() => openConversation.mutate(r.id)}
                     >
                       Nhắn tin
                     </Button>
-                  </Link>
                 </Card>
               ))}
             </div>
@@ -375,6 +393,7 @@ export const ClubOpportunityManageDetailPage: React.FC = () => {
               </div>
 
               <DialogFooter className="flex-wrap gap-2">
+                {selectedResponse.status === 'Submitted' && <Button variant="outline" size="sm" loading={reviewMutation.isPending} onClick={() => reviewMutation.mutate({ responseId: selectedResponse.id, status: 'UnderReview' })}>Bắt đầu xem xét</Button>}
                 <Button
                   variant="secondary"
                   size="sm"

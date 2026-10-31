@@ -6,17 +6,13 @@ import {
   Calendar,
   Clock,
   Flag,
-  HelpCircle,
   Info,
   MapPin,
-  MessageSquare,
-  Send,
   Settings,
   Users,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { OPPORTUNITY_TYPE_LABELS } from '@/components/shared/OpportunityCard';
 import {
@@ -30,6 +26,9 @@ import { useAuthStore } from '@/store/authStore';
 import { useGuardedAction } from '@/lib/guestGate';
 import { toast } from '@/components/ui/Toast';
 import { ErrorState } from '@/components/shared/ErrorState';
+import { RecruitmentQuestions } from './RecruitmentQuestions';
+import { ClubSaveButton } from './ClubRecruitmentActions';
+import { isRecruitment } from './recruitment';
 import { clubRegistrationUnavailable } from '@/features/programs/rules';
 import type { ClubOpportunity, OpportunityResponse } from '@/types/entities';
 
@@ -42,43 +41,11 @@ export const ClubOpportunityDetailPage: React.FC = () => {
   const { oppId } = useParams<{ oppId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { isRepresentativeOf } = useAuthStore();
+  const { user, isRepresentativeOf } = useAuthStore();
   const guard = useGuardedAction();
   const [reportOpen, setReportOpen] = useState(false);
-  const [newFaqQuestion, setNewFaqQuestion] = useState('');
-  const [faqs, setFaqs] = useState([
-    {
-      id: 'faq-1',
-      question: 'Sinh viên năm nhất (K19/K20) chưa có kinh nghiệm thực tế có ứng tuyển được không?',
-      answer: 'Hoàn toàn được! CLB chú trọng vào tinh thần trách nhiệm, ham học hỏi và thời gian cam kết. Các bạn sẽ được training bài bản trong 2 tuần onboarding đầu tiên.',
-      author: 'Trưởng ban Tuyển dụng CLB',
-    },
-    {
-      id: 'faq-2',
-      question: 'Làm Cộng tác viên (CTV) khác gì so với Thành viên chính thức?',
-      answer: 'Cộng tác viên tham gia hỗ trợ ngắn hạn theo từng chiến dịch/sự kiện (thường 2-4 tuần), phù hợp với bạn muốn trải nghiệm mà không bị gò bó cam kết cả kỳ. Thành viên chính thức gắn bó dài hạn và tham gia ban điều hành.',
-      author: 'Ban Nhân sự CLB',
-    },
-  ]);
-
-  const handleAskFaq = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newFaqQuestion.trim()) return;
-    setFaqs((prev) => [
-      ...prev,
-      {
-        id: `faq-${Date.now()}`,
-        question: newFaqQuestion.trim(),
-        answer: 'Câu hỏi của bạn đã được ghi nhận. Ban chủ nhiệm CLB sẽ trả lời và hiển thị công khai tại đây sớm nhất!',
-        author: 'Tôi',
-      },
-    ]);
-    setNewFaqQuestion('');
-    toast.success('Đã gửi câu hỏi tới Ban chủ nhiệm CLB!');
-  };
-
   const { data: opp, isLoading, isError, refetch } = useQuery<OpportunityDetailData>({
-    queryKey: ['club-opportunity', oppId],
+    queryKey: ['club-opportunity', oppId, user?.id],
     queryFn: () => apiClient.get(`/clubs/opportunities/${oppId}`),
     enabled: !!oppId,
   });
@@ -134,16 +101,17 @@ export const ClubOpportunityDetailPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Back Bar */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           to="/clubs"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Quay lại Kết nối CLB</span>
+          <span>Quay lại cơ hội ứng tuyển</span>
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {isRecruitment(opp) && <ClubSaveButton opportunityId={opp.id}/>}
           {isRep && (
             <Link to={`/clubs/manage/${opp.id}`}>
               <Button
@@ -208,6 +176,7 @@ export const ClubOpportunityDetailPage: React.FC = () => {
             <h1 className="text-page-title text-neutral-900">{opp.title}</h1>
             <p className="text-meta text-neutral-600 font-medium">{opp.summary}</p>
 
+            {opp.type === 'Event' && <p className="text-sm text-neutral-600">Sự kiện thuộc luồng CLB cũ. <Link to="/programs" className="font-medium text-brand-700 underline">Khám phá sự kiện mới tại Hoạt động</Link>.</p>}
             {/* Key Attributes Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-lg bg-neutral-50 border border-neutral-200 text-sm">
               {opp.type === 'Event' && opp.startAt && (
@@ -282,12 +251,12 @@ export const ClubOpportunityDetailPage: React.FC = () => {
             )}
 
             {/* Positions Table for CollaboratorRecruitment */}
-            {opp.type === 'CollaboratorRecruitment' &&
+            {opp.type !== 'Event' &&
               opp.positions &&
               opp.positions.length > 0 && (
                 <div className="space-y-2.5 pt-3 border-t border-neutral-100">
                   <h3 className="text-card-title text-neutral-900">
-                    Các vị trí Cộng tác viên đang tuyển
+                    Các vị trí / ban đang tuyển
                   </h3>
                   <div className="overflow-x-auto border border-neutral-200 rounded-lg">
                     <table className="w-full text-left text-sm">
@@ -330,52 +299,7 @@ export const ClubOpportunityDetailPage: React.FC = () => {
             </div>
           </Card>
 
-          {/* Mục "Hỏi đáp trước khi ứng tuyển" */}
-          <Card className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <HelpCircle className="h-5 w-5 text-brand-600" />
-                <h3 className="text-section-title text-neutral-900">
-                  Hỏi đáp trước khi ứng tuyển
-                </h3>
-              </div>
-              <span className="text-caption text-neutral-500">
-                {faqs.length} câu hỏi thường gặp
-              </span>
-            </div>
-            <p className="text-caption text-neutral-600">
-              Đặt câu hỏi làm rõ yêu cầu tuyển dụng, cam kết thời gian hoặc lộ trình đào tạo trước khi gửi đơn để CLB giải đáp trực tiếp.
-            </p>
-
-            <div className="space-y-3">
-              {faqs.map((faq) => (
-                <div key={faq.id} className="p-3.5 rounded-lg border border-neutral-200 bg-neutral-50 space-y-1.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-semibold text-neutral-900">
-                      Q: {faq.question}
-                    </span>
-                    <span className="text-caption text-neutral-400 shrink-0">{faq.author}</span>
-                  </div>
-                  <p className="text-body-sm text-neutral-700 bg-white p-2.5 rounded border border-neutral-150">
-                    <span className="font-semibold text-brand-600">CLB trả lời: </span>
-                    {faq.answer}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <form onSubmit={handleAskFaq} className="pt-2 flex gap-2">
-              <Input
-                placeholder="Đặt câu hỏi của bạn cho Ban nhân sự CLB..."
-                value={newFaqQuestion}
-                onChange={(e) => setNewFaqQuestion(e.target.value)}
-                className="flex-1"
-              />
-              <Button type="submit" variant="secondary" size="sm" leftIcon={<Send className="h-3.5 w-3.5" />}>
-                Gửi câu hỏi
-              </Button>
-            </form>
-          </Card>
+          {isRecruitment(opp) && <RecruitmentQuestions opportunityId={opp.id} canAnswer={isRep} acceptingQuestions={['Published', 'Closed'].includes(opp.status)}/>}
 
           {/* CoParticipantsPanel (CL11) shown when Confirmed / Accepted */}
           {isConfirmedOrAccepted && (
@@ -395,7 +319,7 @@ export const ClubOpportunityDetailPage: React.FC = () => {
           <Card className="p-5 space-y-4">
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-neutral-600">Tiến độ chỉ tiêu</span>
+                <span className="text-neutral-600">Chỉ tiêu đã được nhận</span>
                 <span className="font-semibold text-neutral-900">
                   {opp.used} / {opp.quota} chỗ
                 </span>
@@ -416,6 +340,7 @@ export const ClubOpportunityDetailPage: React.FC = () => {
               </div>
             </div>
 
+            {opp.resultDeadline && <p className="text-sm text-neutral-600">Dự kiến trả kết quả: <strong className="text-neutral-900">{new Date(opp.resultDeadline).toLocaleString('vi-VN')}</strong></p>}
             {myResponse && !['Withdrawn', 'Cancelled', 'Draft'].includes(myResponse.status) ? (
               <div className="p-3.5 rounded-lg bg-neutral-50 border border-neutral-200 space-y-3">
                 <div className="flex items-center justify-between">
@@ -444,16 +369,7 @@ export const ClubOpportunityDetailPage: React.FC = () => {
                       Xem chi tiết đơn đã nộp
                     </Button>
                   </Link>
-                  <Link to="/chats">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full"
-                      leftIcon={<MessageSquare className="h-4 w-4" />}
-                    >
-                      Nhắn tin cho đại diện CLB
-                    </Button>
-                  </Link>
+
                 </div>
               </div>
             ) : (

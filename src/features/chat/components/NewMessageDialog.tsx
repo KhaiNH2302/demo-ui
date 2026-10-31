@@ -23,7 +23,7 @@ import type { User } from '@/types/entities';
 export interface NewMessageDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  defaultTargetUser?: User | { id: string; fullName: string; avatarUrl?: string };
+  defaultTargetUser?: User | { id: string; fullName: string; avatarUrl?: string; major?: string };
 }
 
 export const NewMessageDialog: React.FC<NewMessageDialogProps> = ({

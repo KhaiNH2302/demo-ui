@@ -21,7 +21,7 @@ export function clubRegistrationUnavailable(opportunity: ClubOpportunity, existi
   if (existing && !['Draft', 'NeedsMoreInfo', 'Withdrawn', 'Cancelled'].includes(existing.status)) return 'Bạn đã có đăng ký cho cơ hội này.';
   if (supplement) {
     if (!['Published', 'Closed'].includes(opportunity.status)) return 'Cơ hội không còn nhận bổ sung.';
-    if (Date.parse(opportunity.resultDeadline || opportunity.registrationDeadline) <= now) return 'Đã hết hạn bổ sung và trả kết quả.';
+    // The expected result date is a service commitment, not a cutoff that can strand a requested supplement.
   } else {
     if (opportunity.status !== 'Published') return 'Cơ hội không còn mở đăng ký.';
     if (!Number.isFinite(Date.parse(opportunity.registrationDeadline)) || Date.parse(opportunity.registrationDeadline) <= now) return 'Đã hết hạn đăng ký.';

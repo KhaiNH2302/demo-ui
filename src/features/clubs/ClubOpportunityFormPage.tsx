@@ -1,765 +1,857 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Copy, FileText, Plus, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowLeft, Copy, FileText, Plus, Trash2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Select } from '@/components/ui/Select';
+import { FormField } from '@/components/shared/FormField';
 import { QuestionBuilder } from '@/components/shared/QuestionBuilder';
 import { DynamicForm } from '@/components/shared/DynamicForm';
 import { CoverImagePicker } from '@/components/shared/CoverImagePicker';
 import { ImageUploader } from '@/components/shared/ImageUploader';
-import { OPPORTUNITY_TYPE_LABELS } from '@/components/shared/OpportunityCard';
+import { ErrorState } from '@/components/shared/ErrorState';
 import { apiClient } from '@/lib/apiClient';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from '@/components/ui/Toast';
+import {
+  DEPARTMENTS,
+  formatClubDate,
+  isRecruitment,
+  reuseRecruitment,
+  validateRecruitment,
+} from './recruitment';
 import type {
+  Club,
   ClubOpportunity,
   FormQuestion,
-  MediaImageItem,
   OpportunityPosition,
 } from '@/types/entities';
-import type { OpportunityType } from '@/types/status';
 
-export const ClubOpportunityFormPage: React.FC = () => {
+type FormState = Pick<
+  ClubOpportunity,
+  | 'type'
+  | 'title'
+  | 'summary'
+  | 'description'
+  | 'tags'
+  | 'quota'
+  | 'expectedCommitment'
+  | 'department'
+  | 'commitmentType'
+  | 'contactUserId'
+  | 'questions'
+  | 'positions'
+  | 'coverImageUrl'
+  | 'gallery'
+  | 'registrationDeadline'
+  | 'resultDeadline'
+  | 'onboarding'
+  | 'locationOrLink'
+  | 'mode'
+>;
+const localInput = (value?: string) => {
+  if (!value || !Number.isFinite(Date.parse(value))) return '';
+  const date = new Date(value);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+};
+const future = (days: number) =>
+  localInput(new Date(Date.now() + days * 86400000).toISOString());
+const blank = (): FormState => ({
+  type: 'MemberRecruitment',
+  title: '',
+  summary: '',
+  description: '',
+  tags: [],
+  quota: 20,
+  expectedCommitment: '',
+  department: 'other',
+  commitmentType: 'semester',
+  questions: [],
+  positions: [],
+  registrationDeadline: future(7),
+  resultDeadline: future(10),
+  locationOrLink: '',
+  mode: 'Offline',
+});
+const steps = [
+  'Thông tin đợt tuyển',
+  'Chỉ tiêu & thời hạn',
+  'Câu hỏi ứng tuyển',
+  'Xem trước & công bố',
+];
+
+export function ClubOpportunityFormPage() {
   const { oppId } = useParams<{ oppId: string }>();
-  const [searchParams] = useSearchParams();
-  const isEdit = Boolean(oppId);
+  const [params] = useSearchParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { representedClubs } = useAuthStore();
-
-  const initialStep = Math.min(Math.max(Number(searchParams.get('step')) || 1, 1), 4);
-  const [step, setStep] = useState(initialStep);
-
-  useEffect(() => {
-    const requestedStep = Number(searchParams.get('step'));
-    if (Number.isInteger(requestedStep) && requestedStep >= 1 && requestedStep <= 4) {
-      setStep(requestedStep);
-    }
-  }, [searchParams]);
+  const client = useQueryClient();
+  const { user, representedClubs, isRepresentativeOf } = useAuthStore();
   const [clubId, setClubId] = useState(
-    searchParams.get('clubId') || representedClubs[0]?.clubId || 'club_01'
+    params.get('clubId') || representedClubs[0]?.clubId || ''
   );
-  const [type, setType] = useState<OpportunityType>('Event');
-  const [title, setTitle] = useState('');
-  const [summary, setSummary] = useState('');
-  const [description, setDescription] = useState('');
-  const [tagsInput, setTagsInput] = useState('Kỹ năng, Sinh viên FPT');
-  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
-  const [gallery, setGallery] = useState<MediaImageItem[]>([]);
-
-  // Step 2: Type specifics + Quota/Deadlines
-  const [startAt, setStartAt] = useState('2026-10-15T14:00');
-  const [endAt, setEndAt] = useState('2026-10-15T17:00');
-  const [mode, setMode] = useState<'Online' | 'Offline' | 'Hybrid'>('Offline');
-  const [locationOrLink, setLocationOrLink] = useState('Hội trường Gamma, ĐH FPT Hà Nội');
-  const [confirmMode, setConfirmMode] = useState<'Instant' | 'Approval'>('Instant');
-  const [expectedCommitment, setExpectedCommitment] = useState('4–6 giờ/tuần trong học kỳ');
-  const [positions, setPositions] = useState<OpportunityPosition[]>([
-    {
-      id: 'pos_1',
-      name: 'Ban Truyền thông',
-      quota: 5,
-      registeredCount: 0,
-      description: 'Viết bài truyền thông và hỗ trợ hình ảnh sự kiện',
-    },
-  ]);
-  const [quota, setQuota] = useState(50);
-  const [registrationDeadline, setRegistrationDeadline] = useState('2026-10-12');
-  const [resultDeadline, setResultDeadline] = useState('2026-10-14');
-
-  // Step 3: Questions
-  const [questions, setQuestions] = useState<FormQuestion[]>([
-    {
-      id: 'q_default_1',
-      label: 'Mục tiêu hoặc mong muốn của bạn khi tham gia cơ hội này là gì?',
-      kind: 'long',
-      required: true,
-    },
-  ]);
-
-  const { data: existingOpp } = useQuery<ClubOpportunity>({
-    queryKey: ['club-opportunity', oppId],
+  const [form, setForm] = useState<FormState>(blank);
+  const [step, setStep] = useState(1);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [reuseId, setReuseId] = useState(params.get('reuse') || '');
+  const hydrated = useRef('');
+  const existing = useQuery<ClubOpportunity>({
+    queryKey: ['club-opportunity', oppId, user?.id],
     queryFn: () => apiClient.get(`/clubs/opportunities/${oppId}`),
-    enabled: isEdit,
+    enabled: Boolean(oppId && user),
   });
-
+  const previous = useQuery<ClubOpportunity[]>({
+    queryKey: ['clubs', 'opportunities', 'mine', user?.id],
+    queryFn: () => apiClient.get('/clubs/opportunities?mine=true'),
+    enabled: Boolean(user && representedClubs.length && !oppId),
+  });
+  const clubs = useQuery<Club[]>({
+    queryKey: ['clubs', 'directory'],
+    queryFn: () => apiClient.get('/clubs'),
+    enabled: Boolean(user),
+  });
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
   useEffect(() => {
-    if (existingOpp) {
-      setClubId(existingOpp.clubId);
-      setType(existingOpp.type);
-      setTitle(existingOpp.title);
-      setSummary(existingOpp.summary);
-      setDescription(existingOpp.description);
-      setTagsInput(existingOpp.tags.join(', '));
-      if (existingOpp.startAt) setStartAt(existingOpp.startAt.slice(0, 16));
-      if (existingOpp.endAt) setEndAt(existingOpp.endAt.slice(0, 16));
-      if (existingOpp.mode) setMode(existingOpp.mode);
-      if (existingOpp.locationOrLink) setLocationOrLink(existingOpp.locationOrLink);
-      if (existingOpp.confirmMode) setConfirmMode(existingOpp.confirmMode);
-      if (existingOpp.expectedCommitment) setExpectedCommitment(existingOpp.expectedCommitment);
-      if (existingOpp.positions) setPositions(existingOpp.positions);
-      setQuota(existingOpp.quota);
-      if (existingOpp.registrationDeadline) {
-        setRegistrationDeadline(existingOpp.registrationDeadline.slice(0, 10));
-      }
-      if (existingOpp.resultDeadline) {
-        setResultDeadline(existingOpp.resultDeadline.slice(0, 10));
-      }
-      setQuestions(existingOpp.questions || []);
-    }
-  }, [existingOpp]);
+    if (!existing.data || hydrated.current === existing.data.id) return;
+    const item = existing.data;
+    hydrated.current = item.id;
+    setClubId(item.clubId);
+    setForm({
+      ...blank(),
+      ...item,
+      registrationDeadline: localInput(item.registrationDeadline),
+      resultDeadline: localInput(item.resultDeadline),
+      onboarding: item.onboarding
+        ? {
+            ...item.onboarding,
+            startAt: localInput(item.onboarding.startAt),
+            endAt: localInput(item.onboarding.endAt),
+          }
+        : undefined,
+    });
+  }, [existing.data]);
+  const locked = Boolean(existing.data?.hasResponses);
+  const selectedClub = clubs.data?.find((c) => c.id === clubId);
 
-  const hasResponses = Boolean(existingOpp?.hasResponses);
-
-  const handleApplyTemplate = (tplType: 'member' | 'ctv') => {
-    if (tplType === 'member') {
-      setType('MemberRecruitment');
-      setTitle('Đợt Tuyển Thành viên Chính thức - Học kỳ Fall 2026');
-      setSummary('Gia nhập đại gia đình CLB, phát triển kỹ năng chuyên môn, kỹ năng mềm và tham gia điều hành các sự kiện lớn.');
-      setDescription(`Chào đón các bạn sinh viên nhiệt huyết gia nhập đại gia đình CLB!\n\n1. Quyền lợi thành viên:\n- Được đào tạo chuyên sâu về kỹ năng chuyên môn.\n- Tham gia trực tiếp ban tổ chức các sự kiện lớn của trường.\n- Được cấp chứng nhận hoạt động và cộng điểm rèn luyện theo quy chế.\n\n2. Cam kết:\n- Tham gia sinh hoạt định kỳ tối thiểu 1 kỳ học.\n- Hoàn thành trách nhiệm được giao trong ban.`);
-      setTagsInput('Tuyển thành viên, Sinh viên FPT, Hoạt động CLB, Đào tạo kỹ năng');
-      setExpectedCommitment('4–6 giờ/tuần trong suốt học kỳ');
-      setQuota(25);
-      setQuestions([
-        {
-          id: 'q_tpl_1',
-          label: 'Tại sao bạn muốn trở thành Thành viên chính thức của CLB chúng mình?',
-          kind: 'long',
-          required: true,
-        },
-        {
-          id: 'q_tpl_2',
-          label: 'Bạn quan tâm hoặc có thế mạnh ở ban chuyên môn nào nhất?',
-          kind: 'single',
-          required: true,
-          options: ['Ban Chuyên môn & Kỹ thuật', 'Ban Truyền thông & Báo chí', 'Ban Hậu cần & Kỹ thuật', 'Ban Sự kiện & Lễ tân'],
-        },
-        {
-          id: 'q_tpl_3',
-          label: 'Bạn có thể cam kết tham gia sinh hoạt định kỳ tối thiểu 1 kỳ học không?',
-          kind: 'single',
-          required: true,
-          options: ['Chắc chắn cam kết', 'Cần trao đổi thêm về lịch thi'],
-        },
-      ]);
-      toast.success('Đã áp dụng mẫu [Tuyển Thành viên chính thức]!');
-    } else {
-      setType('CollaboratorRecruitment');
-      setTitle('Tuyển Cộng tác viên (CTV) Hỗ trợ Chiến dịch Kỷ niệm CLB');
-      setSummary('Cơ hội thử sức làm CTV ngắn hạn theo dự án/sự kiện, tích lũy kinh nghiệm và làm quen bạn mới mà không bị gò bó cam kết dài hạn.');
-      setDescription(`CLB mở đợt tuyển CTV ngắn hạn hỗ trợ chuỗi sự kiện sắp tới.\n\nThời gian hoạt động: 2-3 tuần.\n\nQuyền lợi:\n- Giấy chứng nhận CTV đóng góp cho sự kiện.\n- Teambuilding và ăn mừng sau sự kiện.\n- Ưu tiên xét tuyển thành viên chính thức đợt sau.`);
-      setTagsInput('Tuyển CTV, Ngắn hạn, Trải nghiệm sự kiện, Cơ hội giao lưu');
-      setExpectedCommitment('Linh hoạt theo ca trực trong 2–3 tuần');
-      setQuota(15);
-      setPositions([
-        {
-          id: 'pos_tpl_1',
-          name: 'Ban Truyền thông & Media',
-          quota: 5,
-          registeredCount: 0,
-          description: 'Hỗ trợ chụp ảnh, quay video ngắn và trực page truyền thông',
-        },
-        {
-          id: 'pos_tpl_2',
-          name: 'Ban Hậu cần & Check-in',
-          quota: 6,
-          registeredCount: 0,
-          description: 'Hỗ trợ setup hội trường, điều phối khách và quét mã check-in',
-        },
-        {
-          id: 'pos_tpl_3',
-          name: 'Ban Sự kiện & MC',
-          quota: 4,
-          registeredCount: 0,
-          description: 'Điều phối sân khấu, hỗ trợ diễn giả và dẫn hoạt náo',
-        },
-      ]);
-      setQuestions([
-        {
-          id: 'q_tpl_ctv_1',
-          label: 'Kinh nghiệm hoặc lý do bạn muốn làm CTV trong sự kiện này?',
-          kind: 'long',
-          required: true,
-        },
-        {
-          id: 'q_tpl_ctv_2',
-          label: 'Khung giờ trong tuần bạn có thể có mặt trực tiếp tại trường?',
-          kind: 'multi',
-          required: true,
-          options: ['Sáng T2 - T4 - T6', 'Chiều T3 - T5', 'Cuối tuần (Thứ 7 / Chủ Nhật)'],
-        },
-      ]);
-      toast.success('Đã áp dụng mẫu [Tuyển Cộng tác viên (CTV)]!');
-    }
-  };
-
-  const handleReusePreviousOpportunity = () => {
-    setType('MemberRecruitment');
-    setTitle('Đợt Tuyển Thành viên CLB - Mùa Mới (Đồng bộ nội dung)');
-    setSummary('Kế thừa toàn bộ tiêu chuẩn tuyển dụng, cơ cấu ban và câu hỏi phỏng vấn chuẩn hóa của CLB.');
-    setDescription(`Kế thừa nội dung tuyển dụng từ đợt gần nhất:\n- Đào tạo chuyên môn & kỹ năng làm việc nhóm.\n- Tham gia quản trị các sự kiện thường niên của trường.\n- Môi trường cởi mở, tôn trọng sáng tạo.`);
-    setTagsInput('Tuyển thành viên, Đồng bộ nội dung, Mùa mới');
-    setExpectedCommitment('4–6 giờ/tuần');
-    setQuota(20);
-    setQuestions([
+  const applyTemplate = (
+    type: 'MemberRecruitment' | 'CollaboratorRecruitment'
+  ) => {
+    const member = type === 'MemberRecruitment';
+    const questions: FormQuestion[] = [
       {
-        id: 'q_reused_1',
-        label: 'Giới thiệu bản thân và lý do bạn muốn đồng hành cùng CLB?',
+        id: crypto.randomUUID(),
+        label: member
+          ? 'Vì sao bạn muốn gắn bó với CLB?'
+          : 'Bạn muốn đóng góp điều gì trong chiến dịch này?',
         kind: 'long',
         required: true,
       },
       {
-        id: 'q_reused_2',
-        label: 'Ban chuyên môn bạn đăng ký xét tuyển?',
-        kind: 'single',
+        id: crypto.randomUUID(),
+        label: 'Bạn có thể dành thời gian vào những khung giờ nào?',
+        kind: 'long',
         required: true,
-        options: ['Ban Chuyên môn & Lập trình', 'Ban Truyền thông', 'Ban Hậu cần'],
       },
-    ]);
-    toast.success('Đã nạp lại nội dung và câu hỏi từ đợt tuyển trước thành công!');
+      {
+        id: crypto.randomUUID(),
+        label: 'Chia sẻ kinh nghiệm, sản phẩm hoặc kỹ năng bạn muốn học thêm.',
+        kind: 'long',
+        required: false,
+      },
+    ];
+    setForm((prev) => ({
+      ...prev,
+      type,
+      title: member
+        ? 'Tuyển thành viên chính thức — đợt mới'
+        : 'Tuyển cộng tác viên cho chiến dịch mới',
+      summary: member
+        ? 'Cùng phát triển kỹ năng và tham gia sinh hoạt trong học kỳ.'
+        : 'Trải nghiệm công việc thực tế cùng CLB trong một chiến dịch ngắn hạn.',
+      description:
+        'Công việc và yêu cầu:\n- Điền nhiệm vụ cụ thể của từng ban.\n- Nêu kỹ năng cần có và những nội dung CLB sẽ hướng dẫn.\n\nQuyền lợi:\n- Nêu quyền lợi thực tế do CLB xác nhận.\n\nQuy trình tuyển:\n- Xét hồ sơ và trao đổi thêm nếu cần.\n- Thông báo kết quả và hướng dẫn bước tiếp theo trên hệ thống.',
+      expectedCommitment: member
+        ? '4–6 giờ/tuần, tối thiểu một học kỳ'
+        : '3–5 giờ/tuần trong 2–4 tuần',
+      commitmentType: member ? 'semester' : 'short',
+      quota: 20,
+      positions: [],
+      questions,
+    }));
+    toast.success('Đã áp dụng mẫu. Hãy bổ sung thông tin thực tế của CLB.');
   };
-
-  const saveMutation = useMutation({
-    mutationFn: (status: 'Draft' | 'Published') => {
-      const payload: Partial<ClubOpportunity> = {
-        clubId,
-        type,
-        title,
-        summary,
-        description,
-        tags: tagsInput
-          .split(',')
-          .map((t) => t.trim())
-          .filter(Boolean),
-        startAt: type === 'Event' ? new Date(startAt).toISOString() : undefined,
-        endAt: type === 'Event' ? new Date(endAt).toISOString() : undefined,
-        mode,
-        locationOrLink,
-        confirmMode: type === 'Event' ? confirmMode : 'Approval',
-        expectedCommitment: type !== 'Event' ? expectedCommitment : undefined,
-        positions: type === 'CollaboratorRecruitment' ? positions : undefined,
-        quota: Number(quota),
-        registrationDeadline: new Date(registrationDeadline).toISOString(),
-        resultDeadline: type !== 'Event' ? new Date(resultDeadline).toISOString() : undefined,
-        questions,
-        status,
-      };
-      if (isEdit) {
-        return apiClient.put(`/clubs/opportunities/${oppId}`, payload);
-      }
-      return apiClient.post('/clubs/opportunities', payload);
-    },
-    onSuccess: (res: any, status) => {
-      queryClient.invalidateQueries({ queryKey: ['clubs', 'opportunities'] });
-      toast.success(
-        status === 'Draft' ? 'Đã lưu bản nháp hoạt động CLB' : 'Đã đăng công khai hoạt động CLB'
+  const reuse = (id: string) => {
+    const source = previous.data?.find(
+      (o) => o.id === id && o.clubId === clubId && isRecruitment(o)
+    );
+    if (!source) return;
+    setForm({ ...blank(), ...reuseRecruitment(source) } as FormState);
+    setErrors({});
+    toast.success(
+      'Đã sao chép nội dung và câu hỏi. Hãy chọn thời hạn mới trước khi công bố.'
+    );
+  };
+  useEffect(() => {
+    const sourceId = params.get('reuse');
+    if (!oppId && sourceId && previous.data && hydrated.current !== sourceId) {
+      const source = previous.data.find(
+        (o) => o.id === sourceId && o.clubId === clubId && isRecruitment(o)
       );
-      navigate(`/clubs/manage/${res.id || oppId}`);
-    },
-  });
+      if (source) {
+        hydrated.current = sourceId;
+        setForm({ ...blank(), ...reuseRecruitment(source) } as FormState);
+      }
+    }
+  }, [params, previous.data, oppId, clubId]);
 
-  const steps = [
-    { num: 1, label: 'Thông tin cơ bản' },
-    { num: 2, label: 'Thời gian & Chỉ tiêu' },
-    { num: 3, label: 'Câu hỏi đăng ký' },
-    { num: 4, label: 'Xem trước & Đăng' },
-  ];
+  const payload = () => ({
+    type: form.type,
+    title: form.title.trim(),
+    summary: form.summary.trim(),
+    description: form.description.trim(),
+    tags: form.tags.map((tag) => tag.trim()).filter(Boolean),
+    quota: form.quota,
+    expectedCommitment: form.expectedCommitment?.trim(),
+    department: form.department,
+    commitmentType: form.commitmentType,
+    contactUserId: form.contactUserId || '',
+    positions: form.positions,
+    questions: form.questions,
+    mode: form.mode,
+    locationOrLink: form.locationOrLink,
+    coverImageUrl: form.coverImageUrl,
+    gallery: form.gallery,
+    confirmMode: 'Approval' as const,
+    registrationDeadline: form.registrationDeadline
+      ? new Date(form.registrationDeadline).toISOString()
+      : '',
+    resultDeadline: form.resultDeadline
+      ? new Date(form.resultDeadline).toISOString()
+      : '',
+    onboarding: form.onboarding
+      ? {
+          ...form.onboarding,
+          startAt: new Date(form.onboarding.startAt).toISOString(),
+          endAt: new Date(form.onboarding.endAt).toISOString(),
+        }
+      : null,
+  });
+  const save = useMutation({
+    mutationFn: (status: 'Draft' | 'Published') => {
+      const body = {
+        ...payload(),
+        status: existing.data?.status === 'Closed' ? 'Closed' : status,
+      };
+      return oppId
+        ? apiClient.put<ClubOpportunity>(`/clubs/opportunities/${oppId}`, body)
+        : apiClient.post<ClubOpportunity>('/clubs/opportunities', {
+            ...body,
+            clubId,
+          });
+    },
+    onSuccess: (data) => {
+      client.invalidateQueries({ queryKey: ['clubs'] });
+      client.invalidateQueries({ queryKey: ['club-opportunity'] });
+      toast.success('Đã lưu đợt tuyển CLB');
+      navigate(`/clubs/manage/${data.id}`);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const submit = (status: 'Draft' | 'Published') => {
+    const next = validateRecruitment(
+      { ...form, used: existing.data?.used },
+      Date.now(),
+      status === 'Published' && (!oppId || existing.data?.status === 'Draft')
+    );
+    if (!isRepresentativeOf(clubId))
+      next.clubId = 'Chọn CLB bạn đang đại diện.';
+    if (Object.keys(next).length) {
+      setErrors(next);
+      toast.error('Kiểm tra các mục được đánh dấu trước khi lưu.');
+      return;
+    }
+    setErrors({});
+    save.mutate(status);
+  };
+  const positions = (items: OpportunityPosition[]) =>
+    setForm((prev) => ({
+      ...prev,
+      positions: items,
+      quota: items.length
+        ? items.reduce((sum, p) => sum + p.quota, 0)
+        : prev.quota,
+    }));
+
+  if (!user || !representedClubs.length)
+    return (
+      <ErrorState
+        title="Cần quyền đại diện CLB"
+        message="Đăng nhập bằng tài khoản đại diện đã được xác minh để tạo đợt tuyển."
+      />
+    );
+  if (oppId && existing.isPending)
+    return <p role="status">Đang tải đợt tuyển…</p>;
+  if (oppId && existing.isError)
+    return (
+      <ErrorState
+        title="Không tải được đợt tuyển"
+        onRetry={() => existing.refetch()}
+      />
+    );
+  if (existing.data && !isRepresentativeOf(existing.data.clubId))
+    return <ErrorState title="Bạn không quản lý CLB này" />;
+  if (existing.data?.type === 'Event')
+    return (
+      <div className="space-y-4">
+        <ErrorState
+          title="Sự kiện được quản lý tại mục Hoạt động"
+          message="Mục Câu lạc bộ tập trung vào tuyển thành viên và cộng tác viên."
+        />
+        <Link to="/programs">
+          <Button>Đến Hoạt động</Button>
+        </Link>
+      </div>
+    );
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       <Link
         to="/clubs?tab=manage"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900"
+        className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-brand-700"
       >
-        <ArrowLeft className="h-4 w-4" />
-        <span>Quay lại Bài đăng của tôi</span>
+        <ArrowLeft size={16} />
+        Quản lý tuyển dụng
       </Link>
-
       <div>
         <h1 className="text-page-title text-neutral-900">
-          {isEdit ? 'Chỉnh sửa hoạt động Câu lạc bộ' : 'Đăng hoạt động Câu lạc bộ mới'}
+          {oppId ? 'Chỉnh sửa đợt tuyển' : 'Tạo đợt tuyển CLB'}
         </h1>
-        <p className="text-meta text-neutral-500 mt-1">
-          Mở kênh tiếp nhận đăng ký sự kiện, tuyển thành viên hoặc cộng tác viên cho CLB bạn đại diện.
+        <p className="mt-2 text-sm text-neutral-600">
+          Tuyển thành viên hoặc cộng tác viên. Đặt hạn trả kết quả và đầu mối
+          liên hệ để sinh viên theo dõi.
         </p>
       </div>
-
-      {/* Stepper Bar */}
-      <div className="grid grid-cols-4 gap-2">
-        {steps.map((s) => (
+      <nav
+        aria-label="Các bước tạo đợt tuyển"
+        className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+      >
+        {steps.map((label, i) => (
           <button
-            key={s.num}
+            key={label}
             type="button"
-            onClick={() => setStep(s.num)}
-            className={`p-3 rounded-lg border text-left transition-colors cursor-pointer ${
-              step === s.num
-                ? 'border-brand-500 bg-brand-50/50 text-brand-700'
-                : s.num < step
-                ? 'border-neutral-200 bg-surface text-neutral-800'
-                : 'border-neutral-200 bg-neutral-50 text-neutral-500'
-            }`}
+            aria-current={step === i + 1 ? 'step' : undefined}
+            onClick={() => setStep(i + 1)}
+            className={`rounded-lg border p-3 text-left text-sm focus-visible:outline-2 focus-visible:outline-brand-500 ${step === i + 1 ? 'border-brand-500 bg-brand-50 text-brand-800' : 'border-neutral-200 text-neutral-700'}`}
           >
-            <div className="text-caption font-semibold">Bước {s.num}</div>
-            <div className="text-sm font-semibold truncate">{s.label}</div>
+            <span className="mb-1 block text-xs">Bước {i + 1}</span>
+            {label}
           </button>
         ))}
-      </div>
-
-      {/* STEP 1 */}
+      </nav>
+      {Object.keys(errors).length > 0 && (
+        <div
+          role="alert"
+          className="rounded-lg border border-tier-danger-border bg-tier-danger-bg p-4 text-sm text-tier-danger-text"
+        >
+          <p className="font-semibold">Cần bổ sung thông tin</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {Object.entries(errors).map(([key, message]) => (
+              <li key={key}>{message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {step === 1 && (
-        <Card className="p-6 space-y-4">
-          {/* Mẫu biểu mẫu Template & Tái sử dụng nội dung */}
-          {!isEdit && (
-            <div className="p-4 rounded-xl bg-gradient-to-r from-brand-50/60 to-neutral-50 border border-brand-200/80 space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-brand-600" />
-                  <span className="text-sm font-semibold text-neutral-900">
-                    Khởi tạo nhanh từ Mẫu mẫu chuẩn hoặc đợt tuyển trước
-                  </span>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleReusePreviousOpportunity}
-                  leftIcon={<RefreshCw className="h-3.5 w-3.5 text-brand-600" />}
-                  className="bg-white hover:bg-neutral-50 text-neutral-800"
-                >
-                  Tái sử dụng nội dung đợt tuyển trước
-                </Button>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-caption text-neutral-600">Chọn mẫu nhanh:</span>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleApplyTemplate('member')}
-                  leftIcon={<FileText className="h-3.5 w-3.5 text-brand-600" />}
-                >
-                  Mẫu Tuyển Thành viên chính thức
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleApplyTemplate('ctv')}
-                  leftIcon={<Copy className="h-3.5 w-3.5 text-brand-600" />}
-                >
-                  Mẫu Tuyển Cộng tác viên (CTV)
-                </Button>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-neutral-800 mb-1">
-                Câu lạc bộ đại diện <span className="text-tier-danger-text">*</span>
-              </label>
-              <Select
-                disabled={isEdit}
-                value={clubId}
-                onChange={(e) => setClubId(e.target.value)}
-              >
-                {representedClubs.length > 0 ? (
-                  representedClubs.map((c) => (
-                    <option key={c.clubId} value={c.clubId}>
-                      {c.name}
-                    </option>
-                  ))
-                ) : (
-                  <option value="club_01">F-Code Club (CLB Lập Trình FPT)</option>
-                )}
-              </Select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-800 mb-1">
-                Loại hoạt động <span className="text-tier-danger-text">*</span>
-              </label>
-              <Select
-                disabled={hasResponses}
-                value={type}
-                onChange={(e) => setType(e.target.value as OpportunityType)}
-              >
-                <option value="Event">Sự kiện CLB</option>
-                <option value="MemberRecruitment">Tuyển thành viên</option>
-                <option value="CollaboratorRecruitment">Tuyển cộng tác viên (CTV)</option>
-              </Select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-800 mb-1">
-              Tiêu đề hoạt động <span className="text-tier-danger-text">*</span>
-            </label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="VD: Tuyển thành viên F-Code Gen 11 — Ban Thuật toán & Sản phẩm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-800 mb-1">
-              Tóm tắt ngắn (hiển thị trên thẻ danh sách) <span className="text-tier-danger-text">*</span>
-            </label>
-            <Textarea
-              rows={2}
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              placeholder="Mô tả ngắn gọn 1–2 câu về mục tiêu và đối tượng tham gia..."
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-800 mb-1">
-              Mô tả chi tiết <span className="text-tier-danger-text">*</span>
-            </label>
-            <Textarea
-              rows={5}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Nội dung chi tiết, quyền lợi khi tham gia, yêu cầu chuẩn bị..."
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-800 mb-1">
-              Thẻ chủ đề (phân cách bằng dấu phẩy)
-            </label>
-            <Input
-              value={tagsInput}
-              onChange={(e) => setTagsInput(e.target.value)}
-              placeholder="VD: Web Dev, Algorithms, K18, K19"
-            />
-          </div>
-
-          <div className="flex justify-end pt-2">
-            <Button
-              variant="primary"
-              disabled={!title.trim() || !summary.trim()}
-              onClick={() => setStep(2)}
+        <Card className="space-y-5 p-5 sm:p-6">
+          <FormField label="CLB tuyển dụng" required error={errors.clubId}>
+            <Select
+              disabled={Boolean(oppId)}
+              value={clubId}
+              onChange={(e) => {
+                setClubId(e.target.value);
+                setReuseId('');
+                set('contactUserId', undefined);
+              }}
             >
-              Tiếp tục: Thời gian &amp; Chỉ tiêu
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {/* STEP 2 */}
-      {step === 2 && (
-        <Card className="p-6 space-y-4">
-          {type === 'Event' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-800 mb-1">
-                  Thời gian bắt đầu
-                </label>
-                <Input
-                  type="datetime-local"
-                  value={startAt}
-                  onChange={(e) => setStartAt(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-800 mb-1">
-                  Thời gian kết thúc
-                </label>
-                <Input
-                  type="datetime-local"
-                  value={endAt}
-                  onChange={(e) => setEndAt(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-800 mb-1">
-                  Hình thức tổ chức
-                </label>
-                <Select
-                  value={mode}
-                  onChange={(e) => setMode(e.target.value as any)}
-                >
-                  <option value="Offline">Offline tại trường</option>
-                  <option value="Online">Online trực tuyến</option>
-                  <option value="Hybrid">Hybrid kết hợp</option>
-                </Select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-800 mb-1">
-                  Chế độ xác nhận đăng ký
-                </label>
-                <Select
-                  disabled={hasResponses}
-                  value={confirmMode}
-                  onChange={(e) => setConfirmMode(e.target.value as any)}
-                >
-                  <option value="Instant">Xác nhận ngay khi còn chỗ</option>
-                  <option value="Approval">Đại diện CLB xét duyệt thủ công</option>
-                </Select>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <label className="block text-sm font-medium text-neutral-800 mb-1">
-                Mức cam kết thời gian dự kiến <span className="text-tier-danger-text">*</span>
-              </label>
-              <Input
-                value={expectedCommitment}
-                onChange={(e) => setExpectedCommitment(e.target.value)}
-                placeholder="VD: 4–6 giờ/tuần trong học kỳ Fall 2026"
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-800 mb-1">
-              Địa điểm sinh hoạt / Link tham dự
-            </label>
-            <Input
-              value={locationOrLink}
-              onChange={(e) => setLocationOrLink(e.target.value)}
-              placeholder="VD: Hội trường Gamma hoặc Google Meet"
-            />
-          </div>
-
-          {type === 'CollaboratorRecruitment' && (
-            <div className="space-y-3 pt-2 border-t border-neutral-100">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-semibold text-neutral-900">
-                  Các vị trí Cộng tác viên cần tuyển
-                </label>
+              <option value="">Chọn CLB</option>
+              {representedClubs.map((c) => (
+                <option key={c.clubId} value={c.clubId}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+          {!oppId && (
+            <section className="space-y-3 border-y border-neutral-200 py-4">
+              <h2 className="font-semibold text-sm text-neutral-900">
+                Bắt đầu từ mẫu hoặc nội dung đã có
+              </h2>
+              <div className="flex flex-wrap gap-2">
                 <Button
-                  type="button"
-                  variant="secondary"
                   size="sm"
-                  onClick={() =>
-                    setPositions([
-                      ...positions,
-                      {
-                        id: `pos_${Date.now()}`,
-                        name: '',
-                        quota: 5,
-                        registeredCount: 0,
-                        description: '',
-                      },
-                    ])
-                  }
-                  leftIcon={<Plus className="h-3.5 w-3.5" />}
+                  variant="secondary"
+                  leftIcon={<FileText size={15} />}
+                  onClick={() => applyTemplate('MemberRecruitment')}
                 >
-                  Thêm vị trí
+                  Mẫu thành viên
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  leftIcon={<Copy size={15} />}
+                  onClick={() => applyTemplate('CollaboratorRecruitment')}
+                >
+                  Mẫu cộng tác viên
                 </Button>
               </div>
-              {positions.map((pos, idx) => (
-                <div
-                  key={pos.id}
-                  className="p-3.5 rounded-lg border border-neutral-200 bg-neutral-50 space-y-2"
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Select
+                  aria-label="Chọn đợt tuyển để tái sử dụng"
+                  value={reuseId}
+                  onChange={(e) => setReuseId(e.target.value)}
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <div className="md:col-span-2">
-                      <Input
-                        value={pos.name}
-                        onChange={(e) => {
-                          const next = [...positions];
-                          next[idx] = { ...pos, name: e.target.value };
-                          setPositions(next);
-                        }}
-                        placeholder="Tên vị trí (VD: Ban Hậu cần)"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={1}
-                        value={pos.quota}
-                        onChange={(e) => {
-                          const next = [...positions];
-                          next[idx] = { ...pos, quota: Number(e.target.value) };
-                          setPositions(next);
-                        }}
-                        placeholder="Chỉ tiêu"
-                      />
-                      {positions.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPositions(positions.filter((_, i) => i !== idx))
-                          }
-                          className="p-2 text-neutral-500 hover:text-tier-danger-text cursor-pointer"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <Input
-                    value={pos.description}
-                    onChange={(e) => {
-                      const next = [...positions];
-                      next[idx] = { ...pos, description: e.target.value };
-                      setPositions(next);
-                    }}
-                    placeholder="Mô tả ngắn công việc của vị trí này..."
-                  />
-                </div>
-              ))}
-            </div>
+                  <option value="">
+                    {previous.isPending
+                      ? 'Đang tải nội dung cũ…'
+                      : 'Chọn đợt tuyển trước của CLB'}
+                  </option>
+                  {(previous.data || [])
+                    .filter((o) => o.clubId === clubId && isRecruitment(o))
+                    .map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.title}
+                      </option>
+                    ))}
+                </Select>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!reuseId || previous.isPending}
+                  onClick={() => reuse(reuseId)}
+                >
+                  Tái sử dụng
+                </Button>
+              </div>
+              {previous.isError && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => previous.refetch()}
+                >
+                  Tải lại danh sách đợt tuyển
+                </Button>
+              )}
+            </section>
           )}
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-            <div>
-              <label className="block text-sm font-medium text-neutral-800 mb-1">
-                Tổng chỉ tiêu (chỗ)
-              </label>
+          <FormField label="Loại đợt tuyển" required>
+            <Select
+              disabled={locked}
+              value={form.type}
+              onChange={(e) => set('type', e.target.value as FormState['type'])}
+            >
+              <option value="MemberRecruitment">Thành viên chính thức</option>
+              <option value="CollaboratorRecruitment">Cộng tác viên</option>
+            </Select>
+          </FormField>
+          <FormField label="Tên đợt tuyển" required error={errors.title}>
+            <Input
+              maxLength={180}
+              value={form.title}
+              onChange={(e) => set('title', e.target.value)}
+            />
+          </FormField>
+          <FormField label="Giới thiệu ngắn">
+            <Input
+              maxLength={280}
+              value={form.summary}
+              onChange={(e) => set('summary', e.target.value)}
+            />
+          </FormField>
+          <FormField
+            label="Công việc, yêu cầu & quyền lợi"
+            required
+            error={errors.description}
+          >
+            <Textarea
+              rows={8}
+              value={form.description}
+              onChange={(e) => set('description', e.target.value)}
+            />
+          </FormField>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="Ban chuyên môn">
+              <Select
+                value={form.department || 'other'}
+                onChange={(e) =>
+                  set('department', e.target.value as FormState['department'])
+                }
+              >
+                {Object.entries(DEPARTMENTS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField label="Kỹ năng / chủ đề, cách nhau bằng dấu phẩy">
               <Input
-                type="number"
-                min={1}
-                max={2000}
-                value={quota}
-                onChange={(e) => setQuota(Number(e.target.value))}
+                value={form.tags.join(', ')}
+                onChange={(e) =>
+                  set(
+                    'tags',
+                    e.target.value.split(',').map((t) => t.trimStart())
+                  )
+                }
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-800 mb-1">
-                Hạn cuối đăng ký
-              </label>
+            </FormField>
+          </div>
+          <CoverImagePicker
+            value={form.coverImageUrl || null}
+            onChange={(value) => set('coverImageUrl', value)}
+          />
+          <ImageUploader
+            value={form.gallery || []}
+            onChange={(value) => set('gallery', value)}
+          />
+        </Card>
+      )}
+      {step === 2 && (
+        <Card className="space-y-5 p-5 sm:p-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              label="Thời gian cam kết"
+              required
+              error={errors.expectedCommitment}
+            >
               <Input
-                type="date"
-                value={registrationDeadline}
-                onChange={(e) => setRegistrationDeadline(e.target.value)}
+                value={form.expectedCommitment || ''}
+                placeholder="Ví dụ: 4 giờ/tuần trong một học kỳ"
+                onChange={(e) => set('expectedCommitment', e.target.value)}
               />
+            </FormField>
+            <FormField label="Mức gắn bó">
+              <Select
+                value={form.commitmentType || 'semester'}
+                onChange={(e) =>
+                  set(
+                    'commitmentType',
+                    e.target.value as FormState['commitmentType']
+                  )
+                }
+              >
+                <option value="semester">Dài hạn / theo học kỳ</option>
+                <option value="short">Ngắn hạn / theo chiến dịch</option>
+              </Select>
+            </FormField>
+            <FormField
+              label="Hạn nhận đơn"
+              required
+              error={errors.registrationDeadline}
+            >
+              <Input
+                type="datetime-local"
+                value={form.registrationDeadline}
+                onChange={(e) => set('registrationDeadline', e.target.value)}
+              />
+            </FormField>
+            <FormField
+              label="Dự kiến trả kết quả"
+              required
+              error={errors.resultDeadline}
+            >
+              <Input
+                type="datetime-local"
+                value={form.resultDeadline || ''}
+                onChange={(e) => set('resultDeadline', e.target.value)}
+              />
+            </FormField>
+          </div>
+          <FormField label="Tổng chỉ tiêu" required error={errors.quota}>
+            <Input
+              type="number"
+              min={Math.max(1, existing.data?.used || 0)}
+              disabled={Boolean(form.positions?.length)}
+              value={form.quota}
+              onChange={(e) => set('quota', Number(e.target.value))}
+            />
+          </FormField>
+          <section className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-neutral-900">
+                Vị trí / ban cần tuyển (tùy chọn)
+              </h2>
+              <Button
+                size="sm"
+                variant="secondary"
+                leftIcon={<Plus size={15} />}
+                onClick={() =>
+                  positions([
+                    ...(form.positions || []),
+                    {
+                      id: crypto.randomUUID(),
+                      name: '',
+                      description: '',
+                      quota: 5,
+                      registeredCount: 0,
+                    },
+                  ])
+                }
+              >
+                Thêm vị trí
+              </Button>
             </div>
-            {type !== 'Event' && (
-              <div>
-                <label className="block text-sm font-medium text-neutral-800 mb-1">
-                  Hạn phản hồi kết quả dự kiến
-                </label>
+            {(form.positions || []).map((position, index) => (
+              <div
+                key={position.id}
+                className="space-y-2 rounded-lg border border-neutral-200 p-3"
+              >
+                <div className="grid gap-2 sm:grid-cols-[1fr_100px_auto]">
+                  <Input
+                    aria-label={`Tên vị trí ${index + 1}`}
+                    placeholder="Tên vị trí"
+                    value={position.name}
+                    onChange={(e) =>
+                      positions(
+                        form.positions!.map((p) =>
+                          p.id === position.id
+                            ? { ...p, name: e.target.value }
+                            : p
+                        )
+                      )
+                    }
+                  />
+                  <Input
+                    aria-label={`Chỉ tiêu vị trí ${index + 1}`}
+                    type="number"
+                    min={Math.max(1, position.registeredCount)}
+                    value={position.quota}
+                    onChange={(e) =>
+                      positions(
+                        form.positions!.map((p) =>
+                          p.id === position.id
+                            ? { ...p, quota: Number(e.target.value) }
+                            : p
+                        )
+                      )
+                    }
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={`Xóa vị trí ${index + 1}`}
+                    disabled={position.registeredCount > 0}
+                    onClick={() =>
+                      positions(
+                        form.positions!.filter((p) => p.id !== position.id)
+                      )
+                    }
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                </div>
                 <Input
-                  type="date"
-                  value={resultDeadline}
-                  onChange={(e) => setResultDeadline(e.target.value)}
+                  aria-label={`Mô tả vị trí ${index + 1}`}
+                  placeholder="Công việc của vị trí"
+                  value={position.description}
+                  onChange={(e) =>
+                    positions(
+                      form.positions!.map((p) =>
+                        p.id === position.id
+                          ? { ...p, description: e.target.value }
+                          : p
+                      )
+                    )
+                  }
                 />
               </div>
-            )}
-          </div>
-
-          <div className="space-y-4 pt-3 border-t border-neutral-100">
-            <div>
-              <label className="block text-sm font-medium text-neutral-800 mb-1.5">
-                Ảnh bìa hoạt động (16:9 · tuỳ chọn)
-              </label>
-              <CoverImagePicker
-                value={coverImageUrl}
-                onChange={setCoverImageUrl}
-              />
+            ))}
+          </section>
+          <FormField label="Người phụ trách sau trúng tuyển">
+            <Select
+              value={form.contactUserId || ''}
+              onChange={(e) => set('contactUserId', e.target.value)}
+            >
+              <option value="">Đại diện CLB đầu tiên trong hồ sơ</option>
+              {selectedClub?.representatives?.map((rep) => (
+                <option key={rep.userId} value={rep.userId}>
+                  {rep.fullName} — {rep.roleNote}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+          <FormField label="Địa điểm sinh hoạt / đường dẫn họp">
+            <Input
+              value={form.locationOrLink || ''}
+              onChange={(e) => set('locationOrLink', e.target.value)}
+            />
+          </FormField>
+          <label className="flex items-center gap-2 text-sm text-neutral-700">
+            <input
+              type="checkbox"
+              checked={Boolean(form.onboarding)}
+              onChange={(e) =>
+                set(
+                  'onboarding',
+                  e.target.checked
+                    ? {
+                        startAt: future(12),
+                        endAt: localInput(
+                          new Date(
+                            Date.now() + 12 * 86400000 + 3600000
+                          ).toISOString()
+                        ),
+                        location: '',
+                      }
+                    : undefined
+                )
+              }
+            />
+            Công bố lịch gặp mặt / onboarding sau khi được nhận
+          </label>
+          {form.onboarding && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Bắt đầu gặp mặt">
+                <Input
+                  type="datetime-local"
+                  value={form.onboarding.startAt}
+                  onChange={(e) =>
+                    set('onboarding', {
+                      ...form.onboarding!,
+                      startAt: e.target.value,
+                    })
+                  }
+                />
+              </FormField>
+              <FormField label="Kết thúc gặp mặt">
+                <Input
+                  type="datetime-local"
+                  value={form.onboarding.endAt}
+                  onChange={(e) =>
+                    set('onboarding', {
+                      ...form.onboarding!,
+                      endAt: e.target.value,
+                    })
+                  }
+                />
+              </FormField>
+              <FormField label="Địa điểm / link gặp mặt">
+                <Input
+                  value={form.onboarding.location}
+                  onChange={(e) =>
+                    set('onboarding', {
+                      ...form.onboarding!,
+                      location: e.target.value,
+                    })
+                  }
+                />
+              </FormField>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-800 mb-1.5">
-                Ảnh hoạt động / các đợt trước (tối đa 8 ảnh · tuỳ chọn)
-              </label>
-              <ImageUploader
-                value={gallery}
-                onChange={setGallery}
-                maxImages={8}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-between pt-3">
-            <Button variant="secondary" onClick={() => setStep(1)}>
-              Quay lại
-            </Button>
-            <Button variant="primary" onClick={() => setStep(3)}>
-              Tiếp tục: Câu hỏi đăng ký
-            </Button>
-          </div>
+          )}
         </Card>
       )}
-
-      {/* STEP 3 */}
       {step === 3 && (
-        <Card className="p-6 space-y-4">
-          <div>
-            <h3 className="text-card-title text-neutral-900">
-              Thiết kế form câu hỏi cho sinh viên đăng ký (Tối đa 10 câu)
-            </h3>
-            <p className="text-caption text-neutral-500 mt-0.5">
-              Họ tên, MSSV, Email, Ngành và Khóa sẽ được lấy tự động từ tài khoản sinh viên.
+        <Card className="space-y-4 p-5 sm:p-6">
+          <h2 className="text-section-title">Câu hỏi riêng của CLB</h2>
+          <p className="text-sm text-neutral-600">
+            Thông tin sinh viên được đính kèm tự động. Chỉ hỏi thêm những điều
+            cần để xét tuyển.
+          </p>
+          {locked ? (
+            <p className="text-sm text-neutral-600">
+              Đợt tuyển đã có hồ sơ; không thay đổi câu hỏi để giữ nguyên nội
+              dung sinh viên đã trả lời.
             </p>
-          </div>
-
-          <QuestionBuilder
-            questions={questions}
-            onChange={setQuestions}
-            maxQuestions={10}
-            locked={hasResponses}
+          ) : (
+            <QuestionBuilder
+              questions={form.questions}
+              onChange={(value) => set('questions', value)}
+            />
+          )}
+          <DynamicForm
+            questions={form.questions}
+            values={{}}
+            onChange={() => {}}
+            readOnly
           />
-
-          <div className="flex justify-between pt-3">
-            <Button variant="secondary" onClick={() => setStep(2)}>
-              Quay lại
-            </Button>
-            <Button variant="primary" onClick={() => setStep(4)}>
-              Tiếp tục: Xem trước
-            </Button>
-          </div>
         </Card>
       )}
-
-      {/* STEP 4: PREVIEW */}
       {step === 4 && (
-        <Card className="p-6 space-y-5">
-          <div className="p-4 rounded-lg bg-neutral-50 border border-neutral-200 space-y-2">
-            <span className="inline-block px-2 py-0.5 rounded bg-brand-50 text-brand-700 text-caption font-semibold">
-              {OPPORTUNITY_TYPE_LABELS[type]}
-            </span>
-            <h2 className="text-section-title text-neutral-900">{title}</h2>
-            <p className="text-meta text-neutral-600">{summary}</p>
-            <div className="text-caption text-neutral-500 pt-1">
-              Tổng chỉ tiêu: <strong>{quota}</strong> · Hạn đăng ký: <strong>{registrationDeadline}</strong>
+        <Card className="space-y-5 p-5 sm:p-6">
+          <p className="text-sm font-medium text-brand-700">
+            Xem trước nội dung trước khi công bố
+          </p>
+          <h2 className="text-section-title text-neutral-900">
+            {form.title || 'Tên đợt tuyển'}
+          </h2>
+          <p className="text-sm text-neutral-600">{form.summary}</p>
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-neutral-700">
+            {form.description}
+          </p>
+          <dl className="grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-neutral-600">CLB</dt>
+              <dd className="font-medium">{selectedClub?.name}</dd>
             </div>
-          </div>
-
-          <div className="space-y-3">
-            <h3 className="text-card-title text-neutral-900">
-              Xem trước Form câu hỏi sinh viên sẽ thấy ({questions.length} câu)
-            </h3>
-            <DynamicForm questions={questions} values={{}} readOnly={false} />
-          </div>
-
-          <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
-            <Button variant="secondary" onClick={() => setStep(3)}>
-              Quay lại chỉnh sửa
-            </Button>
-            <div className="flex items-center gap-2.5">
-              <Button
-                variant="secondary"
-                isLoading={saveMutation.isPending}
-                onClick={() => saveMutation.mutate('Draft')}
-              >
-                Lưu nháp
-              </Button>
-              <Button
-                variant="primary"
-                isLoading={saveMutation.isPending}
-                onClick={() => saveMutation.mutate('Published')}
-              >
-                {isEdit ? 'Lưu & Cập nhật bài đăng' : 'Đăng công khai hoạt động'}
-              </Button>
+            <div>
+              <dt className="text-neutral-600">Cam kết</dt>
+              <dd>{form.expectedCommitment || 'Chưa nhập'}</dd>
             </div>
-          </div>
+            <div>
+              <dt className="text-neutral-600">Nhận đơn đến</dt>
+              <dd>{formatClubDate(form.registrationDeadline)}</dd>
+            </div>
+            <div>
+              <dt className="text-neutral-600">Dự kiến trả kết quả</dt>
+              <dd>{formatClubDate(form.resultDeadline)}</dd>
+            </div>
+          </dl>
+          <p className="text-sm">
+            {form.quota} chỉ tiêu · {form.questions.length} câu hỏi · Hồ sơ được
+            CLB xét duyệt
+          </p>
         </Card>
       )}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200 pt-4">
+        <Button
+          variant="secondary"
+          disabled={step === 1}
+          onClick={() => setStep(step - 1)}
+        >
+          Quay lại
+        </Button>
+        <div className="flex flex-wrap gap-2">
+          {(!oppId || existing.data?.status === 'Draft') && (
+            <Button
+              variant="outline"
+              loading={save.isPending}
+              onClick={() => submit('Draft')}
+            >
+              Lưu nháp
+            </Button>
+          )}
+          {step < 4 ? (
+            <Button onClick={() => setStep(step + 1)}>Tiếp tục</Button>
+          ) : (
+            <Button
+              loading={save.isPending}
+              onClick={() => submit('Published')}
+            >
+              {oppId ? 'Lưu thay đổi' : 'Công bố đợt tuyển'}
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   );
-};
-
+}
 export default ClubOpportunityFormPage;

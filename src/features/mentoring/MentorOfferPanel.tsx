@@ -9,16 +9,18 @@ interface MentorOfferPanelProps {
   mentor: Mentor;
   // Không truyền khi chủ hồ sơ tự xem: chỉ hiển thị, không có nút đăng ký
   onChoosePlan?: (planId: string) => void;
+  // Nằm trong nửa phải cạnh thẻ giới thiệu: học phí rồi tới lịch rảnh, xếp dọc
+  stacked?: boolean;
 }
 
 // Khối "Học phí & lịch học" trên hồ sơ Mentor: trả lời ngay số buổi, học phí, lịch rảnh
-export const MentorOfferPanel: React.FC<MentorOfferPanelProps> = ({ mentor, onChoosePlan }) => {
+export const MentorOfferPanel: React.FC<MentorOfferPanelProps> = ({ mentor, onChoosePlan, stacked = false }) => {
   const options = getPlanOptions(mentor);
   const canRequest = Boolean(onChoosePlan) && mentor.acceptingRequests;
 
   return (
     <section className="bg-surface rounded-2xl border border-neutral-200 dark:border-neutral-700/80 shadow-sm p-5 sm:p-6">
-      <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className={stacked ? 'space-y-6' : 'grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]'}>
         <div className="space-y-3">
           <h2 className="flex items-center gap-2 text-base font-semibold text-neutral-900 dark:text-neutral-100">
             <Wallet className="h-4 w-4 text-primary" /> Học phí & gói học

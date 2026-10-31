@@ -2,7 +2,6 @@ import { HybridQuotaFields } from './HybridQuotaFields';
 import { proposalHybridError } from './rules';
 import { ActivityContentField } from './ActivityContentFields';
 import React, { useEffect, useState } from 'react';
-import { ActivityNavigation } from './ActivityNavigation';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/Card';
@@ -72,7 +71,7 @@ export default function ProgramProposalFormPage() {
   if (sourceId && query.isPending) return <Card className="h-48 animate-pulse"/>;
   if (sourceId && query.isError) return <ErrorState title="Không tải được đề xuất" onRetry={() => query.refetch()}/>;
   if (sourceId && (!source || (id && source.status !== 'Draft') || (copyId && source.status !== 'Rejected'))) return <div className="space-y-4"><ErrorState title="Không thể chỉnh sửa đề xuất" message="Chỉ sửa bản nháp của bạn. Đề xuất chờ duyệt cần rút về bản nháp; đề xuất đã từ chối có thể tạo bản mới."/><Link to="/programs/proposals" className="text-brand-600">Về danh sách đề xuất</Link></div>;
-  return <div className="max-w-3xl mx-auto space-y-5"><ActivityNavigation/><Link to="/programs/proposals" className="text-sm text-brand-600">← Danh sách đề xuất</Link><PageHeader title={id ? 'Chỉnh sửa đề xuất' : 'Tạo đề xuất'} description="Lưu nháp để tiếp tục sau hoặc gửi Manager xem xét. Đề xuất chưa được công bố thành hoạt động."/>
+  return <div className="max-w-3xl mx-auto space-y-5"><Link to="/programs/proposals" className="text-sm text-brand-600">← Danh sách đề xuất</Link><PageHeader title={id ? 'Chỉnh sửa đề xuất' : 'Tạo đề xuất'} description="Lưu nháp để tiếp tục sau hoặc gửi Manager xem xét. Đề xuất chưa được công bố thành hoạt động."/>
 <form noValidate onSubmit={(event) => { event.preventDefault(); submit('PendingReview'); }}><Card className="p-5 space-y-4">
       <h2 className="text-card-title">{editingId ? 'Chỉnh sửa bản nháp' : copyId ? 'Đề xuất lại bằng bản mới' : 'Đề xuất mới'}</h2>
       <div className="grid sm:grid-cols-2 gap-4">
