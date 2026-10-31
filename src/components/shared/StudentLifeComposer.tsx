@@ -1,3 +1,5 @@
+import { LifePostReminderFields } from './LifePostReminderFields';
+import { currentLifeDate } from '@/lib/studentLifeDetails';
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ImagePlus,
@@ -6,7 +8,7 @@ import {
   Send,
   House,
   CarFront,
-  School,
+  Package,
   Lightbulb,
   MessagesSquare,
   UtensilsCrossed,
@@ -24,7 +26,7 @@ import { useToast } from "@/components/ui/Toast";
 import { TagInput } from "./TagInput";
 import { FoodReviewFields } from "./FoodReviewFields";
 import { HousingExperienceFields } from "./HousingExperienceFields";
-import { HousingPostFields, StudentExperienceFields, RidePostFields } from "./TopicPostFields";
+import { HousingPostFields, StudentExperienceFields, RidePostFields, PassPostFields } from "./TopicPostFields";
 import { HOUSING_KINDS } from "@/lib/studentLifeDetails";
 import { hasLifeDraftContent, initialLifeForm, lifeFormErrors, lifePostPayload, normalizeHousingForm, readLifeDraft, type LifeComposerState } from "@/lib/studentLifeForm";
 import { CAMPUS_OPTIONS } from "@/lib/campuses";
@@ -37,6 +39,7 @@ import type {
   HousingPost,
   StudentExperience,
   RidePost,
+  PassPost,
 } from "@/types/entities";
 
 export interface ThreadComposerProps {
@@ -58,7 +61,7 @@ const topicIcons = {
   housing: House,
   food: UtensilsCrossed,
   transport: CarFront,
-  campus: School,
+  marketplace: Package,
   experience: Lightbulb,
   conversation: MessagesSquare,
 };
@@ -90,6 +93,9 @@ export function ThreadComposer({
   const [housingPost, setHousingPost] = useState<HousingPost>(initial.housingPost);
   const [studentExperience, setStudentExperience] = useState<StudentExperience>(initial.studentExperience);
   const [ridePost, setRidePost] = useState<RidePost>(initial.ridePost);
+  const [expectedOn, setExpectedOn] = useState(initial.expectedOn);
+  const [remindOnExpectedDate, setRemindOnExpectedDate] = useState(initial.remindOnExpectedDate);
+  const [passPost, setPassPost] = useState<Partial<PassPost>>(initial.passPost);
   const [title, setTitle] = useState(initial.title);
   const [content, setContent] = useState(initial.content);
   const [topic, setTopic] = useState(initial.topic);
@@ -107,9 +113,9 @@ export function ThreadComposer({
 
   const draftCleared = useRef(false);
   const formState = useMemo<LifeComposerState>(() => ({
-    type, foodReview, housingExperience, housingPost, studentExperience, ridePost,
+    originalExpectedAt: initial.originalExpectedAt, expectedOn, remindOnExpectedDate, type, foodReview, housingExperience, housingPost, studentExperience, ridePost, passPost,
     title, content, topic, campus, area, location, tags, visibility, images, attachments,
-  }), [type, foodReview, housingExperience, housingPost, studentExperience, ridePost, title, content, topic, campus, area, location, tags, visibility, images, attachments]);
+  }), [expectedOn, remindOnExpectedDate, type, foodReview, housingExperience, housingPost, studentExperience, ridePost, passPost, title, content, topic, campus, area, location, tags, visibility, images, attachments]);
   const payload = lifePostPayload(formState);
   const effectiveType = payload.type;
   const errors = lifeFormErrors(formState);
@@ -183,6 +189,8 @@ export function ThreadComposer({
         draftCleared.current = true;
         try { localStorage.removeItem(draftKey); } catch { /* Save already succeeded. */ }
         setContent("");
+        setExpectedOn(currentLifeDate(topic === "housing" ? 30 : 14));
+        setRemindOnExpectedDate(true);
         setTitle("");
         setFoodReview({
           placeName: "",
@@ -191,6 +199,7 @@ export function ThreadComposer({
           visitedOn: localReviewDate(),
         });
         setHousingExperience({});
+        setPassPost({ itemName: "", closed: false });
         setHousingPost(normalizeHousingForm());
         setStudentExperience({ category: "ojt", intent: "sharing" });
         setRidePost({ kind: "seeking", origin: "", destination: "", departure: "" });
@@ -277,6 +286,7 @@ export function ThreadComposer({
                   if (item.value === topic) return;
                   draftCleared.current = false;
                   setTopic(item.value);
+                  setExpectedOn(currentLifeDate(item.value === "housing" ? 30 : 14));
                   setType(item.value === "food" ? "review"
                     : item.value === "housing" ? housingPost.kind === "experience" ? "experience" : "discussion"
                     : item.value === "experience" ? studentExperience.intent === "sharing" ? "experience" : "question"
@@ -297,7 +307,7 @@ export function ThreadComposer({
           })}
         </div>
       </fieldset>
-      <div className={`grid gap-3 ${topic === "experience" || topic === "transport" ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+      <div className={`grid gap-3 ${topic === "experience" || topic === "transport" || topic === "marketplace" ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
         {topic === "housing" ? (
           <select aria-label="Nhu cầu về chỗ ở" value={housingPost.kind === "experience" && effectiveType === "question" ? "question" : housingPost.kind} className={field} onChange={(event) => {
             const selected = event.target.value;
@@ -308,7 +318,7 @@ export function ThreadComposer({
             {HOUSING_KINDS.map((kind) => <option key={kind.value} value={kind.value}>{kind.label}</option>)}
             <option value="question">Hỏi kinh nghiệm ở trọ</option>
           </select>
-        ) : topic !== "experience" && topic !== "transport" && (
+        ) : topic !== "experience" && topic !== "transport" && topic !== "marketplace" && (
           <select aria-label="Hình thức bài viết" value={effectiveType} onChange={(event) => setType(event.target.value as PostType)} className={field}>
             <option value="discussion">Chia sẻ</option>
             <option value="question">Đặt câu hỏi</option>
@@ -349,6 +359,8 @@ export function ThreadComposer({
       {topic === "housing" && housingPost.kind !== "experience" && <HousingPostFields value={housingPost} onChange={(value) => setHousingPost(normalizeHousingForm(value))} />}
       {topic === "experience" && <StudentExperienceFields value={studentExperience} onChange={(value) => { setStudentExperience(value); setType(value.intent === "sharing" ? "discussion" : "question"); }} />}
       {topic === "transport" && <RidePostFields value={ridePost} onChange={setRidePost} />}
+      {topic === "marketplace" && <PassPostFields value={passPost} onChange={setPassPost} />}
+      <LifePostReminderFields post={payload} expectedOn={expectedOn} onExpectedOn={setExpectedOn} reminder={remindOnExpectedDate} onReminder={setRemindOnExpectedDate} />
       {payload.foodReview && (
         <FoodReviewFields key={`${campus}-${area}`} value={foodReview} onChange={setFoodReview} />
       )}
@@ -358,7 +370,7 @@ export function ThreadComposer({
           onChange={setHousingExperience}
         />
       )}
-      <label className="block space-y-1.5 text-xs font-medium text-neutral-600">
+      {topic !== "marketplace" && <label className="block space-y-1.5 text-xs font-medium text-neutral-600">
         <span>
           {effectiveType === "question"
             ? "Bạn đang muốn hỏi điều gì? *"
@@ -390,7 +402,7 @@ export function ThreadComposer({
         <span className="block text-right text-[11px] font-normal text-neutral-400">
           {title.length}/140
         </span>
-      </label>
+      </label>}
       <label className="block space-y-1.5 text-xs font-medium text-neutral-600">
         <span>
           Nội dung <span className="text-brand-600">*</span>
@@ -401,7 +413,8 @@ export function ThreadComposer({
           maxLength={3000}
           onChange={(e) => setContent(e.target.value)}
           placeholder={
-            topic === "housing" && housingPost.kind !== "experience"
+            topic === "marketplace" ? "Mô tả thời gian đã dùng, lỗi nếu có, phụ kiện đi kèm, lý do pass và cách hẹn nhận đồ…"
+              : topic === "housing" && housingPost.kind !== "experience"
               ? housingPost.kind === "seeking" ? "Mô tả phòng mong muốn, số người, cách liên hệ và yêu cầu thêm…" : housingPost.kind === "roommate" ? "Mô tả phòng, bạn cùng phòng mong muốn, chi phí chia sẻ và cách liên hệ…" : housingPost.kind === "transfer" ? "Nêu lý do nhượng, tình trạng phòng, hợp đồng, đồ để lại và cách liên hệ…" : "Mô tả diện tích, nội thất, hợp đồng, điều kiện thuê và cách liên hệ…"
               : topic === "experience" && studentExperience.intent === "request_materials"
                 ? "Bạn cần tài liệu gì, cho môn nào, đang học phần nào? Nêu rõ để mọi người hỗ trợ đúng nhé…"
@@ -429,13 +442,13 @@ export function ThreadComposer({
         </span>
       </label>
       {topic !== "transport" && <label className="block space-y-1.5 text-xs font-medium text-neutral-600">
-        <span>Địa chỉ cụ thể (không bắt buộc)</span>
+        <span>{topic === "marketplace" ? "Điểm hẹn nhận đồ (không bắt buộc)" : "Địa chỉ cụ thể (không bắt buộc)"}</span>
         <input
           value={location}
           maxLength={80}
           onChange={(e) => setLocation(e.target.value)}
           placeholder={
-            topic === "housing"
+            topic === "marketplace" ? "Ví dụ: Sảnh ký túc xá, cổng trường…" : topic === "housing"
                 ? "Ví dụ: Khu gần campus, ký túc xá…"
                 : "Ví dụ: Ký túc xá, khu Cổng trường…"
           }

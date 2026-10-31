@@ -1,3 +1,5 @@
+import { reconcileLifeSearchAlerts } from '../lifeSearches';
+import { seedNotifications } from '../data/notifications';
 import { http, HttpResponse } from 'msw';
 import { seedSwapRequests, seedSwapConnections } from '../data/swap';
 import { seedJoinRequests, seedGroups } from '../data/groups';
@@ -10,6 +12,7 @@ export const dashboardHandlers = [
   // Nav Counters query (dùng chung cho IconRailNav, BottomTabBar, Topbar)
   http.get('/api/v1/nav/counters', async ({ request }) => {
     await mockDelay(100, 300);
+    reconcileLifeSearchAlerts();
     const userId = getViewerId(request);
 
     const unreadMessages = 3;
@@ -17,7 +20,7 @@ export const dashboardHandlers = [
       (c) => c.recipientId === userId && c.status === 'Pending'
     ).length;
     const myActionItems = 4;
-    const unreadNotifications = 2;
+    const unreadNotifications = seedNotifications.filter((n) => n.userId === userId && !n.read).length;
 
     return HttpResponse.json({
       data: {

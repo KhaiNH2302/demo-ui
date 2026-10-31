@@ -349,6 +349,15 @@ export interface RidePost {
   departure: string;
   seats?: number;
   contribution?: number;
+  closed?: boolean;
+}
+
+export interface PassPost {
+  itemName: string;
+  category: "electronics" | "furniture" | "books" | "household" | "clothing" | "other";
+  condition: "like_new" | "good" | "used";
+  price: number;
+  closed?: boolean;
 }
 
 export interface HousingExperience {
@@ -360,6 +369,14 @@ export interface HousingExperience {
 
 // FE-02 Student Life (community posts)
 export interface KnowledgePost {
+  authorHidden?: boolean;
+  expectedCompletionAt?: string;
+  remindOnExpectedDate?: boolean;
+  /** Legacy browser records; migrated to expectedCompletionAt on restore. */
+  expiresAt?: string;
+  remindBeforeExpiry?: boolean;
+  /** First publication time, preserved across edits for saved-search alerts. */
+  publishedAt?: string;
   id: string;
   authorId: string;
   authorName?: string;
@@ -377,6 +394,7 @@ export interface KnowledgePost {
   area?: string;
   studentExperience?: StudentExperience;
   ridePost?: RidePost;
+  passPost?: PassPost;
   lifeTopic?: string;
   campus?: string;
   location?: string;

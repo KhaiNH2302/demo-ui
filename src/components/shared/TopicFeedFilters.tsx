@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/Button";
 import { MapPin } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { RideDateFilter } from "./RideDateFilter";
-import { currentLifeYear, EXPERIENCE_CATEGORIES, EXPERIENCE_INTENTS, HOUSING_AMENITIES, HOUSING_KINDS, selectedHousingAmenities } from "@/lib/studentLifeDetails";
+import { currentLifeYear, EXPERIENCE_CATEGORIES, EXPERIENCE_INTENTS, HOUSING_AMENITIES, HOUSING_KINDS, PASS_CATEGORIES, PASS_CONDITIONS, selectedHousingAmenities } from "@/lib/studentLifeDetails";
 
 const field = "min-w-0 w-full rounded-lg border border-neutral-200 bg-surface px-3 py-2 text-sm text-neutral-700 outline-hidden focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15";
 export function TopicFeedFilters({ topic, params, onChange, nearby, radius, onRadius, onLocate, onClearLocation, locating, locationError }: {
@@ -15,8 +15,15 @@ export function TopicFeedFilters({ topic, params, onChange, nearby, radius, onRa
   const select = (key: string, label: string, options: readonly { value: string; label: string }[]) => <FeedFilterSelect fitContent aria-label={label} value={params.get(key) || ""} onChange={(e) => onChange(key, e.target.value)}><option value="">{label}</option>{options.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}</FeedFilterSelect>;
   const check = (key: string, label: string) => <label className="flex min-h-10 items-center gap-2 text-xs text-neutral-700"><input type="checkbox" checked={params.get(key) === "1"} onChange={(e) => onChange(key, e.target.checked ? "1" : "")} className="accent-brand-600" />{label}</label>;
   const amenities = selectedHousingAmenities(params.get("amenity"));
-  if (!["housing", "food", "experience", "transport"].includes(topic)) return null;
+  if (!["housing", "food", "experience", "transport", "marketplace"].includes(topic)) return null;
   return <div className="mt-3 space-y-3 border-t border-neutral-200/80 pt-3">
+    {topic === "marketplace" && <>
+      <div className="flex flex-wrap items-center gap-2.5">
+        {select("passCategory", "Mọi loại đồ", PASS_CATEGORIES)}
+        {select("passCondition", "Mọi tình trạng", PASS_CONDITIONS)}
+        {select("maxPassPrice", "Mọi mức giá pass", [{ value: "0", label: "Tặng miễn phí" }, { value: "100000", label: "Đến 100.000đ" }, { value: "300000", label: "Đến 300.000đ" }, { value: "500000", label: "Đến 500.000đ" }, { value: "1000000", label: "Đến 1 triệu" }, { value: "3000000", label: "Đến 3 triệu" }])}
+      </div>
+    </>}
     {topic === "housing" && <>
       <div className="flex flex-wrap items-center gap-2.5">
         {select("housingKind", "Mọi nhu cầu về trọ", HOUSING_KINDS)}
@@ -44,7 +51,6 @@ export function TopicFeedFilters({ topic, params, onChange, nearby, radius, onRa
           </fieldset>
         </>}
       </div>
-      {params.get("housingKind") !== "experience" && check("onlyOpen", "Chỉ hiện tin còn phòng / còn tìm")}
     </>}
     {topic === "experience" && <>
       <div className="flex flex-wrap items-center gap-2.5">
@@ -56,6 +62,12 @@ export function TopicFeedFilters({ topic, params, onChange, nearby, radius, onRa
     </>}
     {topic === "food" && <>
       <div className="flex flex-wrap items-center gap-2.5">
+        <FeedFilterSelect fitContent aria-label="Lọc mức giá" value={params.get("maxPrice") || ""} onChange={(event) => onChange("maxPrice", event.target.value)}>
+          <option value="">Mọi mức giá</option>
+          <option value="30000">Đến 30.000đ/người</option>
+          <option value="50000">Đến 50.000đ/người</option>
+          <option value="80000">Đến 80.000đ/người</option>
+        </FeedFilterSelect>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Button type="button" variant={nearby ? "primary" : "outline"} size="sm" loading={locating} leftIcon={<MapPin size={14} />} onClick={onLocate}>Gần tôi</Button>
           {nearby && <><FeedFilterSelect fitContent aria-label="Bán kính tìm quán" value={radius} onChange={(e) => onRadius(e.target.value)}><option value="1">Trong 1 km</option><option value="3">Trong 3 km</option><option value="5">Trong 5 km</option></FeedFilterSelect><button type="button" onClick={onClearLocation} className="shrink-0 text-xs text-neutral-500 hover:text-brand-700">Bỏ vị trí</button></>}

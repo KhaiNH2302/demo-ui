@@ -13,6 +13,7 @@ import type { KnowledgePost } from "@/types/entities";
 
 export interface ThreadFeedProps {
   posts: KnowledgePost[];
+  showOwnerControls?: boolean;
   isLoading?: boolean;
   skeletonCount?: number;
   density?: "default" | "compact";
@@ -50,6 +51,7 @@ export interface ThreadFeedProps {
  */
 export const ThreadFeed: React.FC<ThreadFeedProps> = ({
   posts,
+  showOwnerControls = false,
   isLoading = false,
   skeletonCount = 5,
   density = "default",
@@ -230,6 +232,7 @@ export const ThreadFeed: React.FC<ThreadFeedProps> = ({
                   post={post}
                   variant="feed"
                   density={density}
+                  showOwnerControls={showOwnerControls}
                   onEdit={onEditPost}
                   onLikeToggle={(id, liked) => {
                     if (onLikeToggle) onLikeToggle(id, liked);

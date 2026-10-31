@@ -1,3 +1,5 @@
+import { lifeReminderFields, migrateLifePost } from '@/lib/lifePostLifecycle';
+import { createLifeLifecycleFixtures } from './studentLifeLifecycleFixtures';
 import type { Comment, KnowledgePost } from "@/types/entities";
 import { createStudentLifeFilterFixtures } from "./studentLifeFilterFixtures";
 
@@ -28,6 +30,7 @@ const post = (
 });
 
 export const seedKnowledgePosts: KnowledgePost[] = [
+  ...createLifeLifecycleFixtures(),
   post(18, {
     lifeTopic: "housing", title: "Tìm phòng cho 2 người quanh Tân Xã, ngân sách 2 triệu",
     contentMd: "Hai đứa mình muốn tìm phòng khép kín, có chỗ nấu ăn. Ngân sách tiền phòng tối đa 2 triệu/tháng, chưa gồm điện nước. Bạn nào biết phòng phù hợp chia sẻ giúp mình nhé.",
@@ -234,7 +237,7 @@ export const seedKnowledgePosts: KnowledgePost[] = [
 
   post(5, {
     authorId: "usr_student_08",
-    lifeTopic: "campus",
+    lifeTopic: "conversation",
     type: "question",
     title: "Cuối tuần quanh trường có chỗ nào ngồi yên yên không?",
     contentMd:
@@ -316,7 +319,7 @@ export const seedKnowledgePosts: KnowledgePost[] = [
 
   post(9, {
     authorId: "usr_student_11",
-    lifeTopic: "campus",
+    lifeTopic: "conversation",
     type: "discussion",
     title: "Hôm nay ngồi ngoài sân không làm gì mà thấy dễ chịu ghê",
     contentMd:
@@ -359,7 +362,7 @@ export const seedKnowledgePosts: KnowledgePost[] = [
   }),
   post(13, {
     authorId: "usr_student_01",
-    lifeTopic: "campus",
+    lifeTopic: "conversation",
     status: "Rejected",
     visibility: "school",
     title: "Có bạn nào rơi thẻ ở sân trường không?",
@@ -466,6 +469,7 @@ export const seedComments: Comment[] = [
   },
   ...filterFixtures.comments,
 ];
+seedKnowledgePosts.forEach((item) => Object.assign(migrateLifePost(item), lifeReminderFields(item)));
 const postsById = new Map(seedKnowledgePosts.map((item) => [item.id, item]));
 seedComments.forEach((comment, index) => {
   if (comment.createdAt) return;

@@ -1,6 +1,6 @@
 import type { Comment, HousingPost, KnowledgePost, StudentExperience } from "@/types/entities";
 import { CAMPUS_AREAS } from "@/lib/campusAreas";
-import { currentLifeDate, currentLifeYear, EXPERIENCE_CATEGORIES, EXPERIENCE_INTENTS, HOUSING_AMENITIES, HOUSING_KINDS } from "@/lib/studentLifeDetails";
+import { currentLifeDate, currentLifeYear, EXPERIENCE_CATEGORIES, EXPERIENCE_INTENTS, HOUSING_AMENITIES, HOUSING_KINDS, PASS_CATEGORIES, PASS_CONDITIONS } from "@/lib/studentLifeDetails";
 import { LIFE_TOPICS } from "@/lib/studentLife";
 import { demoAttachment } from "./studentLifeDemoResources";
 
@@ -179,18 +179,43 @@ export function createStudentLifeFilterFixtures(now = new Date()) {
         });
       });
 
-      (["campus", "conversation"] as const).forEach((topic) => {
-        for (let variant = 0; variant < 3; variant++) {
-          const question = variant !== 0;
-          const entry = add(`${topic}_${key}_${variant}`, campus, area, {
-            lifeTopic: topic, type: question ? "question" : "discussion",
-            title: topic === "campus" ? [ `Một góc yên tĩnh để đọc sách ở ${shortArea}`, `Quanh ${shortArea} có chỗ học chung nào dễ ngồi?`, `Mình đã tìm được góc nghỉ giữa hai ca ở ${shortArea}` ][variant] : [ `Một chuyện vui nhỏ hôm nay ở ${campus}`, "Làm sao để chủ động bắt chuyện với bạn mới?", "Cảm ơn người bạn đã rủ mình đi ăn cùng" ][variant],
-            contentMd: topic === "campus" ? "Mình muốn đổi không gian sau giờ học, tìm một góc sáng và không quá ồn để đọc sách. Bạn nào biết chỗ phù hợp trong khu vực chia sẻ giúp mình nhé." : "Có những ngày chỉ một lời rủ đi ăn cũng khiến mình thấy dễ hòa nhập hơn. Mình chia sẻ câu chuyện nhỏ và muốn nghe cách mọi người kết nối với bạn mới.",
-            isSolved: variant === 2,
-          }, variant === 2 ? 1 : 0);
-          savedIds.push(entry.id);
-        }
+      const passExamples = {
+        electronics: { items: ["Bàn phím cơ", "Chuột không dây", "Tai nghe chụp tai"], prices: [800000, 400000, 150000] },
+        furniture: { items: ["Bàn học gấp", "Ghế tựa", "Kệ sách nhỏ"], prices: [300000, 150000, 50000] },
+        books: { items: ["Sách tiếng Anh", "Sách luyện đọc", "Bộ sách kỹ năng"], prices: [150000, 80000, 30000] },
+        household: { items: ["Quạt bàn", "Đèn học", "Nồi cơm điện mini"], prices: [250000, 120000, 40000] },
+        clothing: { items: ["Balo đi học", "Áo khoác", "Túi tote"], prices: [200000, 100000, 30000] },
+        other: { items: ["Vợt cầu lông", "Thảm tập", "Bình nước"], prices: [100000, 50000, 20000] },
+      };
+      PASS_CATEGORIES.forEach(({ value: category }) => {
+        const example = passExamples[category];
+        PASS_CONDITIONS.forEach(({ value: condition, label: conditionLabel }, index) => {
+          const itemName = example.items[index];
+          const entry = add(`pass_${key}_${category}_${condition}`, campus, area, {
+            lifeTopic: "marketplace", title: `Pass ${itemName.toLowerCase()} ở ${shortArea}`,
+            contentMd: `Mình muốn pass lại ${itemName.toLowerCase()} để dọn gọn chỗ ở. Tình trạng minh họa: ${conditionLabel.toLowerCase()}. Có thể trao đổi thêm về phụ kiện và hẹn kiểm tra trực tiếp tại điểm công cộng. Đây là đồ dùng mô phỏng, không phải tin bán thật.`,
+            location: `Điểm hẹn công cộng tại ${shortArea}`,
+            passPost: { itemName, category, condition, price: example.prices[index], closed: false },
+          });
+          if (condition === "good") savedIds.push(entry.id);
+        });
+        [false, true].forEach((closed) => {
+          add(`pass_${key}_${category}_${closed ? "closed" : "free"}`, campus, area, {
+            lifeTopic: "marketplace", title: `${closed ? "Đã pass" : "Tặng miễn phí"} ${example.items[0].toLowerCase()} tại ${shortArea}`,
+            contentMd: closed ? "Tin minh họa đã pass xong. Người đăng cập nhật để người khác không liên hệ nhầm." : "Mình không còn dùng nên muốn tặng lại cho bạn sinh viên cần. Hẹn nhận trực tiếp ở điểm công cộng sau khi trao đổi. Đây là tình huống mô phỏng.",
+            passPost: { itemName: example.items[0], category, condition: "good", price: closed ? example.prices[0] : 0, closed },
+          });
+        });
       });
+      for (let variant = 0; variant < 3; variant++) {
+        const entry = add(`conversation_${key}_${variant}`, campus, area, {
+          lifeTopic: "conversation", type: variant === 0 ? "discussion" : "question",
+          title: [`Một chuyện vui nhỏ hôm nay ở ${campus}`, "Làm sao để chủ động bắt chuyện với bạn mới?", "Cảm ơn người bạn đã rủ mình đi ăn cùng"][variant],
+          contentMd: "Có những ngày chỉ một lời rủ đi ăn cũng khiến mình thấy dễ hòa nhập hơn. Mình chia sẻ câu chuyện nhỏ và muốn nghe cách mọi người kết nối với bạn mới.",
+          isSolved: variant === 2,
+        }, variant === 2 ? 1 : 0);
+        savedIds.push(entry.id);
+      }
     });
 
     // Own-post status tabs contain all topics at every campus.
@@ -198,7 +223,8 @@ export function createStudentLifeFilterFixtures(now = new Date()) {
       (["Published", "PendingReview", "Rejected"] as const).forEach((status) => {
         add(`mine_${campusIndex}_${topic}_${status}`, campus, areas[0], {
           lifeTopic: topic, authorId: "usr_student_01", status, visibility: "school",
-          title: `${label}: ghi chú của mình tại ${campus}`,
+          ...(topic === "marketplace" ? { passPost: { itemName: "Đèn học", category: "household" as const, condition: "good" as const, price: 120000, closed: false } } : {}),
+          title: topic === "marketplace" ? `Pass đèn học tại ${campus}` : `${label}: ghi chú của mình tại ${campus}`,
           contentMd: "Mình đang tổng hợp ghi chú để chia sẻ với cộng đồng. Bài mẫu này dùng kiểm tra các trạng thái đăng bài của tài khoản demo.",
           rejectReason: status === "Rejected" ? "Mẫu cần bổ sung thông tin trước khi đăng lại." : undefined,
         });

@@ -29,6 +29,8 @@ interface FollowRequestItem {
 
 const sourceOptions = [
   { value: '', label: 'Tất cả nguồn' },
+  { value: 'StudentLifeLifecycle', label: 'Nhắc kiểm tra bài viết' },
+  { value: 'StudentLifeSearch', label: 'Tìm kiếm đời sống' },
   { value: 'GroupJoin', label: 'Nhóm học tập' },
   { value: 'ClubApplication', label: 'Đơn CLB' },
   { value: 'ClubEvent', label: 'Sự kiện CLB' },

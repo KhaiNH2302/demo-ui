@@ -2,6 +2,9 @@ import { http, HttpResponse } from 'msw';
 import { seedNotifications } from '../data/notifications';
 import { seedFollows, seedUsers } from '../data/users';
 import { mockDelay, getViewerId } from '../utils';
+import { persistLifeSearchRead, reconcileLifeSearchAlerts } from '../lifeSearches';
+
+import { persistLifePostNoticeRead } from '../lifePostLifecycle';
 
 function authenticatedId(request: Request) {
   const auth = request.headers.get('Authorization') || '';
@@ -19,6 +22,7 @@ export const notificationHandlers = [
     const url = new URL(request.url);
     const read = url.searchParams.get('read');
     const source = url.searchParams.get('source');
+    reconcileLifeSearchAlerts();
 
     let list = seedNotifications.filter((item) => item.userId === getViewerId(request));
     if (read !== null && read !== undefined && read !== '') {
@@ -40,6 +44,8 @@ export const notificationHandlers = [
     if (!item) return error('NOT_FOUND', 404, 'Thông báo không tồn tại.');
     if (item.userId !== userId) return error('FORBIDDEN', 403, 'Bạn không có quyền đọc thông báo này.');
     item.read = true;
+    persistLifeSearchRead(item);
+    persistLifePostNoticeRead(item);
     return HttpResponse.json({ data: { success: true } });
   }),
 

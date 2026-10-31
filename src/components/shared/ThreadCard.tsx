@@ -1,3 +1,4 @@
+import { LifePostOwnerActions, LifePostState } from './LifePostOwnerActions';
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { UserAvatar } from "@/components/shared/UserAvatar";
@@ -38,6 +39,7 @@ import type { KnowledgePost } from "@/types/entities";
 
 export interface ThreadCardProps {
   post: KnowledgePost;
+  showOwnerControls?: boolean;
   variant?: "feed" | "detail" | "reply";
   density?: "default" | "compact";
   showThreadLine?: boolean;
@@ -53,6 +55,7 @@ export interface ThreadCardProps {
 
 export const ThreadCard: React.FC<ThreadCardProps> = ({
   post,
+  showOwnerControls = false,
   variant = "feed",
   density = "default",
   showThreadLine = false,
@@ -445,7 +448,9 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
           )}
         </div>
 
+        <LifePostState post={post} showReminder={isMine} />
         <TopicPostSummary post={post} />
+        {showOwnerControls && isMine && <LifePostOwnerActions post={post} onEdit={onEdit} />}
 
         {!isCompact &&
           post.lifeTopic === "housing" &&

@@ -1,3 +1,5 @@
+import { lifeExpectedAt, isLifePublished, lifeCanRespond, lifeDiscoverable, lifeReminderError, lifeReminderFields, matchesLifeOwnerStatus } from '@/lib/lifePostLifecycle';
+import { deleteLifePost, persistLifePost } from '../lifePostLifecycle';
 import { http, HttpResponse } from "msw";
 import {
   seedKnowledgePosts,
@@ -17,6 +19,8 @@ import {
 } from "@/lib/studentLife";
 import type { KnowledgePost, Comment } from "@/types/entities";
 import { matchesTopicFilters, topicDetailsFields, validTopicDetails } from "@/lib/studentLifeDetails";
+import { lifePostSearchText, lifeSearchExpired, matchesLifeSearch } from "@/lib/lifeSearches";
+import { getLifeSearch, persistLifeSearchDemoPost, reconcileLifeSearchAlerts, removeLifeSearchDemoPost } from "../lifeSearches";
 
 const following = new Map<string, Set<string>>();
 const saved = new Map<string, Set<string>>();
@@ -47,7 +51,7 @@ const error = (status: number, message: string) =>
 const visible = (post: KnowledgePost, request: Request) => {
   const user = actor(request);
   if (post.authorId === user?.id) return true;
-  if (post.status !== "Published" && post.status !== "Closed") return false;
+  if (post.authorHidden || !isLifePublished(post)) return false;
   return (
     post.visibility === "cross_school" ||
     Boolean(
@@ -61,7 +65,7 @@ const mapped = (post: KnowledgePost, id: string) => ({
   ...post,
   savedByMe: savedPosts(id).has(post.id),
 });
-const validBody = (body: Partial<KnowledgePost>) =>
+const validBody = (body: Partial<KnowledgePost>, previous?: KnowledgePost) =>
   typeof body.contentMd === "string" &&
   body.contentMd.trim().length > 0 &&
   body.contentMd.length <= 3000 &&
@@ -80,9 +84,10 @@ const validBody = (body: Partial<KnowledgePost>) =>
   (body.title?.length || 0) <= 140 &&
   (body.images?.length || 0) <= 4 &&
   (body.attachments?.length || 0) <= 3 &&
-  validTopicDetails(body);
+  validTopicDetails(body) && !body.housingPost?.closed && !body.passPost?.closed && !body.ridePost?.closed && !lifeReminderError(body, new Date(), previous && lifeExpectedAt(previous));
 const fields = (body: Partial<KnowledgePost>) => ({
   ...topicDetailsFields(body),
+  ...lifeReminderFields(body),
   type: body.type!,
   title: body.title?.trim(),
   contentMd: body.contentMd!.trim(),
@@ -129,20 +134,24 @@ const fields = (body: Partial<KnowledgePost>) => ({
 export const knowledgeHandlers = [
   http.get("/api/v1/posts", async ({ request }) => {
     await mockDelay();
+    reconcileLifeSearchAlerts();
     const params = new URL(request.url).searchParams;
     const userId = actor(request)?.id || "";
     const tab = params.get("tab");
     let list = seedKnowledgePosts.filter((post) => visible(post, request));
+    if (params.get("searchId")) {
+      const search = getLifeSearch(userId, params.get("searchId")!);
+      if (!search) return error(404, "Không tìm thấy tìm kiếm của bạn.");
+      list = lifeSearchExpired(search) ? [] : list.filter((post) => matchesLifeSearch(post, search.filters, userId));
+    }
     if (tab === "mine")
       list = list.filter(
         (post) =>
           post.authorId === userId &&
-          post.status === (params.get("status") || "Published"),
+          matchesLifeOwnerStatus(post, params.get("status") || "Published"),
       );
     else
-      list = list.filter(
-        (post) => post.status === "Published" || post.status === "Closed",
-      );
+      list = list.filter((post) => tab === "saved" ? isLifePublished(post) : lifeDiscoverable(post));
     if (tab === "following")
       list = list.filter((post) =>
         followedTopics(userId).has(post.lifeTopic || ""),
@@ -176,30 +185,14 @@ export const knowledgeHandlers = [
     if (params.get("q")) {
       const query = normalizeLifeSearch(params.get("q")!.trim());
       list = list.filter((post) =>
-        normalizeLifeSearch(
-          [
-            post.title,
-            post.contentMd,
-            post.location,
-            post.campus,
-            post.area,
-            post.foodReview?.placeName,
-            post.foodReview?.dish,
-            post.housingExperience?.highlights,
-            post.housingExperience?.considerations,
-            post.housingPost?.area,
-            post.studentExperience?.courseCode,
-            post.ridePost?.origin,
-            post.ridePost?.destination,
-            ...post.tags,
-          ].join(" "),
-        ).includes(query),
+        lifePostSearchText(post).includes(query),
       );
     }
     const sort = params.get("sort");
     if (topic === "food" && ["hot", "discussed", "price_low", "price_high"].includes(sort || ""))
       list = list.filter((post) => post.type === "review" && post.foodReview);
-    if (sort === "unanswered")
+    if (topic === "marketplace" && ["price_low", "price_high"].includes(sort || "")) list = list.filter((post) => post.passPost);
+    if (sort === "unanswered" || params.get("unanswered") === "1")
       list = list.filter((post) => post.type === "question" && !post.isSolved);
     list.sort(
       sort === "hot"
@@ -208,6 +201,10 @@ export const knowledgeHandlers = [
           ? (a, b) => a.foodReview!.spentPerPerson - b.foodReview!.spentPerPerson
         : topic === "food" && sort === "price_high"
           ? (a, b) => b.foodReview!.spentPerPerson - a.foodReview!.spentPerPerson
+        : topic === "marketplace" && sort === "price_low"
+          ? (a, b) => a.passPost!.price - b.passPost!.price
+        : topic === "marketplace" && sort === "price_high"
+          ? (a, b) => b.passPost!.price - a.passPost!.price
         : sort === "discussed"
           ? (a, b) => b.commentCount - a.commentCount
           : (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
@@ -218,17 +215,18 @@ export const knowledgeHandlers = [
   }),
   http.post("/api/v1/posts", async ({ request }) => {
     await mockDelay();
+    reconcileLifeSearchAlerts();
     const user = actor(request);
     if (!user) return error(401, "Đăng nhập để chia sẻ bài viết.");
     const body = (await request.json()) as Partial<KnowledgePost>;
     if (!validBody(body))
       return error(
         400,
-        "Cần nội dung, chủ đề và campus hợp lệ. Bài hỏi kinh nghiệm cần có tiêu đề.",
+        lifeReminderError(body) || "Cần nội dung, chủ đề và campus hợp lệ. Bài hỏi kinh nghiệm cần có tiêu đề.",
       );
     const post: KnowledgePost = {
       ...fields(body),
-      id: `post_${Date.now()}`,
+      id: `post_${crypto.randomUUID()}`,
       authorId: user.id,
       status: isScenarioActive("post_auto_flagged")
         ? "PendingReview"
@@ -239,24 +237,29 @@ export const knowledgeHandlers = [
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+    if (post.status === "Published") post.publishedAt = post.createdAt;
     seedKnowledgePosts.unshift(post);
+    persistLifePost(post);
+    reconcileLifeSearchAlerts();
     return HttpResponse.json({ data: post });
   }),
   http.get("/api/v1/posts/me", async ({ request }) => {
     await mockDelay();
+    reconcileLifeSearchAlerts();
     const userId = actor(request)?.id;
     const status = new URL(request.url).searchParams.get("status");
     return HttpResponse.json({
       data: seedKnowledgePosts
         .filter(
           (post) =>
-            post.authorId === userId && (!status || status === post.status),
+            post.authorId === userId && (!status || matchesLifeOwnerStatus(post, status)),
         )
         .map((post) => mapped(post, userId!)),
     });
   }),
   http.get("/api/v1/posts/saved", async ({ request }) => {
     await mockDelay();
+    reconcileLifeSearchAlerts();
     const id = actor(request)?.id || "";
     return HttpResponse.json({
       data: seedKnowledgePosts
@@ -266,6 +269,7 @@ export const knowledgeHandlers = [
   }),
   http.get("/api/v1/posts/:id", async ({ params, request }) => {
     await mockDelay();
+    reconcileLifeSearchAlerts();
     const post = seedKnowledgePosts.find((item) => item.id === params.id);
     if (!post || !visible(post, request))
       return error(
@@ -281,19 +285,25 @@ export const knowledgeHandlers = [
   }),
   http.put("/api/v1/posts/:id", async ({ params, request }) => {
     await mockDelay();
+    reconcileLifeSearchAlerts();
     const post = seedKnowledgePosts.find((item) => item.id === params.id);
     if (!post || post.authorId !== actor(request)?.id)
       return error(403, "Bạn chỉ có thể sửa bài của mình.");
     const body = (await request.json()) as Partial<KnowledgePost>;
-    if (!validBody(body))
-      return error(400, "Kiểm tra nội dung, chủ đề và campus của bài viết.");
+    if (!validBody(body, post))
+      return error(400, lifeReminderError(body, new Date(), lifeExpectedAt(post)) || "Kiểm tra nội dung, chủ đề và campus của bài viết.");
+    const wasPublished = post.status === "Published" || post.status === "Closed";
     Object.assign(post, fields(body), {
       updatedAt: new Date().toISOString(),
       rejectReason: undefined,
-      status: isScenarioActive("post_auto_flagged")
+      status: !wasPublished || isScenarioActive("post_auto_flagged")
         ? "PendingReview"
         : "Published",
     });
+    if (post.status === "Published" && !post.publishedAt) post.publishedAt = wasPublished ? post.createdAt : new Date().toISOString();
+    persistLifePost(post);
+    persistLifeSearchDemoPost(post);
+    reconcileLifeSearchAlerts();
     if (post.type !== "question") {
       post.isSolved = false;
       post.acceptedCommentId = undefined;
@@ -305,12 +315,33 @@ export const knowledgeHandlers = [
     }
     return HttpResponse.json({ data: post });
   }),
+  http.put("/api/v1/posts/:id/visibility", async ({ params, request }) => {
+    await mockDelay();
+    reconcileLifeSearchAlerts();
+    const post = seedKnowledgePosts.find((p) => p.id === params.id);
+    if (!post || post.authorId !== actor(request)?.id) return error(403, "Bạn chỉ được ẩn/hiện bài của mình.");
+    const body = await request.json() as { hidden?: unknown };
+    if (typeof body.hidden !== "boolean") return error(400, "Trạng thái ẩn/hiện không hợp lệ.");
+    if (!isLifePublished(post)) return error(409, "Bài cần được duyệt trước khi thay đổi hiển thị.");
+    // Showing a post is independent of its expected completion date.
+    if (!body.hidden) for (const details of [post.housingPost, post.passPost, post.ridePost]) if (details) details.closed = false;
+    post.authorHidden = body.hidden;
+    post.updatedAt = new Date().toISOString();
+    persistLifePost(post); persistLifeSearchDemoPost(post); reconcileLifeSearchAlerts();
+    return HttpResponse.json({ data: post });
+  }),
+  // Retired clients must use the manual hide/show action instead.
+  http.put("/api/v1/posts/:id/completion", () => error(410, "Dùng Ẩn bài khi bạn đã xong nhu cầu.")),
   http.delete("/api/v1/posts/:id", async ({ params, request }) => {
     await mockDelay();
+    reconcileLifeSearchAlerts();
     const index = seedKnowledgePosts.findIndex((post) => post.id === params.id);
     if (index < 0 || seedKnowledgePosts[index].authorId !== actor(request)?.id)
       return error(403, "Bạn chỉ có thể xóa bài của mình.");
+    deleteLifePost(seedKnowledgePosts[index].id);
+    removeLifeSearchDemoPost(seedKnowledgePosts[index].id);
     seedKnowledgePosts.splice(index, 1);
+    reconcileLifeSearchAlerts();
     return HttpResponse.json({ data: { success: true } });
   }),
   ...(["like", "save"] as const).flatMap((action) =>
@@ -319,6 +350,7 @@ export const knowledgeHandlers = [
         `/api/v1/posts/:id/${action}`,
         async ({ params, request }) => {
           await mockDelay();
+    reconcileLifeSearchAlerts();
           const user = actor(request),
             post = seedKnowledgePosts.find((item) => item.id === params.id);
           if (!user || !post || !visible(post, request))
@@ -347,11 +379,12 @@ export const knowledgeHandlers = [
   ),
   http.post("/api/v1/posts/:id/comments", async ({ params, request }) => {
     await mockDelay();
+    reconcileLifeSearchAlerts();
     const user = actor(request),
       post = seedKnowledgePosts.find((item) => item.id === params.id);
     if (!user || !post || !visible(post, request))
       return error(403, "Bạn chưa có quyền bình luận tại đây.");
-    if (post.status !== "Published")
+    if (!lifeCanRespond(post))
       return error(409, "Bài viết hiện không nhận bình luận.");
     const body = (await request.json()) as {
       content?: string;
@@ -385,10 +418,11 @@ export const knowledgeHandlers = [
   }),
   http.put("/api/v1/posts/:id/accepted-answer", async ({ params, request }) => {
     await mockDelay();
+    reconcileLifeSearchAlerts();
     const post = seedKnowledgePosts.find((item) => item.id === params.id);
     if (!post || post.authorId !== actor(request)?.id)
       return error(403, "Chỉ người đăng được đánh dấu phản hồi hữu ích.");
-    if (post.type !== "question" || post.status !== "Published")
+    if (post.type !== "question" || !lifeCanRespond(post))
       return error(
         400,
         "Chỉ bài hỏi kinh nghiệm đang mở mới dùng thao tác này.",

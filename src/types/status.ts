@@ -169,6 +169,8 @@ export type MentoringRequestStatus =
 export type SupportMode = 'online' | 'offline' | 'chat' | 'Online' | 'Offline' | 'Chat';
 
 export type NotificationSource =
+  | 'StudentLifeSearch'
+  | 'StudentLifeLifecycle'
   | 'SchoolAffiliation'
   | 'Swap'
   | 'GroupJoin'

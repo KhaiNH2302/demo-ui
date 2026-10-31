@@ -53,7 +53,7 @@ import { apiClient } from '@/lib/apiClient';
 import { maskStudentCode } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { seedUsers, seedProfiles } from '@/mocks/data/users';
-import { seedKnowledgePosts } from '@/mocks/data/knowledge';
+
 import { seedGroups } from '@/mocks/data/groups';
 import { seedClubs } from '@/mocks/data/clubs';
 import { seedProgramChannels } from '@/mocks/data/programs';
@@ -213,7 +213,7 @@ export const ProfilePage: React.FC = () => {
         const all = await apiClient.get<KnowledgePost[]>('/posts');
         return all.filter((p) => p.authorId === targetUserId);
       } catch {
-        return seedKnowledgePosts.filter((p) => p.authorId === targetUserId);
+        return []; // Never reveal private/hidden seed records when the API fails.
       }
     },
   });

@@ -3,7 +3,7 @@ import {
   House,
   UtensilsCrossed,
   CarFront,
-  School,
+  Package,
   Lightbulb,
   MessagesSquare,
   type LucideIcon,
@@ -16,7 +16,7 @@ const icons: Record<string, LucideIcon> = {
   housing: House,
   food: UtensilsCrossed,
   transport: CarFront,
-  campus: School,
+  marketplace: Package,
   experience: Lightbulb,
   conversation: MessagesSquare,
 };

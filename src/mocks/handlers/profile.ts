@@ -1,3 +1,5 @@
+import { lifeDiscoverable } from '@/lib/lifePostLifecycle';
+import { restoreLifePosts } from '../lifePostLifecycle';
 import { http, HttpResponse } from 'msw';
 import { seedUsers, seedProfiles, seedFollows } from '../data/users';
 import { seedKnowledgePosts } from '../data/knowledge';
@@ -164,8 +166,9 @@ export const profileHandlers = [
       viewerAccess = 'limited';
     }
 
+    restoreLifePosts();
     const posts = seedKnowledgePosts.filter(
-      (p) => p.authorId === user.id && p.status === 'Published'
+      (p) => p.authorId === user.id && lifeDiscoverable(p) && (isSelf || p.visibility === 'cross_school' || Boolean(viewerId && seedUsers.find((u) => u.id === viewerId)?.school === user.school))
     );
     const representedClubs = seedClubs.filter((c) =>
       c.representatives?.some((r) => r.userId === user.id)

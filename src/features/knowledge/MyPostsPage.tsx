@@ -1,3 +1,4 @@
+import { LIFE_OWNER_STATUSES, matchesLifeOwnerStatus } from '@/lib/lifePostLifecycle';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -9,16 +10,17 @@ import { apiClient } from '@/lib/apiClient';
 import { Plus, BookOpen, Bookmark } from 'lucide-react';
 import type { KnowledgePost } from '@/types/entities';
 
-type TabStatus = 'published' | 'pending' | 'rejected' | 'saved';
+type TabStatus = typeof LIFE_OWNER_STATUSES[number][0] | 'saved';
 
 export default function MyPostsPage() {
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState<TabStatus>('published');
+  const [activeTab, setActiveTab] = useState<TabStatus>('Published');
 
   // My posts query
   const myPostsQuery = useQuery<KnowledgePost[]>({
     queryKey: ['knowledge', 'me'],
+    refetchInterval: 30000,
     queryFn: () => apiClient.get('/posts/me'),
   });
 
@@ -31,21 +33,7 @@ export default function MyPostsPage() {
   const allMyPosts = myPostsQuery.data || [];
   const savedPosts = savedPostsQuery.data || [];
 
-  const publishedPosts = allMyPosts.filter(
-    (p) => p.status === 'Published' || p.status === 'published' || p.status === 'Closed' || p.status === 'closed'
-  );
-  const pendingPosts = allMyPosts.filter(
-    (p) => p.status === 'PendingReview' || p.status === 'pending_review'
-  );
-  const rejectedPosts = allMyPosts.filter(
-    (p) => p.status === 'Rejected' || p.status === 'rejected'
-  );
-
-  let displayedPosts: KnowledgePost[] = [];
-  if (activeTab === 'published') displayedPosts = publishedPosts;
-  else if (activeTab === 'pending') displayedPosts = pendingPosts;
-  else if (activeTab === 'rejected') displayedPosts = rejectedPosts;
-  else if (activeTab === 'saved') displayedPosts = savedPosts;
+  const displayedPosts = activeTab === 'saved' ? savedPosts : allMyPosts.filter((p) => matchesLifeOwnerStatus(p, activeTab));
 
   const isLoading = myPostsQuery.isLoading || savedPostsQuery.isLoading;
 
@@ -64,22 +52,18 @@ export default function MyPostsPage() {
 
       {/* SegmentedControl Tabs */}
       <SegmentedControl
-        options={[
-          { value: 'published', label: `Đã đăng (${publishedPosts.length})` },
-          { value: 'pending', label: `Chờ duyệt (${pendingPosts.length})` },
-          { value: 'rejected', label: `Bị từ chối (${rejectedPosts.length})` },
-          { value: 'saved', label: `Đã lưu (${savedPosts.length})` },
-        ]}
+        options={[...LIFE_OWNER_STATUSES.map(([value,label]) => ({ value, label: label + ' (' + allMyPosts.filter((p) => matchesLifeOwnerStatus(p, value)).length + ')' })), { value: 'saved', label: 'Đã lưu (' + savedPosts.length + ')' }]}
         value={activeTab}
         onValueChange={(v) => setActiveTab(v as TabStatus)}
         size="md"
-        fullWidth
+        className="flex-wrap"
       />
 
       {/* ThreadFeed (K-U.2) */}
       <ThreadFeed
         key={activeTab}
         posts={displayedPosts}
+        showOwnerControls={activeTab !== "saved"}
         isLoading={isLoading}
         skeletonCount={3}
         paging="infinite"
@@ -89,11 +73,11 @@ export default function MyPostsPage() {
         emptyTitle={
           activeTab === 'saved'
             ? 'Bạn chưa lưu bài viết nào.'
-            : activeTab === 'pending'
+            : activeTab === 'PendingReview'
               ? 'Không có bài viết nào đang chờ duyệt.'
-              : activeTab === 'rejected'
+              : activeTab === 'Rejected'
                 ? 'Không có bài viết nào bị từ chối.'
-                : 'Bạn chưa đăng bài viết nào.'
+                : 'Chưa có bài viết ở trạng thái này.'
         }
         emptyDescription={
           activeTab === 'saved'
@@ -105,7 +89,7 @@ export default function MyPostsPage() {
             <Button variant="outline" size="sm" onClick={() => navigate('/')}>
               Khám phá bảng tin
             </Button>
-          ) : activeTab === 'published' ? (
+          ) : activeTab === 'Published' ? (
             <Button size="sm" onClick={() => navigate('/knowledge/new?returnTo=%2Fknowledge%2Fme')}>
               Viết bài ngay
             </Button>

@@ -17,9 +17,9 @@ export const LIFE_TOPICS = [
     description: "Tìm chuyến cùng đường, rủ bạn đi chung và chia sẻ chi phí.",
   },
   {
-    value: "campus",
-    label: "Chuyện quanh trường",
-    description: "Những điều đang diễn ra ở campus của bạn.",
+    value: "marketplace",
+    label: "Pass đồ",
+    description: "Pass lại hoặc tặng đồ dùng còn tốt cho sinh viên trong trường.",
   },
   {
     value: "experience",

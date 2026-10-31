@@ -1,3 +1,4 @@
+import { LIFE_OWNER_STATUSES } from '@/lib/lifePostLifecycle';
 import React, { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -32,6 +33,7 @@ import { TopicFeedFilters } from "@/components/shared/TopicFeedFilters";
 import { distanceKm, TOPIC_FILTER_KEYS } from "@/lib/studentLifeDetails";
 import { useCurrentLocation } from "@/lib/useCurrentLocation";
 import { CampusAreaSelect } from "@/components/shared/CampusAreaSelect";
+import { LifeSearchWatch } from "@/components/shared/LifeSearchWatch";
 import { isCampusArea } from "@/lib/campusAreas";
 import type { KnowledgePost } from "@/types/entities";
 
@@ -52,14 +54,15 @@ export default function StudentLifePage() {
   const position = useCurrentLocation();
   const [radius, setRadius] = useState("3");
   const tab = params.get("tab") || "discover";
-  const topic = params.get("topic") || "";
+  const topic = params.get("topic") === "campus" ? "conversation" : params.get("topic") || "";
   const campus = params.get("campus") || "";
   const type = params.get("type") || "";
   const sort = params.get("sort") || "new";
   const maxPrice = params.get("maxPrice") || "";
   const search = params.get("q") || "";
-  const status = params.get("status") || "Published";
-  const topicFilters = Object.fromEntries(TOPIC_FILTER_KEYS.filter((key) => params.get(key) && (key !== "area" || isCampusArea(campus, params.get(key)))).map((key) => [key, params.get(key)!]));
+  const status = LIFE_OWNER_STATUSES.some(([value]) => value === params.get("status")) ? params.get("status")! : "Published";
+  const searchId = params.get("searchId") || "";
+  const topicFilters = Object.fromEntries([...TOPIC_FILTER_KEYS, ...(topic === "housing" && params.get("maxRent") && ["room", "person"].includes(params.get("priceUnit") || "") ? ["priceUnit"] : [])].filter((key) => params.get(key) && (key !== "area" || isCampusArea(campus, params.get(key)))).map((key) => [key, params.get(key)!]));
   const topicFilterQuery = new URLSearchParams(topicFilters).toString();
   const activeAdvancedCount =
     Number(Boolean(campus)) +
@@ -69,6 +72,8 @@ export default function StudentLifePage() {
     Number(topic === "food" && Boolean(position.coordinates));
   const setFilter = (key: string, value: string, selectedCampus?: string) => {
     const next = new URLSearchParams(params);
+    next.delete("searchId");
+    if (key === "sort" || key === "topic") next.delete("unanswered");
     if (value) next.set(key, value);
     else next.delete(key);
     if (key === "campus") next.delete("area");
@@ -80,9 +85,9 @@ export default function StudentLifePage() {
       if (value !== "food") next.delete("maxPrice");
       TOPIC_FILTER_KEYS.forEach((filter) => next.delete(filter));
       position.clear();
-      if ((value === "food" && sort === "unanswered") || (value !== "food" && ["price_low", "price_high"].includes(sort))) next.delete("sort");
+      if ((["food", "marketplace"].includes(value) && sort === "unanswered") || (!["food", "marketplace"].includes(value) && ["price_low", "price_high"].includes(sort))) next.delete("sort");
     }
-    next.delete("priceUnit");
+    if (key === "topic" || key === "maxRent" && !value) next.delete("priceUnit");
     next.delete("moveBy");
     next.delete("minRating");
     if (key === "housingKind" && value === "experience") ["maxRent", "people", "moveMonth", "amenity", "onlyOpen"].forEach((filter) => next.delete(filter));
@@ -91,7 +96,7 @@ export default function StudentLifePage() {
   };
   const resetFilters = () => {
     const next = new URLSearchParams(params);
-    ["topic", "campus", "type", "sort", "maxPrice", "q", "priceUnit", "moveBy", "minRating", ...TOPIC_FILTER_KEYS].forEach((key) =>
+    ["topic", "campus", "type", "sort", "maxPrice", "q", "priceUnit", "moveBy", "minRating", "searchId", "unanswered", ...TOPIC_FILTER_KEYS].forEach((key) =>
       next.delete(key),
     );
     setParams(next);
@@ -135,10 +140,13 @@ export default function StudentLifePage() {
       status,
       maxPrice,
       topicFilterQuery,
+      searchId,
+      params.get("unanswered"),
     ],
+    refetchInterval: tab === "mine" ? 30000 : false,
     queryFn: () =>
       apiClient.get(canBrowse ? "/posts" : "/public/posts/preview", {
-        params: { tab, topic, campus, type, sort, q: search, status, maxPrice, ...topicFilters },
+        params: { tab, topic, campus, type, sort, q: search, status, maxPrice, searchId: searchId || undefined, unanswered: params.get("unanswered") || undefined, ...topicFilters },
       }),
   });
   const followMutation = useMutation({
@@ -325,27 +333,13 @@ export default function StudentLifePage() {
                       <option value="new">Mới nhất</option>
                       <option value="hot">{topic === "food" ? "Quán được yêu thích" : "Nhiều lượt thích"}</option>
                       <option value="discussed">{topic === "food" ? "Quán được bàn luận" : "Nhiều bình luận"}</option>
-                      {topic === "food" ? <>
+                      {topic === "food" || topic === "marketplace" ? <>
                         <option value="price_low">Giá thấp đến cao</option>
                         <option value="price_high">Giá cao đến thấp</option>
                       </> : <option value="unanswered">Câu hỏi chưa có lời giải</option>}
                     </FeedFilterSelect>
                   </div>
-                  {topic === "food" && (
-                    <div className="min-w-0">
-                      <FeedFilterSelect
-                        fitContent
-                        aria-label="Lọc mức giá"
-                        value={maxPrice}
-                        onChange={(e) => setFilter("maxPrice", e.target.value)}
-                      >
-                        <option value="">Mọi mức giá</option>
-                        <option value="30000">Đến 30.000đ/người</option>
-                        <option value="50000">Đến 50.000đ/người</option>
-                        <option value="80000">Đến 80.000đ/người</option>
-                      </FeedFilterSelect>
-                    </div>
-                  )}
+
                 </div>
                 <TopicFeedFilters
                   topic={topic} params={params} onChange={setFilter}
@@ -360,6 +354,11 @@ export default function StudentLifePage() {
                 />
               </div>
             )}
+            <LifeSearchWatch key={user?.id} params={params} nearby={Boolean(point)} onEditFilters={() => setShowAdvancedFilters(true)} onApply={(filters, id) => {
+              const next = new URLSearchParams({ ...filters, tab: "discover", sort: "new" });
+              if (id) next.set("searchId", id);
+              setParams(next); position.clear(); setShowAdvancedFilters(true);
+            }} />
           </>
         )}
         {canBrowse && tab === "following" && (
@@ -378,11 +377,7 @@ export default function StudentLifePage() {
         )}
         {tab === "mine" && canBrowse && (
           <div className="flex flex-wrap gap-2 text-xs">
-            {[
-              ["Published", "Đã đăng"],
-              ["PendingReview", "Chờ duyệt"],
-              ["Rejected", "Bị từ chối"],
-            ].map(([value, label]) => (
+            {LIFE_OWNER_STATUSES.map(([value, label]) => (
               <button
                 key={value}
                 onClick={() => setFilter("status", value)}
@@ -422,6 +417,7 @@ export default function StudentLifePage() {
           <ThreadFeed
             key={`${tab}-${topic}-${campus}-${search}-${type}-${sort}-${status}-${maxPrice}-${topicFilterQuery}-${point?.latitude}-${point?.longitude}-${radius}`}
             posts={posts}
+            showOwnerControls={tab === "mine"}
             isLoading={postsQuery.isLoading}
             paging="infinite"
             pageSize={10}

@@ -38,7 +38,7 @@ export const ChatQuickPreview: React.FC<ChatQuickPreviewProps> = ({ unreadCount 
   });
 
   const filteredConversations = useMemo(() => {
-    return conversations.filter((conv) => {
+    return (Array.isArray(conversations) ? conversations : []).filter((conv) => {
       // Filter tab
       if (activeFilter === 'unread' && (!conv.unreadCount || conv.unreadCount <= 0)) {
         return false;

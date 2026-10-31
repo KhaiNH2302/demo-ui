@@ -10,14 +10,15 @@ Sinh từ `src/mocks/data/studentLifeFilterFixtures.ts`, ghép vào bài viết 
 | Kinh nghiệm sinh viên | 1.695 | 6 phân loại × 3 nhu cầu × có/không có tệp tại mọi khu vực; tài liệu có PRJ301, CSD201, MAS291 |
 | Hôm nay ăn gì | 610 | Các mức 25k, 45k, 65k, 95k; tọa độ mô phỏng trong/ngoài bán kính và bài chưa gắn vị trí |
 | Tìm bạn ghép xe | 715 | Cần ghép/còn chỗ, chiều đi/về, hôm nay/ngày mai/+2/+7/+14 ngày tại mọi khu vực |
-| Chuyện quanh trường | 120 | Bài chia sẻ, câu hỏi chưa có lời giải và câu hỏi đã có phản hồi |
+| Pass đồ | 1.065 | 6 loại đồ × 3 tình trạng tại mọi khu vực; thêm đồ tặng miễn phí, tin cũ được chuyển sang ẩn và trạng thái bài của tôi |
 | Tâm sự & trò chuyện | 120 | Bài trò chuyện, câu hỏi và phản hồi tại mọi khu vực |
-| **Tổng** | **8.805** | Thêm 2.310 bình luận; các số trên bao gồm 90 bài cho trạng thái “Bài của tôi” |
+| **Tổng** | **9.750** | Thêm 2.275 bình luận; các số trên bao gồm 90 bài cho trạng thái “Bài của tôi” |
 
 ## Ví dụ thao tác
 
 - Trọ: chọn bất kỳ campus/khu vực → một trong ba nhu cầu (tìm phòng, ở ghép, nhượng phòng) → 1–4 người → tháng 1–12 → mức giá tối đa → chọn một hoặc nhiều tiện ích. Có mẫu mở giá dưới 1 triệu/người và đủ tiện ích cho mỗi tổ hợp rời rạc này. Các mẫu đó là dữ liệu kiểm thử, không đại diện giá thị trường.
-- Còn phòng: bỏ/bật công tắc để đối chiếu các mẫu đã kết thúc.
+- Pass đồ: chọn loại đồ, tình trạng, mức giá hoặc Tặng miễn phí; tin đã ẩn không xuất hiện trong bảng tin. Có dữ liệu ở mọi cơ sở/khu vực.
+- Bài của tôi: ẩn/hiện thủ công; mốc hoàn thành dự kiến chỉ nhắc tác giả kiểm tra nhu cầu.
 - Kinh nghiệm: thử lần lượt OJT, Đồ án tốt nghiệp, Tài liệu & ôn thi, CV & phỏng vấn, Thủ tục sinh viên, Kinh nghiệm khác; mỗi phân loại có chia sẻ/câu hỏi/xin tài liệu và có/không có tệp.
 - Tài liệu: chọn PRJ301, CSD201 hoặc MAS291; bật “Có tài liệu đính kèm”. Sáu tệp thật nằm trong `public/demo/student-life/` và có thể tải từ bài viết.
 - Ăn uống: thử giá tối đa 30k/50k/80k, giá tăng/giảm, được yêu thích và được bàn luận. Các mẫu có lượt thích và số bình luận khác nhau; mỗi bình luận đều có bản ghi tương ứng.

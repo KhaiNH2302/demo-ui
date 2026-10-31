@@ -1,6 +1,8 @@
+import { persistLifePost, restoreLifePosts } from '../lifePostLifecycle';
 import { http, HttpResponse } from 'msw';
 import { seedUsers } from '../data/users';
 import { seedKnowledgePosts, seedReports } from '../data/knowledge';
+import { persistLifeSearchDemoPost, reconcileLifeSearchAlerts } from '../lifeSearches';
 import { seedClubs, seedClubRepresentativeRequests } from '../data/clubs';
 import { seedProgramChannels } from '../data/programs';
 import { seedCourseOfferings } from '../data/courseOfferings';
@@ -19,6 +21,7 @@ export const adminHandlers = [
   // A1 Dashboard
   http.get('/api/v1/admin/dashboard', async () => {
     await mockDelay();
+    restoreLifePosts();
     return HttpResponse.json({
       data: {
         metrics: {
@@ -46,6 +49,7 @@ export const adminHandlers = [
   // A2 Users
   http.get('/api/v1/admin/users', async ({ request }) => {
     await mockDelay();
+    restoreLifePosts();
     const url = new URL(request.url);
     const school = url.searchParams.get('school');
     const status = url.searchParams.get('status');
@@ -72,6 +76,7 @@ export const adminHandlers = [
 
   http.get('/api/v1/admin/users/:id', async ({ params }) => {
     await mockDelay();
+    restoreLifePosts();
     const user = seedUsers.find((u) => u.id === params.id);
     if (!user) {
       return HttpResponse.json(
@@ -88,6 +93,7 @@ export const adminHandlers = [
 
   http.put('/api/v1/admin/users/:id', async ({ params, request }) => {
     await mockDelay();
+    restoreLifePosts();
     if (isScenarioActive('forbidden')) {
       return HttpResponse.json(
         { error: { code: 'FORBIDDEN', message: 'Thao tác ngoài phạm vi trường của bạn' } },
@@ -122,6 +128,7 @@ export const adminHandlers = [
   // A3 Moderation (Posts & Grouped Reports across 7 TargetTypes)
   http.get('/api/v1/admin/moderation/posts', async () => {
     await mockDelay();
+    restoreLifePosts();
     const pending = seedKnowledgePosts.filter(
       (p) => p.status === 'PendingReview' || p.status === 'TemporarilyHidden'
     );
@@ -130,13 +137,17 @@ export const adminHandlers = [
 
   http.put('/api/v1/admin/moderation/posts/:id', async ({ params, request }) => {
     await mockDelay();
+    restoreLifePosts();
     const body = (await request.json()) as {
       status: 'Published' | 'Rejected';
       reason?: string;
     };
     const post = seedKnowledgePosts.find((p) => p.id === params.id);
     if (post) {
+      if (body.status === 'Published' && !post.publishedAt) post.publishedAt = new Date().toISOString();
       post.status = body.status;
+      persistLifePost(post); persistLifeSearchDemoPost(post);
+      reconcileLifeSearchAlerts();
       if (body.reason) post.rejectReason = body.reason;
 
       seedAuditLogs.unshift({
@@ -154,6 +165,7 @@ export const adminHandlers = [
 
   http.get('/api/v1/admin/moderation/reports', async ({ request }) => {
     await mockDelay();
+    restoreLifePosts();
     const url = new URL(request.url);
     const targetType = url.searchParams.get('targetType');
     const status = url.searchParams.get('status') || 'Open';
@@ -173,6 +185,7 @@ export const adminHandlers = [
 
   http.put('/api/v1/admin/moderation/reports/:id', async ({ params, request }) => {
     await mockDelay();
+    restoreLifePosts();
     const body = (await request.json()) as {
       action: 'dismiss' | 'remove_content' | 'restrict_user';
       reason?: string;
@@ -194,7 +207,7 @@ export const adminHandlers = [
         const post = seedKnowledgePosts.find(
           (p) => p.id === report.postId || p.id === report.targetId
         );
-        if (post) post.status = 'Hidden';
+        if (post) { post.status = 'Hidden'; persistLifePost(post); persistLifeSearchDemoPost(post); reconcileLifeSearchAlerts(); }
       }
 
       seedAuditLogs.unshift({
@@ -213,6 +226,7 @@ export const adminHandlers = [
   // A4 Club Representative Verification & Clubs Directory
   http.get('/api/v1/admin/club-rep-requests', async ({ request }) => {
     await mockDelay();
+    restoreLifePosts();
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
     let list = [...seedClubRepresentativeRequests];
@@ -224,6 +238,7 @@ export const adminHandlers = [
 
   http.put('/api/v1/admin/club-rep-requests/:id', async ({ params, request }) => {
     await mockDelay();
+    restoreLifePosts();
     const body = (await request.json()) as {
       status: 'Verified' | 'Rejected';
       reason?: string;
@@ -296,11 +311,13 @@ export const adminHandlers = [
 
   http.get('/api/v1/admin/clubs', async () => {
     await mockDelay();
+    restoreLifePosts();
     return HttpResponse.json({ data: seedClubs });
   }),
 
   http.put('/api/v1/admin/clubs/:id', async ({ params, request }) => {
     await mockDelay();
+    restoreLifePosts();
     const body = (await request.json()) as {
       status?: 'Active' | 'Hidden';
       revokeUserId?: string;
@@ -346,6 +363,7 @@ export const adminHandlers = [
   // A10 Community Program Channel Approval
   http.get('/api/v1/admin/programs', async ({ request }) => {
     await mockDelay();
+    restoreLifePosts();
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
     let list = [...seedProgramChannels];
@@ -357,6 +375,7 @@ export const adminHandlers = [
 
   http.get('/api/v1/admin/programs/:id', async ({ params }) => {
     await mockDelay();
+    restoreLifePosts();
     const prog = seedProgramChannels.find((p) => p.id === params.id);
     if (!prog) {
       return HttpResponse.json(
@@ -369,6 +388,7 @@ export const adminHandlers = [
 
   http.put('/api/v1/admin/programs/:id/review', async ({ params, request }) => {
     await mockDelay();
+    restoreLifePosts();
     const body = (await request.json()) as {
       status: 'Published' | 'Rejected' | 'Cancelled';
       reason?: string;
@@ -401,11 +421,13 @@ export const adminHandlers = [
   // A5 Master data
   http.get('/api/v1/admin/master-data/course-offerings', async () => {
     await mockDelay();
+    restoreLifePosts();
     return HttpResponse.json({ data: seedCourseOfferings });
   }),
 
   http.put('/api/v1/admin/master-data/course-offerings', async ({ request }) => {
     await mockDelay();
+    restoreLifePosts();
     const body = (await request.json()) as any;
     seedCourseOfferings.splice(0, seedCourseOfferings.length, ...(Array.isArray(body) ? body : body.data || []));
     return HttpResponse.json({ data: body });
@@ -413,11 +435,13 @@ export const adminHandlers = [
 
   http.get('/api/v1/admin/master-data/tags', async () => {
     await mockDelay();
+    restoreLifePosts();
     return HttpResponse.json({ data: seedTags });
   }),
 
   http.put('/api/v1/admin/master-data/tags', async ({ request }) => {
     await mockDelay();
+    restoreLifePosts();
     const body = (await request.json()) as { tags?: string[] };
     if (Array.isArray(body.tags)) {
       seedTags.splice(0, seedTags.length, ...body.tags);
@@ -428,11 +452,13 @@ export const adminHandlers = [
   // A6 Settings
   http.get('/api/v1/admin/settings', async () => {
     await mockDelay();
+    restoreLifePosts();
     return HttpResponse.json({ data: seedSystemSettings });
   }),
 
   http.put('/api/v1/admin/settings', async ({ request }) => {
     await mockDelay();
+    restoreLifePosts();
     const body = (await request.json()) as Partial<SystemSettings>;
     Object.assign(seedSystemSettings, body);
     return HttpResponse.json({ data: seedSystemSettings });
@@ -441,6 +467,7 @@ export const adminHandlers = [
   // A7 Admins
   http.get('/api/v1/admin/admins', async ({ request }) => {
     await mockDelay();
+    restoreLifePosts();
     if (!systemAdminFrom(request)) return HttpResponse.json({ error: { code: 'FORBIDDEN', message: 'Chỉ System Admin được phân quyền.' } }, { status: 403 });
     const admins = seedUsers.filter(
       (u) => u.roles.includes('admin') || u.roles.includes('manager') || u.roles.includes('school_admin')
@@ -452,11 +479,13 @@ export const adminHandlers = [
   // School Affiliations (UC-64 Review Student School Affiliation)
   http.get('/api/v1/admin/school-affiliations', async () => {
     await mockDelay();
+    restoreLifePosts();
     return HttpResponse.json({ data: seedSchoolAffiliations });
   }),
 
   http.put('/api/v1/admin/school-affiliations/:id', async ({ params, request }) => {
     await mockDelay();
+    restoreLifePosts();
     const body = (await request.json()) as { status: string; reason?: string; reviewedBy?: string };
     const item = seedSchoolAffiliations.find((a) => a.id === params.id);
     if (!item) {
@@ -471,6 +500,7 @@ export const adminHandlers = [
 
   http.post('/api/v1/admin/admins', async ({ request }) => {
     await mockDelay();
+    restoreLifePosts();
     const admin = systemAdminFrom(request);
     if (!admin) return HttpResponse.json({ error: { code: 'FORBIDDEN', message: 'Chỉ System Admin được phân quyền.' } }, { status: 403 });
     const body = (await request.json()) as {
@@ -501,6 +531,7 @@ export const adminHandlers = [
 
   http.put('/api/v1/admin/admins/:id/permissions', async ({ params, request }) => {
     await mockDelay();
+    restoreLifePosts();
     if (!systemAdminFrom(request)) return HttpResponse.json({ error: { code: 'FORBIDDEN', message: 'Chỉ System Admin được phân quyền.' } }, { status: 403 });
     const body = (await request.json()) as { adminPermissions?: string[] };
     const user = seedUsers.find((u) => u.id === params.id);
@@ -512,6 +543,7 @@ export const adminHandlers = [
 
   http.put('/api/v1/admin/admins/:id/scope', async ({ params, request }) => {
     await mockDelay();
+    restoreLifePosts();
     const admin = systemAdminFrom(request);
     if (!admin) return HttpResponse.json({ error: { code: 'FORBIDDEN', message: 'Chỉ System Admin được phân quyền.' } }, { status: 403 });
     const body = await request.json() as { assignedSchool?: string; reason?: string };
@@ -527,6 +559,7 @@ export const adminHandlers = [
 
   http.delete('/api/v1/admin/admins/:id', async ({ params, request }) => {
     await mockDelay();
+    restoreLifePosts();
     const admin = systemAdminFrom(request);
     if (!admin) return HttpResponse.json({ error: { code: 'FORBIDDEN', message: 'Chỉ System Admin được phân quyền.' } }, { status: 403 });
     const body = await request.json().catch(() => ({})) as { reason?: string };
@@ -558,6 +591,7 @@ export const adminHandlers = [
   // A8 Audit Logs
   http.get('/api/v1/admin/audit-logs', async () => {
     await mockDelay();
+    restoreLifePosts();
     return HttpResponse.json({ data: seedAuditLogs });
   }),
 ];

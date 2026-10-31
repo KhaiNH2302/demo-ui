@@ -11,6 +11,7 @@ import { mentoringHandlers } from './mentoring';
 import { adminHandlers } from './admin';
 import { schoolAffiliationHandlers } from './schoolAffiliations';
 import { newModulesHandlers } from './newModules';
+import { lifeSearchHandlers } from './lifeSearches';
 
 export const handlers = [
   ...authHandlers,
@@ -20,6 +21,7 @@ export const handlers = [
   ...chatHandlers,
   ...swapHandlers,
   ...knowledgeHandlers,
+  ...lifeSearchHandlers,
   ...groupHandlers,
   ...clubHandlers,
   ...mentoringHandlers,

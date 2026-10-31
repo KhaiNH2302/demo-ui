@@ -77,13 +77,13 @@ test("draft recovery respects topic and campus context and editing never falls b
 test("broken or outdated stored drafts cannot crash the forms or force an irrelevant post type", () => {
   for (const raw of [null, "{", "null", "[]", "42", '{"ridePost":{"origin":7},"housingPost":{"amenities":{}}}']) {
     const draft = readLifeDraft(raw);
-    for (const topic of ["housing", "food", "transport", "experience", "campus", "conversation"]) {
+    for (const topic of ["housing", "food", "transport", "experience", "marketplace", "conversation"]) {
       const state = initialLifeForm({ draft, defaultTopic: topic });
       assert.doesNotThrow(() => lifeFormErrors(state));
     }
   }
-  assert.equal(initialLifeForm({ defaultTopic: "campus", defaultType: "review" }).type, "discussion");
-  for (const topic of ["housing", "food", "transport", "experience", "campus", "conversation"]) {
+  assert.equal(initialLifeForm({ defaultTopic: "marketplace", defaultType: "review" }).type, "discussion");
+  for (const topic of ["housing", "food", "transport", "experience", "marketplace", "conversation"]) {
     assert.equal(hasLifeDraftContent(initialLifeForm({ defaultTopic: topic })), false);
   }
 });
@@ -117,7 +117,8 @@ test("complete housing forms can submit legacy price units and show one mode sel
     assert.doesNotMatch(html.match(/<button\b[^>]*type="submit"[^>]*>/)[0], /\sdisabled(?:=|\s|>)/);
     assert.equal((html.match(/aria-label="Nhu cầu về chỗ ở"/g) || []).length, 1);
     assert.ok(html.includes("Tháng muốn chuyển vào") || html.includes("Tháng có thể nhận phòng"));
-    assert.ok(!html.includes('type="date"'));
+    assert.equal((html.match(/type="date"/g) || []).length, 1); // Expiry only; move-in still selects a month.
+    assert.ok(html.includes('aria-label="Ngày hoàn thành dự kiến"'));
     assert.ok(!html.includes("Hình thức bài viết"));
     assert.ok(!html.includes('value="rental"'));
     assert.ok(!html.includes("Cho thuê phòng"));
@@ -131,7 +132,7 @@ test("all six form payloads create and edit successfully without carrying metada
     form("food", { foodReview: { placeName: "Quán kiểm tra form", spentPerPerson: 30000, rating: 5 } }),
     form("transport", { ridePost: { kind: "seeking", origin: "Mỹ Đình", destination: "Hòa Lạc", departure: "2026-11-01T06:30" } }),
     form("experience", { studentExperience: { category: "materials", intent: "request_materials", courseCode: "PRJ301" }, title: "Xin tài liệu môn PRJ301?" }),
-    form("campus"), form("conversation", { type: "question", title: "Có ai tham gia hoạt động cùng mình không?" }),
+    form("marketplace", { passPost: { itemName: "Đèn học", category: "household", condition: "good", price: 120000 } }), form("conversation", { type: "question", title: "Có ai tham gia hoạt động cùng mình không?" }),
   ];
   let id;
   for (const state of states) {
@@ -141,7 +142,7 @@ test("all six form payloads create and edit successfully without carrying metada
     assert.equal(result.status, 200, state.topic);
     id = result.data.id;
     assert.equal(result.data.lifeTopic, state.topic);
-    for (const [key, topic] of [["housingPost", "housing"], ["foodReview", "food"], ["ridePost", "transport"], ["studentExperience", "experience"]]) {
+    for (const [key, topic] of [["housingPost", "housing"], ["foodReview", "food"], ["ridePost", "transport"], ["studentExperience", "experience"], ["passPost", "marketplace"]]) {
       if (state.topic !== topic) assert.equal(result.data[key], undefined, `${state.topic} must clear ${key}`);
     }
     assert.equal(result.data.foodReview?.rating, undefined);
@@ -250,7 +251,7 @@ test("food discovery uses price and community likes without requiring star ratin
   assert.ok(descending.every((post, index) => index === 0 || descending[index - 1].foodReview.spentPerPerson >= post.foodReview.spentPerPerson));
 });
 
-test("transfer posts preserve costs, separate price units and stop appearing in open listings after closure", async () => {
+test("transfer posts preserve costs, separate price units and stop appearing in open listings after hiding", async () => {
   const payload = { ...base, lifeTopic: "housing", housingPost: { kind: "transfer", area: "Tân Xã", price: 2000000, priceUnit: "room", people: 2, availableFrom: `${currentLifeYear()}-11-01`, amenities: ["Khép kín", "Điều hòa"], deposit: 2000000, electricity: "3500đ/kWh", water: "80000đ/người", serviceFee: 100000 } };
   const created = await api("/posts", "POST", payload);
   assert.equal(created.status, 200);
@@ -267,7 +268,7 @@ test("transfer posts preserve costs, separate price units and stop appearing in 
   assert.ok((await api(`/posts?${filters}`)).data.some((p) => p.id === id));
   filters.set("priceUnit", "person");
   assert.ok(!(await api(`/posts?${filters}`)).data.some((p) => p.id === id));
-  await api(`/posts/${id}`, "PUT", { ...payload, housingPost: { ...payload.housingPost, closed: true } });
+  await api(`/posts/${id}/visibility`, "PUT", { hidden: true });
   assert.ok(!(await api("/posts?topic=housing&onlyOpen=1")).data.some((p) => p.id === id));
   assert.equal((await api(`/posts/${id}`, "PUT", { ...base, lifeTopic: "conversation" })).data.housingPost, undefined);
 });
@@ -291,7 +292,7 @@ test("OJT and material requests are saved and filtered separately, with optional
   assert.ok(!(await api(query + "&hasAttachments=1")).data.some((p) => p.id === request.data.id));
   assert.ok((await api("/posts?topic=experience&experienceCategory=ojt")).data.some((p) => p.id === ojt.data.id));
   assert.equal((await api("/posts", "POST", { ...payload, studentExperience: { category: "course_project", intent: "sharing" } })).status, 400);
-  assert.equal((await api(`/posts/${request.data.id}`, "PUT", { ...base, lifeTopic: "campus" })).data.studentExperience, undefined);
+  assert.equal((await api(`/posts/${request.data.id}`, "PUT", { ...base, lifeTopic: "conversation" })).data.studentExperience, undefined);
 });
 
 test("review coordinates survive editing, invalid coordinates are rejected, and rating filters exclude unrated demos", async () => {
@@ -322,7 +323,7 @@ test("ride forms retain route and departure data and support route/date filterin
   const payload = { ...base, lifeTopic: "transport", ridePost };
   const created = await api("/posts", "POST", payload);
   assert.equal(created.status, 200);
-  assert.deepEqual(created.data.ridePost, ridePost);
+  assert.deepEqual(created.data.ridePost, { ...ridePost, closed: false });
   assert.ok((await api("/posts?topic=transport&origin=my%20dinh&destination=hoa%20lac&rideDate=2026-11-01&rideKind=offering")).data.some((p) => p.id === created.data.id));
   assert.equal((await api("/posts", "POST", { ...payload, ridePost: { ...ridePost, departure: "2026-11-01T99:30" } })).status, 400);
 });

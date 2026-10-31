@@ -1,4 +1,4 @@
-import type { HousingPost, KnowledgePost, RidePost, StudentExperience } from "@/types/entities";
+import type { HousingPost, KnowledgePost, PassPost, RidePost, StudentExperience } from "@/types/entities";
 import { normalizeLifeSearch } from "./studentLife";
 import { isCampusArea } from "./campusAreas";
 
@@ -22,10 +22,23 @@ export const EXPERIENCE_INTENTS = [
   { value: "request_materials", label: "Xin tài liệu" },
 ] as const;
 export const HOUSING_AMENITIES = ["Khép kín", "Điều hòa", "Bếp riêng", "Máy giặt", "Không chung chủ", "Giờ giấc tự do"];
+export const PASS_CATEGORIES = [
+  { value: "electronics", label: "Đồ điện tử" },
+  { value: "furniture", label: "Bàn ghế & nội thất" },
+  { value: "books", label: "Sách & đồ học tập" },
+  { value: "household", label: "Đồ gia dụng" },
+  { value: "clothing", label: "Quần áo & phụ kiện" },
+  { value: "other", label: "Đồ khác" },
+] as const;
+export const PASS_CONDITIONS = [
+  { value: "like_new", label: "Như mới" },
+  { value: "good", label: "Còn tốt" },
+  { value: "used", label: "Đã dùng nhiều" },
+] as const;
 export function selectedHousingAmenities(value: string | null) {
   return [...new Set((value || "").split(",").map((item) => item.trim()).filter(Boolean))];
 }
-export const TOPIC_FILTER_KEYS = ["housingKind", "area", "maxRent", "people", "moveMonth", "amenity", "onlyOpen", "experienceCategory", "experienceIntent", "courseCode", "hasAttachments", "rideKind", "origin", "destination", "rideDate"];
+export const TOPIC_FILTER_KEYS = ["housingKind", "area", "maxRent", "people", "moveMonth", "amenity", "onlyOpen", "experienceCategory", "experienceIntent", "courseCode", "hasAttachments", "rideKind", "origin", "destination", "rideDate", "passCategory", "passCondition", "maxPassPrice", "passAvailable"];
 
 export function currentLifeYear(now = new Date()) {
   return Number(new Intl.DateTimeFormat("en", { year: "numeric", timeZone: "Asia/Ho_Chi_Minh" }).format(now));
@@ -77,8 +90,13 @@ export function validRidePost(v?: RidePost) {
     typeof v.destination === "string" && Boolean(v.destination.trim()) && v.destination.length <= 80 &&
     typeof v.departure === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v.departure) &&
     day(v.departure.slice(0, 10)) && Number(v.departure.slice(11, 13)) <= 23 && Number(v.departure.slice(14)) <= 59 &&
-    money(v.contribution) && (v.seats === undefined || (Number.isInteger(v.seats) && v.seats >= 1 && v.seats <= 20))
+    (v.closed === undefined || typeof v.closed === "boolean") && money(v.contribution) && (v.seats === undefined || (Number.isInteger(v.seats) && v.seats >= 1 && v.seats <= 20))
   );
+}
+export function validPassPost(v?: PassPost) {
+  return Boolean(v && typeof v.itemName === "string" && v.itemName.trim() && v.itemName.length <= 100 &&
+    PASS_CATEGORIES.some((item) => item.value === v.category) && PASS_CONDITIONS.some((item) => item.value === v.condition) &&
+    v.price !== undefined && money(v.price) && (v.closed === undefined || typeof v.closed === "boolean"));
 }
 export function validTopicDetails(post: Partial<KnowledgePost>) {
   return (
@@ -88,12 +106,13 @@ export function validTopicDetails(post: Partial<KnowledgePost>) {
     (!post.studentExperience || post.lifeTopic === "experience") && validStudentExperience(post.studentExperience) &&
     (!post.studentExperience || post.studentExperience.intent === "sharing" || post.type === "question") &&
     (!post.ridePost || post.lifeTopic === "transport") && validRidePost(post.ridePost) &&
+    (!post.passPost || post.lifeTopic === "marketplace") && (post.lifeTopic !== "marketplace" || post.type === "discussion" && validPassPost(post.passPost)) &&
     (post.foodReview?.coordinates === undefined || validCoordinates(post.foodReview.coordinates))
   );
 }
 
 export function topicDetailsFields(post: Partial<KnowledgePost>) {
-  const h = post.housingPost, e = post.studentExperience, r = post.ridePost;
+  const h = post.housingPost, e = post.studentExperience, r = post.ridePost, p = post.passPost;
   return {
     housingPost: post.lifeTopic === "housing" && h ? h.kind === "experience" ? { kind: h.kind } : {
       kind: h.kind, area: h.area?.trim(), price: h.price, priceUnit: h.priceUnit,
@@ -105,12 +124,13 @@ export function topicDetailsFields(post: Partial<KnowledgePost>) {
       serviceFee: h.kind !== "seeking" ? h.serviceFee : undefined,
     } : undefined,
     studentExperience: post.lifeTopic === "experience" && e ? { category: e.category, intent: e.intent, courseCode: e.category === "materials" ? e.courseCode?.trim() : undefined } : undefined,
-    ridePost: post.lifeTopic === "transport" && r ? { kind: r.kind, origin: r.origin.trim(), destination: r.destination.trim(), departure: r.departure, seats: r.seats, contribution: r.contribution } : undefined,
+    ridePost: post.lifeTopic === "transport" && r ? { kind: r.kind, origin: r.origin.trim(), destination: r.destination.trim(), departure: r.departure, seats: r.seats, contribution: r.contribution, closed: r.closed || false } : undefined,
+    passPost: post.lifeTopic === "marketplace" && p ? { itemName: p.itemName?.trim(), category: p.category, condition: p.condition, price: p.price, closed: p.closed || false } : undefined,
   };
 }
 
 export function matchesTopicFilters(post: KnowledgePost, params: URLSearchParams, now = new Date()) {
-  const h = post.housingPost, e = post.studentExperience, r = post.ridePost;
+  const h = post.housingPost, e = post.studentExperience, r = post.ridePost, p = post.passPost;
   const contains = (value: string | undefined, query: string) => normalizeLifeSearch(value || "").includes(normalizeLifeSearch(query.trim()));
   if (params.get("housingKind") && (h?.kind || (post.lifeTopic === "housing" ? "experience" : "")) !== params.get("housingKind")) return false;
   if (params.get("area") && normalizeLifeSearch(post.area || h?.area || "") !== normalizeLifeSearch(params.get("area")!.trim())) return false;
@@ -132,6 +152,10 @@ export function matchesTopicFilters(post: KnowledgePost, params: URLSearchParams
   if (params.get("origin") && !contains(r?.origin, params.get("origin")!)) return false;
   if (params.get("destination") && !contains(r?.destination, params.get("destination")!)) return false;
   if (params.get("rideDate") && r?.departure.slice(0, 10) !== params.get("rideDate")) return false;
+  if (params.get("passCategory") && p?.category !== params.get("passCategory")) return false;
+  if (params.get("passCondition") && p?.condition !== params.get("passCondition")) return false;
+  if (params.get("maxPassPrice") && (p?.price === undefined || p.price > Number(params.get("maxPassPrice")))) return false;
+  if (params.get("passAvailable") === "1" && (!p || p.closed)) return false;
   return true;
 }
 export function distanceKm(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }) {

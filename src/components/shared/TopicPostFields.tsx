@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from "react";
-import type { HousingPost, StudentExperience, RidePost } from "@/types/entities";
-import { currentLifeYear, EXPERIENCE_CATEGORIES, EXPERIENCE_INTENTS, HOUSING_AMENITIES, HOUSING_KINDS } from "@/lib/studentLifeDetails";
+import { useRef, useState, type ReactNode } from "react";
+import type { HousingPost, PassPost, StudentExperience, RidePost } from "@/types/entities";
+import { currentLifeYear, EXPERIENCE_CATEGORIES, EXPERIENCE_INTENTS, HOUSING_AMENITIES, HOUSING_KINDS, PASS_CATEGORIES, PASS_CONDITIONS } from "@/lib/studentLifeDetails";
 import { RideDateFilter } from "./RideDateFilter";
 
 const field = "mt-1.5 w-full rounded-lg border border-neutral-200 bg-surface px-3 py-2.5 text-sm font-normal text-neutral-900 outline-hidden focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15";
@@ -8,6 +8,22 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="block text-xs font-medium text-neutral-600">{label}{children}</label>;
 }
 const number = (value: string) => value === "" ? undefined : Number(value);
+
+export function PassPostFields({ value, onChange }: { value: Partial<PassPost>; onChange: (value: Partial<PassPost>) => void }) {
+  const update = (patch: Partial<PassPost>) => onChange({ ...value, ...patch });
+  const previousPrice = useRef(value.price && value.price > 0 ? value.price : undefined);
+  const free = value.price === 0;
+  return <section aria-label="Thông tin pass đồ" className="space-y-3 rounded-xl border border-brand-100 bg-brand-50/30 p-4">
+    <h2 className="text-sm font-semibold text-neutral-800">Bạn muốn pass món gì?</h2>
+    <Field label="Tên món đồ *"><input required maxLength={100} className={field} value={value.itemName || ""} onChange={(event) => update({ itemName: event.target.value })} placeholder="Ví dụ: Quạt bàn, bàn học gấp, sách tiếng Anh…" /></Field>
+    <div className="grid gap-3 sm:grid-cols-2">
+      <Field label="Loại đồ *"><select required className={field} value={value.category || ""} onChange={(event) => update({ category: event.target.value as PassPost["category"] })}><option value="">Chọn loại đồ</option>{PASS_CATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+      <Field label="Tình trạng món đồ *"><select required className={field} value={value.condition || ""} onChange={(event) => update({ condition: event.target.value as PassPost["condition"] })}><option value="">Chọn tình trạng</option>{PASS_CONDITIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+      <div className="space-y-2"><Field label="Giá pass (đồng) *"><input required type="number" min={0} max={100000000} step={1} disabled={free} className={`${field} disabled:bg-neutral-100`} value={value.price ?? ""} onChange={(event) => { const price = number(event.target.value); if (price && price > 0) previousPrice.current = price; update({ price }); }} placeholder="Ví dụ: 150000" /></Field><label className="flex items-center gap-2 text-xs text-neutral-700"><input type="checkbox" checked={free} className="h-4 w-4 accent-brand-600" onChange={(event) => { if (event.target.checked && value.price && value.price > 0) previousPrice.current = value.price; update({ price: event.target.checked ? 0 : previousPrice.current }); }} />Tặng miễn phí</label></div>
+    </div>
+    <p className="text-xs leading-relaxed text-neutral-500">Ghi rõ lỗi, phụ kiện đi kèm và điểm hẹn nhận đồ. Thêm ảnh thực tế bằng nút Ảnh bên dưới.</p>
+  </section>;
+}
 
 export function HousingPostFields({ value, onChange }: { value: HousingPost; onChange: (value: HousingPost) => void }) {
   const update = (patch: Partial<HousingPost>) => onChange({ ...value, ...patch });
@@ -37,12 +53,6 @@ export function HousingPostFields({ value, onChange }: { value: HousingPost; onC
             <option value="">Chọn tháng · {year}</option>
             {savedMonth && !savedMonth.startsWith(String(year) + "-") && <option value={savedMonth}>Tháng {Number(savedMonth.slice(5))}/{savedMonth.slice(0, 4)} (đã lưu)</option>}
             {Array.from({ length: 12 }, (_, index) => <option key={index} value={String(year) + "-" + String(index + 1).padStart(2, "0")}>Tháng {index + 1}</option>)}
-          </select>
-        </Field>
-        <Field label="Tình trạng tin">
-          <select className={field} value={value.closed ? "closed" : "open"} onChange={(event) => update({ closed: event.target.value === "closed" })}>
-            <option value="open">{seeking ? "Còn tìm phòng" : value.kind === "roommate" ? "Còn tìm người" : "Còn phòng"}</option>
-            <option value="closed">{seeking ? "Đã tìm được" : value.kind === "roommate" ? "Đã đủ người" : "Đã hết phòng"}</option>
           </select>
         </Field>
       </div>

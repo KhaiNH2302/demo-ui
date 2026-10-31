@@ -1,3 +1,5 @@
+import { lifeDiscoverable } from '@/lib/lifePostLifecycle';
+import { persistLifePost, restoreLifePosts } from '../lifePostLifecycle';
 import { programHandlers } from '@/features/programs/mocks';
 import { http, HttpResponse } from 'msw';
 import { seedMentorApplications } from '../data/mentorApplications';
@@ -42,10 +44,11 @@ function getCurrentUserId(request: Request): string {
 export const newModulesHandlers = [
   // 0. Public Stats for Landing Page (C12)
   http.get('/api/v1/public/stats', () => {
+    restoreLifePosts();
     return HttpResponse.json({
       data: {
-        totalPosts: seedKnowledgePosts.filter((p) => p.status === 'Published').length,
-        publishedPostsCount: seedKnowledgePosts.filter((p) => p.status === 'Published').length,
+        totalPosts: seedKnowledgePosts.filter((p) => lifeDiscoverable(p)).length,
+        publishedPostsCount: seedKnowledgePosts.filter((p) => lifeDiscoverable(p)).length,
         openProgramsCount: seedProgramChannels.filter((p) => p.status === 'Published').length,
         openClubOpportunitiesCount: seedClubOpportunities.filter((o) => o.status === 'Published').length,
         activeClubsCount: seedClubs.filter((c) => c.status !== 'Hidden').length,
@@ -55,12 +58,13 @@ export const newModulesHandlers = [
 
   // Public Preview Posts (3 posts for Guest / Welcome)
   http.get('/api/v1/public/posts/preview', () => {
+    restoreLifePosts();
     const list = seedKnowledgePosts
-      .filter((p) => p.status === 'Published')
+      .filter((p) => lifeDiscoverable(p) && p.visibility === 'cross_school')
       .slice(0, 3);
     return HttpResponse.json({
       data: list,
-      meta: { total: seedKnowledgePosts.filter((p) => p.status === 'Published').length },
+      meta: { total: seedKnowledgePosts.filter((p) => lifeDiscoverable(p)).length },
     });
   }),
 
@@ -222,7 +226,9 @@ export const newModulesHandlers = [
     const url = new URL(request.url);
     const q = (url.searchParams.get('q') || '').toLowerCase();
 
+    restoreLifePosts();
     const posts = seedKnowledgePosts
+      .filter((p) => lifeDiscoverable(p) && (p.visibility === "cross_school" || seedUsers.find((u) => u.id === getViewerId(request))?.school === seedUsers.find((u) => u.id === p.authorId)?.school))
       .filter(
         (p: KnowledgePost) =>
           [p.title, p.contentMd, p.location, p.campus].join(' ').toLowerCase().includes(q) ||
@@ -291,8 +297,10 @@ export const newModulesHandlers = [
     const url = new URL(request.url);
     const q = (url.searchParams.get('q') || '').toLowerCase();
 
+    restoreLifePosts();
     const suggestions = [
       ...seedKnowledgePosts
+        .filter((p) => lifeDiscoverable(p) && (p.visibility === "cross_school" || seedUsers.find((u) => u.id === getViewerId(request))?.school === seedUsers.find((u) => u.id === p.authorId)?.school))
         .filter((p: KnowledgePost) => (p.contentMd || p.title || '').toLowerCase().includes(q))
         .slice(0, 3)
         .map((p: KnowledgePost) => ({
@@ -667,7 +675,7 @@ export const newModulesHandlers = [
         existing.autoHidden = true;
         if (body.targetType === 'post') {
           const post = seedKnowledgePosts.find((p) => p.id === body.targetId);
-          if (post) post.status = 'TemporarilyHidden';
+          if (post) { post.status = 'TemporarilyHidden'; persistLifePost(post); }
         }
       }
       return HttpResponse.json({ data: existing });

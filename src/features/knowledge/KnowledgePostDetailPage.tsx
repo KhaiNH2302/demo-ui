@@ -1,3 +1,4 @@
+import { lifeCanRespond } from '@/lib/lifePostLifecycle';
 import React, { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -75,6 +76,7 @@ export default function KnowledgePostDetailPage() {
 
   const postDetailQuery = useQuery<{ post: KnowledgePost; comments: Comment[] }>({
     queryKey: ['knowledge', 'detail', id, user?.id],
+    refetchInterval: 30000,
     queryFn: () => apiClient.get(`/posts/${id}`),
   });
 
@@ -147,7 +149,7 @@ export default function KnowledgePostDetailPage() {
   const { post, comments = [] } = data;
   const isAuthor = user?.id === post.authorId;
   const isQuestion = post.type === 'question';
-  const isClosed = post.status === 'Closed' || post.status === 'closed';
+  const isClosed = !lifeCanRespond(post);
 
   const rootComments = comments.filter((c) => !c.parentId);
   const getNestedComments = (parentId: string) => comments.filter((c) => c.parentId === parentId);
@@ -195,6 +197,7 @@ export default function KnowledgePostDetailPage() {
         {/* Main Post Full View */}
         <div className="px-5 sm:px-6">
           <ThreadCard
+            showOwnerControls={isAuthor}
             post={post}
             variant="detail"
             className="border-b-0 py-5"
@@ -269,7 +272,7 @@ export default function KnowledgePostDetailPage() {
                         <CheckCheck size={16} className="text-emerald-600 shrink-0" />
                         <span>Phản hồi được người hỏi đánh dấu hữu ích</span>
                       </div>
-                      {isAuthor && (
+                      {isAuthor && !isClosed && (
                         <button
                           type="button"
                           onClick={() => acceptAnswerMutation.mutate(comment.id)}
@@ -467,7 +470,7 @@ export default function KnowledgePostDetailPage() {
 
             {isClosed ? (
               <div className="text-center py-2 text-xs text-neutral-500 bg-neutral-100 rounded-lg flex items-center justify-center gap-1.5">
-                <Lock size={13} /> Tác giả đã đóng thảo luận bài viết này.
+                <Lock size={13} /> Bài viết hiện không nhận thêm trao đổi.
               </div>
             ) : !canInteract ? (
               <div className="flex items-center justify-between gap-3 py-1 px-3 rounded-lg bg-neutral-50 border border-neutral-200 text-xs text-neutral-600">

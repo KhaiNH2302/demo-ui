@@ -118,6 +118,8 @@ export default function StudentLifeComposePage() {
                 client.invalidateQueries({ queryKey: ["knowledge"] }),
                 client.invalidateQueries({ queryKey: ["feed"] }),
                 client.invalidateQueries({ queryKey: ["profile-posts"] }),
+                client.invalidateQueries({ queryKey: ["notifications"] }),
+                client.invalidateQueries({ queryKey: ["nav"] }),
               ]);
               navigate(
                 id

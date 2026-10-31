@@ -14,6 +14,8 @@ import { cn } from '@/lib/cn';
 import type { Notification } from '@/types/entities';
 
 const sourceIcons: Record<string, React.ReactNode> = {
+  StudentLifeLifecycle: <CalendarDays size={12} className="text-amber-600" />,
+  StudentLifeSearch: <Bell size={12} className="text-brand-600" />,
   Swap: <Repeat2 size={12} className="text-brand-600" />,
   swap: <Repeat2 size={12} className="text-brand-600" />,
   GroupJoin: <UsersRound size={12} className="text-emerald-600" />,
