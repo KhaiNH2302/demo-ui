@@ -1073,8 +1073,15 @@ export interface MentoringRequest {
   planSummary?: string;
   // Số buổi trong gói đã chọn (học thử/học lẻ = 1); dùng làm mốc cho tiến độ lớp học
   totalSessions?: number;
+  // Lúc yêu cầu được chấp nhận; dùng để hiện "đã chờ N ngày" khi lớp chưa bắt đầu
+  connectedAt?: string;
   // Mentor bấm "Bắt đầu lớp học" sau khi hai bên đã chốt gói và giờ; chưa có thì mới chỉ là "Đã kết nối"
   classStartedAt?: string;
+  // Hai bên không chốt được nên kết thúc trước khi bắt đầu lớp
+  endedBy?: string;
+  endedReason?: string;
+  // Quá hạn mà Mentor chưa bắt đầu lớp: kết nối bị khóa
+  expiredAt?: string;
   deadline?: string;
   connectionId?: string;
   status: MentoringRequestStatus;

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -124,7 +124,11 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({ embedded =
   const [matchOnly, setMatchOnly] = useState(false);
 
   // Màn tạo bài
-  const [composer, setComposer] = useState<Lane | null>(null);
+  // /mentoring?compose=need mở sẵn form đăng bài nhờ kèm (dùng cho nút "Đăng bài mới" ở trang Yêu cầu)
+  const [searchParams] = useSearchParams();
+  const [composer, setComposer] = useState<Lane | null>(() =>
+    searchParams.get('compose') === 'need' && !isMentor ? 'NEED_MENTOR' : null
+  );
   const [form, setForm] = useState({
     subject: SUBJECTS[0].code,
     title: '',

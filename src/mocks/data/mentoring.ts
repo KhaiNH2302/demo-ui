@@ -730,6 +730,9 @@ export const seedMentoringComments: Comment[] = [
   },
 ];
 
+// Mốc tương đối để dữ liệu mẫu về thời hạn kết nối luôn đúng dù demo vào ngày nào
+const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+
 export const seedMentoringRequests: MentoringRequest[] = [
   {
     id: 'mreq_01',
@@ -853,6 +856,41 @@ export const seedMentoringRequests: MentoringRequest[] = [
     totalSessions: 1,
     classStartedAt: '2026-10-28T08:00:00Z',
     createdAt: '2026-09-26T14:00:00Z',
+  },
+  // Đã kết nối nhưng Mentor chưa bắt đầu lớp: đã chờ 9 ngày nên thẻ chuyển vàng
+  {
+    id: 'mreq_09',
+    studentId: 'usr_student_01',
+    mentorId: 'usr_mentor_01',
+    requesterId: 'usr_student_01',
+    recipientId: 'usr_mentor_01',
+    sourceType: 'DIRECT',
+    topic: 'Chuẩn bị bảo vệ đồ án Capstone',
+    content: 'Em muốn luyện thuyết trình và trả lời phản biện trước buổi bảo vệ.',
+    planType: 'PACKAGE',
+    packageId: 'pkg_m01_4',
+    planSummary: 'Gói 4 buổi · 4 buổi × 60 phút · 560.000 ₫',
+    totalSessions: 4,
+    status: 'ACCEPTED',
+    connectedAt: daysAgo(9),
+    createdAt: daysAgo(12),
+  },
+  // Đã kết nối quá 14 ngày mà chưa bắt đầu lớp: tự hết hạn và khóa
+  {
+    id: 'mreq_10',
+    studentId: 'usr_student_01',
+    mentorId: 'usr_mentor_05',
+    requesterId: 'usr_student_01',
+    recipientId: 'usr_mentor_05',
+    sourceType: 'DIRECT',
+    topic: 'Làm quen Spring Boot REST API',
+    content: 'Em cần người chỉ cách tổ chức controller và xử lý lỗi cho API.',
+    planType: 'TRIAL',
+    planSummary: 'Học thử · 1 buổi × 30 phút · Miễn phí',
+    totalSessions: 1,
+    status: 'ACCEPTED',
+    connectedAt: daysAgo(20),
+    createdAt: daysAgo(23),
   },
 ];
 

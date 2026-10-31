@@ -4,11 +4,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarClock, Check, MessageSquare, Plus, Star } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/cn';
-import { formatDateTime } from '@/lib/format';
+import { formatDate, formatDateTime } from '@/lib/format';
 import { useAuthStore } from '@/store/authStore';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FormField } from '@/components/shared/FormField';
 import { QueryBoundary } from '@/components/shared/QueryBoundary';
+import { ReasonDialog } from '@/components/shared/ReasonDialog';
 import { UserMiniCard } from '@/components/shared/UserMiniCard';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
@@ -18,6 +19,7 @@ import { toast } from '@/components/ui/Toast';
 import type { MentoringClass, MentoringSession } from '@/types/entities';
 import { MODE_LABELS, MODES } from './postOptions';
 import { countDone } from './reviews';
+import { CONNECTION_EXPIRY_DAYS, CONNECTION_STALE_DAYS, connectionAgeDays, connectionDaysLeft } from './classRules';
 
 type SessionAction = 'done' | 'confirm' | 'dispute' | 'cancel';
 
@@ -115,6 +117,7 @@ export const ClassesPanel: React.FC = () => {
   const queryClient = useQueryClient();
   const userId = useAuthStore((state) => state.user?.id);
   const [adding, setAdding] = useState<{ cls: MentoringClass; starting: boolean } | null>(null);
+  const [ending, setEnding] = useState<MentoringClass | null>(null);
 
   const classesQuery = useQuery({
     queryKey: ['mentoring', 'classes'],
@@ -132,8 +135,27 @@ export const ClassesPanel: React.FC = () => {
   });
   const busyId = act.isPending ? act.variables?.session.id : undefined;
 
+  // Hai bên không chốt được: kết thúc kết nối để yêu cầu không nằm chờ mãi
+  const end = useMutation({
+    mutationFn: ({ cls, reason }: { cls: MentoringClass; reason: string }) =>
+      apiClient.post(`/mentoring/classes/${cls.request.id}/end`, { reason }),
+    onSuccess: () => {
+      toast.success('Đã kết thúc kết nối');
+      setEnding(null);
+      queryClient.invalidateQueries({ queryKey: ['mentoring', 'classes'] });
+      queryClient.invalidateQueries({ queryKey: ['mentoring', 'requests'] });
+      queryClient.invalidateQueries({ queryKey: ['mentor', 'requests'] });
+      queryClient.invalidateQueries({ queryKey: ['mentoring', 'posts'] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Chưa kết thúc được kết nối, thử lại sau ít phút.');
+      setEnding(null);
+    },
+  });
+
   const allClasses = classesQuery.data || [];
-  const waiting = allClasses.filter((cls) => !cls.startedAt);
+  const waiting = allClasses.filter((cls) => !cls.startedAt && cls.request.status === 'ACCEPTED');
+  const expired = allClasses.filter((cls) => cls.request.status === 'EXPIRED');
   const classes = allClasses.filter((cls) => cls.startedAt);
 
   return (
@@ -159,10 +181,20 @@ export const ClassesPanel: React.FC = () => {
                       {cls.request.planSummary && <p className="text-sm text-neutral-500">{cls.request.planSummary}</p>}
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm text-neutral-600">
-                        {isMentorSide ? 'Chốt xong với học viên thì bắt đầu lớp.' : 'Chờ Mentor xếp lịch buổi đầu tiên.'}
-                      </p>
-                      <div className="flex gap-2">
+                      <div className="text-sm">
+                        <p className="text-neutral-600">
+                          {isMentorSide ? 'Chốt xong với học viên thì bắt đầu lớp.' : 'Chờ Mentor xếp lịch buổi đầu tiên.'}
+                        </p>
+                        <p className={cn('text-xs', connectionAgeDays(cls.request) >= CONNECTION_STALE_DAYS ? 'font-medium text-amber-700' : 'text-neutral-500')}>
+                          Đã chờ {connectionAgeDays(cls.request) === 0 ? 'dưới 1 ngày' : `${connectionAgeDays(cls.request)} ngày`}
+                          , còn {connectionDaysLeft(cls.request)} ngày để bắt đầu lớp trước khi kết nối hết hạn
+                          {connectionAgeDays(cls.request) >= CONNECTION_STALE_DAYS && '. Chưa chốt được thì nên kết thúc kết nối.'}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => setEnding(cls)}>
+                          Kết thúc kết nối
+                        </Button>
                         <Button size="sm" variant="outline" onClick={() => navigate(`/chats?targetUser=${counterpartId}`)}>
                           <MessageSquare className="mr-1 h-3.5 w-3.5" /> Nhắn tin
                         </Button>
@@ -180,7 +212,47 @@ export const ClassesPanel: React.FC = () => {
           </section>
         )}
 
-        {classes.length === 0 && waiting.length === 0 ? (
+        {expired.length > 0 && (
+          <section className="mb-8 space-y-3" aria-labelledby="expired-classes">
+            <div>
+              <h2 id="expired-classes" className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+                Đã hết hạn <span className="font-normal text-neutral-400">{expired.length}</span>
+              </h2>
+              <p className="text-sm text-neutral-500">
+                Kết nối quá {CONNECTION_EXPIRY_DAYS} ngày mà lớp chưa bắt đầu nên đã bị khóa, không bắt đầu lớp được nữa.
+              </p>
+            </div>
+            <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {expired.map((cls) => {
+                const isMentorSide = cls.mentorId === userId;
+                return (
+                  <li key={cls.request.id} className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-5 opacity-80 dark:border-neutral-700 dark:bg-neutral-900/40">
+                    <UserMiniCard userId={isMentorSide ? cls.studentId : cls.mentorId} showMajor />
+                    <div>
+                      <h3 className="text-base font-semibold leading-snug text-neutral-700 dark:text-neutral-300">{cls.request.topic}</h3>
+                      {cls.request.planSummary && <p className="text-sm text-neutral-500">{cls.request.planSummary}</p>}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm text-neutral-600">
+                        Hết hạn {cls.request.expiredAt ? formatDate(cls.request.expiredAt) : ''}.{' '}
+                        {isMentorSide ? 'Muốn kèm tiếp, học viên cần gửi yêu cầu mới.' : 'Muốn học tiếp, hãy gửi yêu cầu mới.'}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {isMentorSide ? (
+                          <Button size="sm" disabled>Bắt đầu lớp học</Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={() => navigate('/mentoring')}>Tìm lớp khác</Button>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+
+        {classes.length === 0 && waiting.length === 0 && expired.length === 0 ? (
           <EmptyState
             title="Chưa có lớp học nào"
             description="Khi một yêu cầu được chấp nhận, bạn nhắn tin chốt lịch với đối phương, rồi Mentor bắt đầu lớp học tại đây."
@@ -306,6 +378,21 @@ export const ClassesPanel: React.FC = () => {
           </ul>
         )}
       </QueryBoundary>
+
+      <ReasonDialog
+        open={Boolean(ending)}
+        onOpenChange={(open) => !open && setEnding(null)}
+        title="Kết thúc kết nối?"
+        description="Kết nối này sẽ không thành lớp học và bên kia sẽ biết. Nếu là lớp mở theo bài đăng, chỗ được trả lại cho người khác."
+        label="Lý do (tùy chọn)"
+        placeholder="Ví dụ: chưa thống nhất được lịch học."
+        confirmLabel="Kết thúc kết nối"
+        variant="danger"
+        loading={end.isPending}
+        onConfirm={(reason) => {
+          if (ending) end.mutate({ cls: ending, reason });
+        }}
+      />
 
       <AddSessionDialog key={adding?.cls.request.id ?? 'none'} cls={adding?.cls ?? null} starting={adding?.starting ?? false} onClose={() => setAdding(null)} />
     </>

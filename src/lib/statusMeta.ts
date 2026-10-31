@@ -162,6 +162,8 @@ export const statusMeta = {
     PENDING_MENTOR_RESPONSE: { tier: 'pending', label: 'Chờ Mentor phản hồi' },
     ACCEPTED:                { tier: 'success', label: 'Đã kết nối' },
     REJECTED:                { tier: 'danger',  label: 'Bị từ chối' },
+    ENDED:                   { tier: 'neutral', label: 'Đã kết thúc' },
+    EXPIRED:                 { tier: 'neutral', label: 'Hết hạn' },
     Pending:                 { tier: 'pending', label: 'Chờ Mentor phản hồi' },
     Accepted:                { tier: 'success', label: 'Đã kết nối' },
     Declined:                { tier: 'danger',  label: 'Bị từ chối' },

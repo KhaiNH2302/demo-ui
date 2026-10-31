@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Check, Inbox, MessageSquare, X } from 'lucide-react';
+import { Check, Inbox, Lock, MessageSquare, X } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/cn';
 import { QueryBoundary } from '@/components/shared/QueryBoundary';
@@ -12,6 +12,8 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import type { MentoringRequest } from '@/types/entities';
 import { RequestPlanDetails } from '@/features/mentoring/RequestPlanDetails';
+import { describeLockedRequest, isRequestClosed, isRequestLocked } from '@/features/mentoring/classRules';
+import { useAuthStore } from '@/store/authStore';
 import { useMentorRequestActions } from './useMentorRequestActions';
 
 type Tab = 'pending' | 'accepted' | 'rejected';
@@ -19,13 +21,13 @@ type Tab = 'pending' | 'accepted' | 'rejected';
 const TABS: { value: Tab; label: string }[] = [
   { value: 'pending', label: 'Chờ trả lời' },
   { value: 'accepted', label: 'Đã kết nối' },
-  { value: 'rejected', label: 'Đã từ chối' },
+  { value: 'rejected', label: 'Đã đóng' },
 ];
 
 const EMPTY_TEXT: Record<Tab, string> = {
   pending: 'Không có yêu cầu nào đang chờ. Hồ sơ có đủ học phí và lịch rảnh sẽ được đặt nhiều hơn.',
   accepted: 'Bạn chưa nhận kèm ai.',
-  rejected: 'Bạn chưa từ chối yêu cầu nào.',
+  rejected: 'Chưa có yêu cầu nào bị đóng. Yêu cầu bị từ chối, kết thúc hoặc hết hạn sẽ nằm ở đây.',
 };
 
 // Lý do hay gặp để Mentor từ chối nhanh, vẫn sửa được trước khi gửi
@@ -57,6 +59,7 @@ const TONE_CLASS = {
 
 export const MentorRequestsPage: React.FC = () => {
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const tab: Tab = tabParam === 'accepted' || tabParam === 'rejected' ? tabParam : 'pending';
@@ -81,7 +84,7 @@ export const MentorRequestsPage: React.FC = () => {
   const byTab: Record<Tab, MentoringRequest[]> = {
     pending: all.filter((r) => r.status === 'PENDING_MENTOR_RESPONSE'),
     accepted: all.filter((r) => r.status === 'ACCEPTED'),
-    rejected: all.filter((r) => r.status === 'REJECTED'),
+    rejected: all.filter((r) => isRequestClosed(r)),
   };
   // Chờ trả lời: hạn gần nhất lên đầu; tab khác: mới nhất lên đầu
   const items = [...byTab[tab]].sort((a, b) =>
@@ -180,6 +183,12 @@ export const MentorRequestsPage: React.FC = () => {
                   {req.status === 'REJECTED' && req.rejectReason && (
                     <p className="mt-3 rounded-lg bg-neutral-50 px-3 py-2 text-sm text-neutral-600 dark:bg-neutral-800">
                       Lý do bạn gửi: {req.rejectReason}
+                    </p>
+                  )}
+                  {isRequestLocked(req) && (
+                    <p className="mt-3 flex items-start gap-2 rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+                      <Lock className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" />
+                      <span>{describeLockedRequest(req, user?.id)}</span>
                     </p>
                   )}
 
