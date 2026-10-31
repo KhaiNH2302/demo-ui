@@ -429,24 +429,24 @@ export const MentorPublicProfile: React.FC<MentorPublicProfileProps> = ({
         </div>
       </section>
 
+        {/* Số liệu kèm học */}
+        {stats.length > 0 ? (
+          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-200 dark:border-neutral-700/80 dark:bg-neutral-700/80">
+            {stats.map((stat) => (
+              <div key={stat.label} className="bg-surface px-4 py-4">
+                <dd className="text-xl font-bold tabular-nums text-neutral-900 dark:text-neutral-100">{stat.value}</dd>
+                <dt className="mt-0.5 text-xs text-neutral-500">{stat.label}</dt>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          <p className="rounded-2xl border border-dashed border-neutral-300 px-4 py-3 text-sm text-neutral-600">
+            Mentor mới, chưa có học viên hay đánh giá nào. Buổi học thử là cách nhanh nhất để biết có hợp không.
+          </p>
+        )}
+
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
         <div className="space-y-6 lg:col-span-8">
-          {/* Số liệu kèm học */}
-          {stats.length > 0 ? (
-            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-200 dark:border-neutral-700/80 dark:bg-neutral-700/80">
-              {stats.map((stat) => (
-                <div key={stat.label} className="bg-surface px-4 py-4">
-                  <dd className="text-xl font-bold tabular-nums text-neutral-900 dark:text-neutral-100">{stat.value}</dd>
-                  <dt className="mt-0.5 text-xs text-neutral-500">{stat.label}</dt>
-                </div>
-              ))}
-            </dl>
-          ) : (
-            <p className="rounded-2xl border border-dashed border-neutral-300 px-4 py-3 text-sm text-neutral-600">
-              Mentor mới, chưa có học viên hay đánh giá nào. Buổi học thử là cách nhanh nhất để biết có hợp không.
-            </p>
-          )}
-
           <Tabs defaultValue="overview" className="space-y-5">
             <TabsList className="inline-flex w-full max-w-full overflow-x-auto rounded-xl border border-neutral-200 bg-surface p-1 sm:w-auto dark:border-neutral-700/80 scrollbar-none">
               <TabsTrigger value="overview" className="shrink-0 rounded-lg px-4 py-2 text-sm">Tổng quan</TabsTrigger>

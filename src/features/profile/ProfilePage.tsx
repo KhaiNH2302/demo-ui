@@ -403,6 +403,20 @@ export const ProfilePage: React.FC = () => {
   // Chủ hồ sơ ở chế độ chỉnh sửa vẫn dùng giao diện hồ sơ cá nhân; người xem thấy giao diện Mentor
   const showMentorLayout = isMentor && Boolean(mentorData) && !isEffectiveSelf && !isLimitedView;
 
+  const introCard = (
+    <ProfileIntroCard
+      profile={studentProfile}
+      user={userEntity}
+      isOwner={isEffectiveSelf}
+      canViewAudience={canViewAudience}
+      onUpdateProfile={handleUpdateProfile}
+      onNavigateToAboutTab={(sec) => {
+        setActiveTab('about');
+        setAboutSubTab(sec as AboutSubTabKey);
+      }}
+    />
+  );
+
   return (
     <div className="max-w-6xl mx-auto space-y-5 pb-12">
       {/* 1. Thanh thông báo chế độ Xem như (View As Banner) */}
@@ -787,7 +801,12 @@ export const ProfilePage: React.FC = () => {
       </section>
 
       {/* Mentor tự xem: tóm tắt học phí & lịch rảnh như học viên sẽ thấy */}
-      {isMentor && mentorData && isOwnAccount && <MentorOfferPanel mentor={mentorData} />}
+      {isMentor && !isLimitedView && (
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+          <div className={mentorData && isOwnAccount ? undefined : 'lg:col-span-2'}>{introCard}</div>
+          {mentorData && isOwnAccount && <MentorOfferPanel mentor={mentorData} stacked />}
+        </div>
+      )}
 
       {/* 3. PROFILE COMPLETENESS (Chỉ hiển thị cho chủ sở hữu khi ở chế độ self) */}
       {isEffectiveSelf && (
@@ -818,12 +837,10 @@ export const ProfilePage: React.FC = () => {
         />
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
           <TabsList className="bg-surface border border-neutral-200 dark:border-neutral-700/80 p-1 rounded-2xl w-full sm:w-auto inline-flex overflow-x-auto max-w-full scrollbar-none">
             <TabsTrigger value="posts" className="rounded-xl px-4 py-2 text-xs font-semibold shrink-0">
               Bài viết ({isMentor ? mentorPosts.length : authorPosts.length})
-            </TabsTrigger>
-            <TabsTrigger value="about" className="rounded-xl px-4 py-2 text-xs font-semibold shrink-0">
-              Giới thiệu
             </TabsTrigger>
             {isMentor && (
               <TabsTrigger value="courses" className="rounded-xl px-4 py-2 text-xs font-semibold shrink-0">
@@ -834,44 +851,27 @@ export const ProfilePage: React.FC = () => {
               Hoạt động
             </TabsTrigger>
           </TabsList>
+          {isEffectiveSelf && activeTab === 'posts' && (
+            <Button
+              size="sm"
+              onClick={() => navigate(isMentor ? '/mentor/posts' : '/knowledge')}
+              leftIcon={<Plus className="w-3.5 h-3.5" />}
+            >
+              Đăng bài
+            </Button>
+          )}
+          </div>
 
           {/* TAB 1: BÀI VIẾT (2 cột kiểu Facebook) */}
           <TabsContent value="posts" className="pt-2">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-              {/* CỘT TRÁI (4 cols): Thẻ Giới thiệu Facebook (ProfileIntroCard) */}
+            <div className={isMentor ? 'space-y-4' : 'grid grid-cols-1 lg:grid-cols-12 gap-5 items-start'}>
+              {/* CỘT TRÁI (5 cols): Thẻ Giới thiệu (Mentor: đã chuyển lên cạnh Học phí & gói) */}
               <div className="lg:col-span-5 space-y-4">
-                <ProfileIntroCard
-                  profile={studentProfile}
-                  user={userEntity}
-                  isOwner={isEffectiveSelf}
-                  canViewAudience={canViewAudience}
-                  onUpdateProfile={handleUpdateProfile}
-                  onNavigateToAboutTab={(sec) => {
-                    setActiveTab('about');
-                    setAboutSubTab(sec as AboutSubTabKey);
-                  }}
-                />
+                {!isMentor && introCard}
               </div>
 
               {/* CỘT PHẢI (7 cols): Feed bài viết */}
-              <div className="lg:col-span-7 space-y-4">
-                {isEffectiveSelf && (
-                  <div className="flex items-center justify-between p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700/80 bg-surface shadow-sm">
-                    <span className="text-xs text-neutral-600 dark:text-neutral-400">
-                      {isMentor
-                        ? 'Chia sẻ chuyện quanh trường, kinh nghiệm sống hoặc một câu hỏi với cộng đồng.'
-                        : 'Chia sẻ thắc mắc học tập, tìm đối tác đổi lớp hoặc thảo luận đồ án.'}
-                    </span>
-                    <Button
-                      size="sm"
-                      onClick={() => navigate(isMentor ? '/mentor/posts' : '/knowledge')}
-                      leftIcon={<Plus className="w-3.5 h-3.5" />}
-                    >
-                      Đăng bài
-                    </Button>
-                  </div>
-                )}
-
+              <div className={isMentor ? 'space-y-4' : 'lg:col-span-7 space-y-4'}>
                 {/* Subfilter tabs if owner */}
                 {isEffectiveSelf && !isMentor && (
                   <div className="flex items-center gap-1.5 p-1 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-xs w-fit">
@@ -1042,7 +1042,11 @@ export const ProfilePage: React.FC = () => {
           </TabsContent>
 
           {/* TAB 2: GIỚI THIỆU (Facebook submenu & inline edit) */}
+          {/* Không còn tab riêng: chỉ mở từ nút "Chỉnh sửa chi tiết" / gợi ý hoàn thiện hồ sơ, có nút quay lại */}
           <TabsContent value="about" className="pt-2">
+            <Button variant="ghost" size="sm" className="mb-3" onClick={() => setActiveTab('posts')}>
+              ← Quay lại hồ sơ
+            </Button>
             <ProfileAboutTab
               profile={studentProfile}
               user={userEntity}

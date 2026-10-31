@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronRight, Sparkles } from 'lucide-react';
 import type { StudentProfile, User } from '@/types/entities';
 import { Progress } from '@/components/ui/Progress';
 import { Button } from '@/components/ui/Button';
@@ -117,17 +117,8 @@ export const ProfileCompleteness: React.FC<ProfileCompletenessProps> = ({
   const { percentage, items } = calculateProfileCompleteness(profile, user);
   const incompleteItems = items.filter((it) => !it.isComplete);
 
-  if (percentage === 100) {
-    return (
-      <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200">
-        <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-        <div className="text-xs">
-          <strong className="font-semibold text-sm block">Hồ sơ đã đạt 100% hoàn thiện!</strong>
-          <span>Thông tin đầy đủ giúp bạn tăng tối đa cơ hội kết nối đổi lớp, tìm nhóm và nhận hỗ trợ từ Mentor.</span>
-        </div>
-      </div>
-    );
-  }
+  // Đủ 100% thì không cần nhắc gì nữa
+  if (percentage === 100) return null;
 
   return (
     <div className="p-4 rounded-2xl bg-surface border border-neutral-200 dark:border-neutral-700/80 shadow-sm space-y-3">

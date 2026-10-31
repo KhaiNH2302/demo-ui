@@ -402,6 +402,7 @@ export const seedMentorProfileSections: MentorProfileSection[] = [
 export const seedMentoringPosts: MentorPost[] = [
   {
     id: 'mpost_need_03',
+    campus: 'hanoi',
     subject: 'CSD201',
     modes: ['online', 'offline'],
     schedule: ['Tối Thứ 3 & Thứ 5 (19:30 – 21:00)'],
@@ -488,8 +489,9 @@ export const seedMentoringPosts: MentorPost[] = [
   },
   {
     id: 'mpost_01',
+    campus: 'hanoi',
     subject: 'CSD201',
-    modes: ['online'],
+    modes: ['online', 'offline'],
     schedule: ['Thứ 3 (19:00 – 22:00)', 'Thứ 5 (19:00 – 22:00)'],
     fee: 105000,
     sessions: 8,
@@ -520,6 +522,7 @@ export const seedMentoringPosts: MentorPost[] = [
   },
   {
     id: 'mpost_02',
+    campus: 'hcm',
     subject: 'SWP391',
     modes: ['online', 'offline'],
     schedule: ['Thứ 2 (19:00 – 21:00)', 'Thứ 5 (19:00 – 21:00)'],
@@ -584,6 +587,7 @@ export const seedMentoringPosts: MentorPost[] = [
   },
   {
     id: 'mpost_04',
+    campus: 'danang',
     subject: 'UXD301',
     modes: ['online', 'offline'],
     schedule: ['Thứ 6 (18:30 – 21:30)', 'Thứ 7 (14:00 – 17:00)'],
@@ -740,7 +744,8 @@ export const seedMentoringRequests: MentoringRequest[] = [
     mentorId: 'usr_mentor_02',
     requesterId: 'usr_student_01',
     recipientId: 'usr_mentor_02',
-    sourceType: 'DIRECT',
+    sourceType: 'POST',
+    sourcePostId: 'mpost_01',
     topic: 'Tư vấn thiết kế Authentication JWT trong dự án SWP391',
     content:
       'Chào chị Bình, nhóm em đang gặp vướng mắc khi kết hợp Refresh Token và HttpOnly Cookie. Nhờ chị dành 1 tiếng tư vấn online giúp em ạ.',
@@ -892,12 +897,44 @@ export const seedMentoringRequests: MentoringRequest[] = [
     connectedAt: daysAgo(20),
     createdAt: daysAgo(23),
   },
+  // Lớp 1-1: An học riêng với chị Bình, không qua bài đăng
+  {
+    id: 'mreq_13',
+    studentId: 'usr_student_01',
+    mentorId: 'usr_mentor_02',
+    requesterId: 'usr_student_01',
+    recipientId: 'usr_mentor_02',
+    sourceType: 'DIRECT',
+    topic: 'Ôn tập cây AVL và Heap cho CSD201',
+    content: 'Em muốn học riêng với chị để chữa bài tập cây trước kỳ thi.',
+    planType: 'TRIAL',
+    planSummary: 'Học thử · 1 buổi × 30 phút · Miễn phí',
+    totalSessions: 1,
+    classStartedAt: '2026-10-20T09:00:00Z',
+    status: 'ACCEPTED',
+    createdAt: '2026-10-15T09:00:00Z',
+  },
+  // Hai bạn cùng học lớp mở mpost_01 với mreq_01: Mentor thấy thành một lớp nhóm
+  ...(['usr_student_02', 'usr_student_03'] as const).map((studentId, i): MentoringRequest => ({
+    id: `mreq_${11 + i}`,
+    studentId,
+    mentorId: 'usr_mentor_02',
+    requesterId: studentId,
+    recipientId: 'usr_mentor_02',
+    sourceType: 'POST',
+    sourcePostId: 'mpost_01',
+    topic: 'Tư vấn thiết kế Authentication JWT trong dự án SWP391',
+    content: 'Em muốn đăng ký lớp kèm CSD201 của chị Bình.',
+    planType: 'PACKAGE',
+    planSummary: 'Gói 4 buổi · 4 buổi × 90 phút · 440.000 ₫',
+    totalSessions: 4,
+    classStartedAt: '2026-10-10T09:00:00Z',
+    status: 'ACCEPTED',
+    createdAt: '2026-09-22T09:00:00Z',
+  })),
 ];
 
 export const seedClassSessions: MentoringSession[] = [
-  { id: 'msess_01', requestId: 'mreq_01', startsAt: '2026-10-14T19:00:00+07:00', mode: 'online', note: 'Refresh token và HttpOnly cookie', status: 'DONE', createdAt: '2026-10-10T08:00:00Z' },
-  { id: 'msess_02', requestId: 'mreq_01', startsAt: '2026-10-21T19:00:00+07:00', mode: 'online', note: 'Phân quyền theo role', status: 'DONE', createdAt: '2026-10-15T08:00:00Z' },
-  { id: 'msess_03', requestId: 'mreq_01', startsAt: '2026-10-28T19:00:00+07:00', mode: 'online', note: 'Review code đăng nhập của nhóm', status: 'PENDING_CONFIRM', createdAt: '2026-10-22T08:00:00Z' },
-  { id: 'msess_04', requestId: 'mreq_01', startsAt: '2026-11-04T19:00:00+07:00', mode: 'online', note: 'Chốt kiến trúc trước ngày nộp', status: 'PLANNED', createdAt: '2026-10-29T08:00:00Z' },
-  { id: 'msess_05', requestId: 'mreq_08', startsAt: '2026-11-02T20:00:00+07:00', mode: 'online', note: 'Tư vấn lộ trình OSCP', status: 'PLANNED', createdAt: '2026-10-28T08:00:00Z' },
+  { id: 'msess_04', requestId: 'mreq_11', startsAt: '2026-10-28T19:00:00+07:00', createdBy: 'usr_mentor_02', status: 'DONE', createdAt: '2026-10-28T21:00:00+07:00' },
+  { id: 'msess_03', requestId: 'mreq_01', startsAt: '2026-10-28T19:00:00+07:00', createdBy: 'usr_mentor_02', status: 'PENDING_CONFIRM', createdAt: '2026-10-28T21:00:00+07:00' },
 ];

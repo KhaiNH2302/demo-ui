@@ -1025,6 +1025,8 @@ export interface MentorCourse {
 
 export interface MentorPost {
   id: string;
+  // Cơ sở FPTU khi học gặp tại trường (xem CAMPUSES ở features/mentoring/postOptions)
+  campus?: string;
   mentorId: string;
   authorId?: string;
   authorRole?: "student" | "mentor";
@@ -1089,18 +1091,18 @@ export interface MentoringRequest {
   createdAt: string;
 }
 
-// Mentor đánh dấu đã học → chờ học viên xác nhận → mới tính vào tiến độ
-export type MentoringSessionStatus = 'PLANNED' | 'PENDING_CONFIRM' | 'DONE' | 'CANCELLED';
+// Một bên ghi nhận đã học → bên kia xác nhận → mới tính vào tiến độ
+export type MentoringSessionStatus = 'PENDING_CONFIRM' | 'DONE' | 'CANCELLED';
 
 export interface MentoringSession {
   id: string;
   requestId: string;
+  // Thời điểm buổi học diễn ra (mặc định là lúc ghi nhận)
   startsAt: string;
-  mode: 'online' | 'offline' | 'chat';
+  // Bên ghi nhận; bên còn lại là người xác nhận
+  createdBy: string;
   note?: string;
   status: MentoringSessionStatus;
-  // Học viên báo "chưa học" khi Mentor đánh dấu đã học
-  disputed?: boolean;
   createdAt: string;
 }
 
@@ -1111,6 +1113,8 @@ export interface MentoringClass {
   startedAt?: string;
   mentorId: string;
   studentId: string;
+  // Các bạn cùng học lớp mở từ một bài đăng (không gồm chính người xem)
+  classmateIds?: string[];
   sessions: MentoringSession[];
 }
 

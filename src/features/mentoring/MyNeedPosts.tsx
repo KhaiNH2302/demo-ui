@@ -69,7 +69,7 @@ export const MyNeedPosts: React.FC<MyNeedPostsProps> = ({ requests, onViewOffers
   const offersOf = (post: MentorPost) => requests.filter((request) => request.sourcePostId === post.id);
   const pendingOf = (post: MentorPost) => offersOf(post).filter((request) => request.status === 'PENDING_MENTOR_RESPONSE').length;
   const hasClass = (post: MentorPost) => offersOf(post).some((request) => request.status === 'ACCEPTED');
-  const postNew = () => navigate('/mentoring?compose=need');
+  const postNew = () => navigate('/mentoring/new?type=need');
 
   return (
     <>

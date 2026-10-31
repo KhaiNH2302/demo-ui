@@ -1,8 +1,7 @@
-import React, { useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft,
   CalendarDays,
   Clock,
   Heart,
@@ -10,32 +9,31 @@ import {
   MessageCircleMore,
   Plus,
   Search,
+  MapPin,
+  SlidersHorizontal,
+  X,
   Send,
-  Sparkles,
   Star,
   Users,
   Wallet,
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/cn';
-import { formatCurrency, formatScheduleSlot } from '@/lib/format';
 import { useAuthStore } from '@/store/authStore';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { QueryBoundary } from '@/components/shared/QueryBoundary';
 import { UserMiniCard } from '@/components/shared/UserMiniCard';
 import { SearchInput } from '@/components/shared/SearchInput';
-import { FormField } from '@/components/shared/FormField';
 import { Button } from '@/components/ui/Button';
-import { Chip } from '@/components/ui/Chip';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
 import { Switch } from '@/components/ui/Switch';
-import { Textarea } from '@/components/ui/Textarea';
 import { toast } from '@/components/ui/Toast';
 import { SendMentoringRequestDialog } from './SendMentoringRequestDialog';
 import { describePostFee } from './plans';
-import { MODES, MODE_LABELS, SUBJECTS, TIME_PRESETS, type Mode } from './postOptions';
-import type { Comment, Mentor, MentoringRequest, MentorPost, SupportMode } from '@/types/entities';
+import { CAMPUSES, MODES, MODE_LABELS, campusLabel, type Mode } from './postOptions';
+import type { Comment, Mentor, MentoringRequest, MentorPost } from '@/types/entities';
 
 type Lane = 'OFFER_MENTORING' | 'NEED_MENTOR';
 
@@ -52,10 +50,27 @@ const LANES: Record<Lane, { title: string; hint: string; empty: string }> = {
   },
 };
 
-const inDays = (days: number) => {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
+const PRICE_OPTIONS = [
+  { label: 'Mọi mức giá', value: 'all' },
+  { label: 'Miễn phí', value: 'free' },
+  { label: 'Dưới 100.000 ₫/buổi', value: 'lt100' },
+  { label: '100.000 – 150.000 ₫/buổi', value: '100-150' },
+  { label: 'Trên 150.000 ₫/buổi', value: 'gt150' },
+];
+
+const DEADLINE_OPTIONS = [
+  { label: 'Mọi thời hạn', value: 'all' },
+  { label: 'Còn từ 7 ngày trở lên', value: 'week' },
+  { label: 'Sắp hết hạn (3 ngày)', value: 'soon' },
+];
+
+const matchesPrice = (fee: number | undefined, price: string) => {
+  if (price === 'all') return true;
+  if (fee === undefined || fee === null) return false;
+  if (price === 'free') return fee === 0;
+  if (price === 'lt100') return fee < 100000;
+  if (price === '100-150') return fee >= 100000 && fee <= 150000;
+  return fee > 150000;
 };
 
 const isClosed = (post: MentorPost) =>
@@ -75,31 +90,81 @@ const postModes = (post: MentorPost): Mode[] => {
   return MODES.filter((mode) => raw.includes(mode));
 };
 
+// Chỗ trống của lớp: số còn lại đặt to, thanh tiến độ cho thấy lớp đã đầy tới đâu; màu báo sắp hết / hết chỗ
+const SeatMeter: React.FC<{ capacity: number; filled: number; pending?: number; closed: boolean; compact?: boolean }> = ({ capacity, filled, pending = 0, closed, compact = false }) => {
+  // Số chỗ vừa tăng so với lần hiển thị trước (ví dụ sau khi nhận một học viên) để Mentor thấy sự thay đổi
+  const [seen, setSeen] = useState(filled);
+  const gained = Math.max(filled - Math.min(seen, filled), 0);
+  useEffect(() => {
+    if (gained === 0) return;
+    const timer = window.setTimeout(() => setSeen(filled), 6000);
+    return () => window.clearTimeout(timer);
+  }, [filled, seen, gained]);
+  const remaining = Math.max(capacity - filled, 0);
+  const tone = closed
+    ? { text: 'text-neutral-500', bar: 'bg-neutral-300 dark:bg-neutral-600', box: 'bg-neutral-50 dark:bg-neutral-800/60', note: 'Đã đóng' }
+    : remaining === 0
+      ? { text: 'text-rose-600 dark:text-rose-400', bar: 'bg-rose-500', box: 'bg-rose-50 dark:bg-rose-500/10', note: 'Đã đủ chỗ' }
+      : remaining / capacity <= 0.25
+        ? { text: 'text-amber-600 dark:text-amber-400', bar: 'bg-amber-500', box: 'bg-amber-50 dark:bg-amber-500/10', note: 'Sắp hết chỗ' }
+        : { text: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500', box: 'bg-emerald-50 dark:bg-emerald-500/10', note: 'Còn nhiều chỗ' };
+  const pendingSeats = closed ? 0 : Math.min(pending, Math.max(capacity - filled, 0));
+  return (
+    <div className={cn('rounded-xl', tone.box, compact ? 'space-y-1 px-3 py-2' : 'space-y-2 px-3 py-2.5')}>
+      <div className="flex items-end justify-between gap-2">
+        <p className="flex items-baseline gap-1.5">
+          <span className={cn('font-bold leading-none tabular-nums', compact ? 'text-xl' : 'text-3xl', tone.text)}>{closed ? '–' : remaining}</span>
+          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">chỗ trống</span>
+          <span className="text-xs text-neutral-500 tabular-nums">/ {capacity}</span>
+        </p>
+        <span className={cn('text-xs font-semibold', tone.text)}>{tone.note}</span>
+      </div>
+      {/* Mỗi ô là một chỗ: đã nhận (đặc), đang chờ duyệt (vằn vàng), còn trống (rỗng) → nhìn là thấy lớp đang đầy dần */}
+      <div
+        className="flex gap-0.5"
+        role="progressbar"
+        aria-label={`Đã có ${filled}/${capacity} học viên`}
+        aria-valuemin={0}
+        aria-valuemax={capacity}
+        aria-valuenow={filled}
+      >
+        {Array.from({ length: capacity }, (_, i) => {
+          const taken = i < filled;
+          const waiting = !taken && i < filled + pendingSeats;
+          return (
+            <span
+              key={i}
+              className={cn(
+                'h-3 min-w-0 flex-1 rounded-sm transition-colors duration-500',
+                taken && tone.bar,
+                taken && i >= filled - gained && 'animate-pulse ring-2 ring-offset-1 ring-current',
+                waiting && 'bg-amber-300/70 [background-image:repeating-linear-gradient(45deg,transparent_0_3px,rgba(255,255,255,.7)_3px_5px)]',
+                !taken && !waiting && 'bg-white dark:bg-neutral-900/60'
+              )}
+            />
+          );
+        })}
+      </div>
+      {(!compact || pendingSeats > 0 || gained > 0) && (
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
+        <span className="inline-flex items-center gap-1"><span className={cn('h-2 w-2 rounded-sm', tone.bar)} />Đã nhận</span>
+        {pendingSeats > 0 && (
+          <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-amber-300" />Chờ duyệt ({pendingSeats})</span>
+        )}
+        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm border border-neutral-300 bg-white" />Trống</span>
+        {gained > 0 && <span className="font-semibold text-emerald-600">+{gained} vừa đăng ký</span>}
+      </div>
+      )}
+      {!compact && <p className="text-xs text-neutral-500 tabular-nums">{filled}/{capacity} học viên đã tham gia</p>}
+    </div>
+  );
+};
+
 const deadlineLabel = (closed: boolean, left: number | null) => {
   if (closed || left === null || left < 0) return 'Đã đóng';
   if (left === 0) return 'Hết hạn hôm nay';
   return `Còn ${left} ngày`;
 };
-
-const ToggleChips: React.FC<{ options: { value: string; label: string }[]; value: string[]; onChange: (next: string[]) => void }> = ({
-  options,
-  value,
-  onChange,
-}) => (
-  <div className="flex flex-wrap gap-2">
-    {options.map((option) => (
-      <Chip
-        key={option.value}
-        selected={value.includes(option.value)}
-        onClick={() =>
-          onChange(value.includes(option.value) ? value.filter((item) => item !== option.value) : [...value, option.value])
-        }
-      >
-        {option.label}
-      </Chip>
-    ))}
-  </div>
-);
 
 interface MentoringFeedPageProps {
   embedded?: boolean;
@@ -117,32 +182,16 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({ embedded =
   const [search, setSearch] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [modeFilter, setModeFilter] = useState('all');
+  const [campusFilter, setCampusFilter] = useState('all');
+  const [priceFilter, setPriceFilter] = useState('all');
+  const [deadlineFilter, setDeadlineFilter] = useState('all');
+  const [seatOnly, setSeatOnly] = useState(false);
+  const [trialOnly, setTrialOnly] = useState(false);
   const [expandedBodies, setExpandedBodies] = useState<Record<string, boolean>>({});
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [request, setRequest] = useState<{ recipientId: string; postId: string; label: string } | null>(null);
   const [matchOnly, setMatchOnly] = useState(false);
-
-  // Màn tạo bài
-  // /mentoring?compose=need mở sẵn form đăng bài nhờ kèm (dùng cho nút "Đăng bài mới" ở trang Yêu cầu)
-  const [searchParams] = useSearchParams();
-  const [composer, setComposer] = useState<Lane | null>(() =>
-    searchParams.get('compose') === 'need' && !isMentor ? 'NEED_MENTOR' : null
-  );
-  const [form, setForm] = useState({
-    subject: SUBJECTS[0].code,
-    title: '',
-    content: '',
-    schedule: [TIME_PRESETS[1]] as string[],
-    modes: ['online'] as string[],
-    feeMode: 'negotiable' as 'negotiable' | 'fixed',
-    fee: 100000,
-    sessions: 4,
-    capacity: 5,
-    trial: true,
-    deadline: inDays(7),
-  });
-  const setField = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const postsQuery = useQuery({
     queryKey: ['mentoring', 'posts'],
@@ -160,58 +209,8 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({ embedded =
   const myMentorProfile = mentorsQuery.data?.find((mentor) => mentor.userId === user?.id);
   const mentorById = (id?: string) => mentorsQuery.data?.find((mentor) => mentor.userId === id);
 
-  const openComposer = (type: Lane) => {
-    // Mentor mở lớp: lấy sẵn học phí & lịch rảnh từ hồ sơ Mentor để khỏi nhập lại
-    const pricing = myMentorProfile?.pricing;
-    setForm((prev) => ({
-      ...prev,
-      title: '',
-      content: '',
-      feeMode: type === 'OFFER_MENTORING' ? 'fixed' : 'negotiable',
-      fee: type === 'OFFER_MENTORING' ? pricing?.pricePerSession ?? 100000 : prev.fee,
-      trial: type === 'OFFER_MENTORING' ? pricing?.trial.enabled ?? true : prev.trial,
-      schedule:
-        type === 'OFFER_MENTORING' && myMentorProfile?.availability.length
-          ? myMentorProfile.availability.map((slot) => formatScheduleSlot(slot))
-          : [TIME_PRESETS[1]],
-    }));
-    setComposer(type);
-  };
-
-  const createPost = useMutation({
-    mutationFn: () => {
-      const offer = composer === 'OFFER_MENTORING';
-      return apiClient.post<MentorPost>('/mentoring/posts', {
-        title: form.title.trim(),
-        content: form.content.trim(),
-        contentMd: form.content.trim(),
-        subject: form.subject,
-        field: form.subject,
-        modes: form.modes as SupportMode[],
-        mode: form.modes[0] || 'online',
-        schedule: form.schedule,
-        fee: form.feeMode === 'fixed' ? form.fee : undefined,
-        sessions: form.sessions,
-        trial: offer ? form.trial : undefined,
-        capacity: offer ? form.capacity : 1,
-        deadline: form.deadline,
-        postType: composer,
-        authorRole: offer ? 'mentor' : 'student',
-        tags: [form.subject],
-      });
-    },
-    onSuccess: () => {
-      toast.success(composer === 'OFFER_MENTORING' ? 'Đã mở lớp kèm' : 'Đã đăng bài nhờ kèm');
-      const posted = composer;
-      setComposer(null);
-      queryClient.invalidateQueries({ queryKey: ['mentoring', 'posts'] });
-      queryClient.invalidateQueries({ queryKey: ['mentoring', 'posts', 'mine'] });
-      // Học viên quản lý bài nhờ kèm của mình ở trang Yêu cầu; Mentor ở lại Bảng tin
-      if (!isMentor && posted === 'NEED_MENTOR') navigate('/mentoring/requests?tab=posts');
-      else setLane(posted ?? lane);
-    },
-    onError: () => toast.error('Chưa đăng được bài. Kiểm tra các ô bắt buộc rồi thử lại.'),
-  });
+  // Đăng bài nằm ở trang riêng, không mở popup hay chế độ trong cùng trang
+  const openComposer = (type: Lane) => navigate(`/mentoring/new?type=${type === 'OFFER_MENTORING' ? 'offer' : 'need'}`);
 
   const likeMutation = useMutation({
     mutationFn: ({ postId, liked }: { postId: string; liked: boolean }) =>
@@ -269,6 +268,16 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({ embedded =
       .filter((post) => !matchOnly || lane !== 'NEED_MENTOR' || matches(post))
       .filter((post) => subjectFilter === 'all' || post.subject === subjectFilter)
       .filter((post) => modeFilter === 'all' || postModes(post).includes(modeFilter as Mode))
+      .filter((post) => campusFilter === 'all' || post.campus === campusFilter)
+      .filter((post) => matchesPrice(post.fee, priceFilter))
+      .filter((post) => {
+        if (deadlineFilter === 'all') return true;
+        const left = daysLeft(post.deadline);
+        if (left === null) return false;
+        return deadlineFilter === 'soon' ? left >= 0 && left <= 3 : left >= 7;
+      })
+      .filter((post) => !seatOnly || lane !== 'OFFER_MENTORING' || (post.capacity || post.slots || 1) - (post.filledCount || 0) > 0)
+      .filter((post) => !trialOnly || lane !== 'OFFER_MENTORING' || Boolean(post.trial))
       .filter((post) => {
         if (!q) return true;
         return [post.title, post.content, post.contentMd, post.subject, ...(post.tags || [])]
@@ -283,160 +292,30 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({ embedded =
         if (lane === 'NEED_MENTOR' && matches(a) !== matches(b)) return matches(a) ? -1 : 1;
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-  }, [posts, lane, subjectFilter, modeFilter, search, matchOnly, mySubjects]);
+  }, [posts, lane, subjectFilter, modeFilter, campusFilter, priceFilter, deadlineFilter, seatOnly, trialOnly, search, matchOnly, mySubjects]);
 
-  const filtersActive = search.trim() !== '' || subjectFilter !== 'all' || modeFilter !== 'all' || matchOnly;
-
-  // ---------- Màn tạo bài ----------
-  if (composer) {
-    const offer = composer === 'OFFER_MENTORING';
-    const scheduleOptions = Array.from(new Set([...form.schedule, ...TIME_PRESETS])).map((value) => ({ value, label: value }));
-    const canSubmit = form.title.trim() && form.content.trim() && form.schedule.length > 0 && form.modes.length > 0 && form.deadline;
-
-    return (
-      <div className="mx-auto max-w-3xl space-y-6">
-        <button
-          type="button"
-          onClick={() => setComposer(null)}
-          className="inline-flex items-center gap-1.5 rounded-md text-sm text-neutral-500 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-        >
-          <ArrowLeft className="h-4 w-4" /> Quay lại bảng tin
-        </button>
-
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-            {offer ? 'Mở lớp kèm' : 'Đăng bài nhờ kèm'}
-          </h1>
-          <p className="text-sm text-neutral-600">
-            {offer
-              ? 'Học viên thấy môn, lịch, học phí và số chỗ ngay trên thẻ bài. Học phí và lịch được lấy sẵn từ hồ sơ Mentor của bạn.'
-              : 'Mentor thấy môn bạn đang vướng và giờ bạn học được, rồi gửi lời nhận kèm.'}
-          </p>
-          {isMentor && (
-            <div className="inline-flex rounded-lg border border-neutral-200 p-0.5 dark:border-neutral-700" role="tablist">
-              {(['OFFER_MENTORING', 'NEED_MENTOR'] as Lane[]).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  role="tab"
-                  aria-selected={composer === type}
-                  onClick={() => openComposer(type)}
-                  className={cn(
-                    'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-                    composer === type ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-neutral-600 hover:text-neutral-900'
-                  )}
-                >
-                  {type === 'OFFER_MENTORING' ? 'Mở lớp kèm' : 'Tôi cần người kèm'}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-5 rounded-2xl border border-neutral-200 bg-surface p-5 sm:p-6 dark:border-neutral-700/80">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[12rem_1fr]">
-            <FormField label="Môn" required>
-              <Select
-                value={form.subject}
-                onChange={(e) => setField('subject', e.target.value)}
-                options={SUBJECTS.map((s) => ({ value: s.code, label: `${s.code} · ${s.name}` }))}
-              />
-            </FormField>
-            <FormField label="Tiêu đề" required>
-              <Input
-                value={form.title}
-                onChange={(e) => setField('title', e.target.value)}
-                placeholder={offer ? 'VD: Kèm CSD201 từ mất gốc tới qua môn, 8 buổi' : 'VD: Cần người kèm ôn Practical Exam CSD201 tuần sau'}
-              />
-            </FormField>
-          </div>
-
-          <FormField label={offer ? 'Lớp học gồm những gì?' : 'Bạn đang vướng ở đâu?'} required>
-            <Textarea
-              rows={4}
-              value={form.content}
-              onChange={(e) => setField('content', e.target.value)}
-              placeholder={
-                offer
-                  ? 'Lộ trình từng buổi, tài liệu bạn chuẩn bị, cách bạn chữa bài...'
-                  : 'Phần kiến thức chưa hiểu, mục tiêu (qua môn, đạt điểm, xong đồ án), muốn học 1-1 hay nhóm nhỏ...'
-              }
-            />
-          </FormField>
-
-          <FormField label={offer ? 'Lịch học' : 'Giờ bạn học được'} required helperText="Chọn một hoặc nhiều khung giờ.">
-            <ToggleChips options={scheduleOptions} value={form.schedule} onChange={(next) => setField('schedule', next)} />
-          </FormField>
-
-          <FormField label="Hình thức" required>
-            <ToggleChips
-              options={MODES.map((mode) => ({ value: mode, label: MODE_LABELS[mode] }))}
-              value={form.modes}
-              onChange={(next) => setField('modes', next)}
-            />
-          </FormField>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <FormField label={offer ? 'Học phí mỗi buổi' : 'Học phí bạn trả được'}>
-              <div className="space-y-2">
-                {!offer && (
-                  <Select
-                    value={form.feeMode}
-                    onChange={(e) => setField('feeMode', e.target.value as 'negotiable' | 'fixed')}
-                    options={[
-                      { value: 'negotiable', label: 'Thỏa thuận' },
-                      { value: 'fixed', label: 'Nhập mức cụ thể' },
-                    ]}
-                  />
-                )}
-                {(offer || form.feeMode === 'fixed') && (
-                  <Input
-                    type="number"
-                    min={0}
-                    step={10000}
-                    value={form.fee}
-                    onChange={(e) => setField('fee', Number(e.target.value) || 0)}
-                    aria-label="Học phí (VNĐ/buổi)"
-                  />
-                )}
-                {(offer || form.feeMode === 'fixed') && (
-                  <p className="text-xs text-neutral-500">{form.fee === 0 ? 'Miễn phí' : `${formatCurrency(form.fee)}/buổi`}</p>
-                )}
-              </div>
-            </FormField>
-            <FormField label={offer ? 'Số buổi' : 'Số buổi dự kiến'}>
-              <Input type="number" min={1} max={30} value={form.sessions} onChange={(e) => setField('sessions', Number(e.target.value) || 1)} />
-            </FormField>
-            <FormField label={offer ? 'Hạn đăng ký' : 'Cần tìm trước ngày'} required>
-              <Input type="date" min={inDays(0)} value={form.deadline} onChange={(e) => setField('deadline', e.target.value)} />
-            </FormField>
-          </div>
-
-          {offer && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FormField label="Số học viên tối đa">
-                <Input type="number" min={1} max={20} value={form.capacity} onChange={(e) => setField('capacity', Number(e.target.value) || 1)} />
-              </FormField>
-              <label className="flex items-center justify-between gap-3 self-end rounded-xl border border-neutral-200 px-4 py-2.5 text-sm dark:border-neutral-700">
-                <span>
-                  <span className="block font-medium text-neutral-900 dark:text-neutral-100">Cho học thử 1 buổi</span>
-                  <span className="text-xs text-neutral-500">Học viên gặp bạn trước khi quyết định</span>
-                </span>
-                <Switch checked={form.trial} onCheckedChange={(checked) => setField('trial', checked)} />
-              </label>
-            </div>
-          )}
-
-          <div className="flex justify-end gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800">
-            <Button variant="outline" onClick={() => setComposer(null)}>Hủy</Button>
-            <Button disabled={!canSubmit} loading={createPost.isPending} onClick={() => createPost.mutate()}>
-              {offer ? 'Mở lớp kèm' : 'Đăng bài nhờ kèm'}
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const modeOptions = [{ value: 'all', label: 'Mọi hình thức' }, ...MODES.map((m) => ({ value: m, label: MODE_LABELS[m] }))];
+  const activeFilters = [
+    { key: 'subject', label: subjectFilter, on: subjectFilter !== 'all', clear: () => setSubjectFilter('all') },
+    { key: 'mode', label: modeOptions.find((o) => o.value === modeFilter)?.label, on: modeFilter !== 'all', clear: () => setModeFilter('all') },
+    { key: 'campus', label: campusLabel(campusFilter), on: campusFilter !== 'all', clear: () => setCampusFilter('all') },
+    { key: 'price', label: PRICE_OPTIONS.find((o) => o.value === priceFilter)?.label, on: priceFilter !== 'all', clear: () => setPriceFilter('all') },
+    { key: 'deadline', label: DEADLINE_OPTIONS.find((o) => o.value === deadlineFilter)?.label, on: deadlineFilter !== 'all', clear: () => setDeadlineFilter('all') },
+    { key: 'seat', label: 'Còn chỗ trống', on: seatOnly && lane === 'OFFER_MENTORING', clear: () => setSeatOnly(false) },
+    { key: 'trial', label: 'Có học thử', on: trialOnly && lane === 'OFFER_MENTORING', clear: () => setTrialOnly(false) },
+  ].filter((item) => item.on);
+  const resetFilters = () => {
+    setSearch('');
+    setSubjectFilter('all');
+    setModeFilter('all');
+    setCampusFilter('all');
+    setPriceFilter('all');
+    setDeadlineFilter('all');
+    setSeatOnly(false);
+    setTrialOnly(false);
+    setMatchOnly(false);
+  };
+  const filtersActive = search.trim() !== '' || activeFilters.length > 0 || matchOnly;
 
   // ---------- Bảng tin ----------
   const primaryCreate: Lane = isMentor ? 'OFFER_MENTORING' : 'NEED_MENTOR';
@@ -452,9 +331,6 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({ embedded =
             <div className="flex flex-wrap gap-2">
               <Button variant="ghost" onClick={() => navigate('/mentoring/browse')}>
                 <Users className="mr-1.5 h-4 w-4" /> Danh sách Mentor
-              </Button>
-              <Button variant="ghost" onClick={() => navigate('/mentoring/ai')}>
-                <Sparkles className="mr-1.5 h-4 w-4" /> Gợi ý bằng AI
               </Button>
               <Button variant="ghost" onClick={() => navigate('/mentoring/requests')}>
                 <Inbox className="mr-1.5 h-4 w-4" /> Yêu cầu của tôi
@@ -530,18 +406,72 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({ embedded =
         })}
       </div>}
 
-      {/* Bộ lọc gọn một hàng */}
-      <div className={cn('grid gap-2', embedded ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-[1fr_10rem_11rem]')}>
-        <div className={embedded ? 'col-span-2' : 'col-span-2 sm:col-span-1'}>
-          <SearchInput value={search} onChange={setSearch} placeholder="Tìm theo môn, chủ đề..." />
+      {/* Tìm kiếm + bộ lọc nâng cao gom một nút, điều kiện đang lọc hiện thành chip bỏ được từng cái */}
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <div className="min-w-0 flex-1">
+            <SearchInput value={search} onChange={setSearch} placeholder="Tìm theo môn, chủ đề..." />
+          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="shrink-0">
+                <SlidersHorizontal className="mr-1.5 h-4 w-4" /> Bộ lọc
+                {activeFilters.length > 0 && (
+                  <span className="ml-2 rounded-full bg-brand-600 px-1.5 text-xs font-bold leading-5 text-white">{activeFilters.length}</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 space-y-3">
+              <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Bộ lọc nâng cao</p>
+              {[
+                { id: 'subject', label: 'Môn học', value: subjectFilter, set: setSubjectFilter, options: subjectOptions },
+                { id: 'mode', label: 'Hình thức học', value: modeFilter, set: setModeFilter, options: modeOptions },
+                { id: 'campus', label: 'Cơ sở FPTU (học tại trường)', value: campusFilter, set: setCampusFilter, options: [{ value: 'all', label: 'Mọi cơ sở' }, ...CAMPUSES] },
+                { id: 'price', label: 'Học phí', value: priceFilter, set: setPriceFilter, options: PRICE_OPTIONS },
+                { id: 'deadline', label: 'Hạn đăng ký', value: deadlineFilter, set: setDeadlineFilter, options: DEADLINE_OPTIONS },
+              ].map((item) => (
+                <div key={item.id} className="space-y-1.5">
+                  <label htmlFor={`feed-filter-${item.id}`} className="text-xs font-medium text-neutral-500">{item.label}</label>
+                  <Select id={`feed-filter-${item.id}`} value={item.value} onChange={(e) => item.set(e.target.value)} options={item.options} />
+                </div>
+              ))}
+              {lane === 'OFFER_MENTORING' && (
+                <div className="space-y-2 border-t border-neutral-100 pt-3 dark:border-neutral-800">
+                  <label className="flex items-center justify-between gap-3 text-sm text-neutral-700 dark:text-neutral-300">
+                    Chỉ lớp còn chỗ trống
+                    <Switch checked={seatOnly} onCheckedChange={setSeatOnly} aria-label="Chỉ lớp còn chỗ trống" />
+                  </label>
+                  <label className="flex items-center justify-between gap-3 text-sm text-neutral-700 dark:text-neutral-300">
+                    Chỉ lớp có học thử
+                    <Switch checked={trialOnly} onCheckedChange={setTrialOnly} aria-label="Chỉ lớp có học thử" />
+                  </label>
+                </div>
+              )}
+              <div className="flex justify-end pt-1">
+                <Button size="sm" variant="ghost" disabled={!filtersActive} onClick={resetFilters}>Xóa bộ lọc</Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
-        <Select aria-label="Lọc theo môn" value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} options={subjectOptions} />
-        <Select
-          aria-label="Lọc theo hình thức"
-          value={modeFilter}
-          onChange={(e) => setModeFilter(e.target.value)}
-          options={[{ value: 'all', label: 'Mọi hình thức' }, ...MODES.map((m) => ({ value: m, label: MODE_LABELS[m] }))]}
-        />
+
+        {activeFilters.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-neutral-500">Đang lọc:</span>
+            {activeFilters.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                onClick={filter.clear}
+                aria-label={`Bỏ lọc ${filter.label}`}
+                className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+              >
+                {filter.label}
+                <X className="h-3 w-3" aria-hidden />
+              </button>
+            ))}
+            <Button size="sm" variant="ghost" onClick={resetFilters}>Xóa hết</Button>
+          </div>
+        )}
       </div>
 
       <QueryBoundary query={postsQuery}>
@@ -554,12 +484,7 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({ embedded =
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setSearch('');
-                    setSubjectFilter('all');
-                    setModeFilter('all');
-                    setMatchOnly(false);
-                  }}
+                  onClick={resetFilters}
                 >
                   Xóa bộ lọc
                 </Button>
@@ -677,22 +602,36 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({ embedded =
                         <dt className="sr-only">Hạn</dt>
                         <dd className={cn(left !== null && left >= 0 && left <= 3 && 'font-medium text-amber-700')}>
                           {deadlineLabel(closed, left)}
-                          {isOffer && !closed && <span className="text-neutral-500">, {remaining}/{capacity} chỗ trống</span>}
                         </dd>
                       </div>
+                      {post.campus && (
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="h-4 w-4 text-neutral-400" />
+                          <dt className="sr-only">Cơ sở</dt>
+                          <dd>FPTU {campusLabel(post.campus)}</dd>
+                        </div>
+                      )}
                     </dl>
 
-                    <div className="flex flex-wrap gap-1.5">
-                      {post.trial && (
-                        <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200">
-                          Có học thử
-                        </span>
+                    {/* Tag bên trái, chỗ trống bên phải trên cùng một hàng để không chừa khoảng trống */}
+                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        {post.trial && (
+                          <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200">
+                            Có học thử
+                          </span>
+                        )}
+                        {modes.map((mode) => (
+                          <span key={mode} className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                            {MODE_LABELS[mode]}
+                          </span>
+                        ))}
+                      </div>
+                      {isOffer && !closed && (
+                        <div className="w-full sm:w-80">
+                          <SeatMeter compact capacity={capacity} filled={Math.min(post.filledCount || 0, capacity)} pending={embedded ? pendingByPost[post.id] || 0 : 0} closed={false} />
+                        </div>
                       )}
-                      {modes.map((mode) => (
-                        <span key={mode} className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-                          {MODE_LABELS[mode]}
-                        </span>
-                      ))}
                     </div>
 
                     {bodyText && (
@@ -805,7 +744,6 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({ embedded =
               <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
                 {myClasses.map((post) => {
                   const capacity = post.capacity || post.slots || 1;
-                  const remaining = Math.max(capacity - (post.filledCount || 0), 0);
                   const pending = pendingByPost[post.id] || 0;
                   const closed = isClosed(post);
                   return (
@@ -818,9 +756,9 @@ export const MentoringFeedPage: React.FC<MentoringFeedPageProps> = ({ embedded =
                       </Link>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
                         {post.subject && <span className="font-bold text-brand-700 dark:text-brand-300">{post.subject}</span>}
-                        <span className="tabular-nums">{closed ? 'Đã đóng' : `${remaining}/${capacity} chỗ trống`}</span>
                         <span>{deadlineLabel(closed, daysLeft(post.deadline))}</span>
                       </div>
+                      <SeatMeter capacity={capacity} filled={Math.min(post.filledCount || 0, capacity)} pending={pending} closed={closed} />
                       {pending > 0 && (
                         <button
                           type="button"

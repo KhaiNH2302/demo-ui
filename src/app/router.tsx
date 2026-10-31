@@ -91,9 +91,9 @@ const ProgramProposalFormPage = React.lazy(() => import('@/features/programs/Pro
 const ProgramProposalReviewPage = React.lazy(() => import('@/features/programs/ProgramProposalsPage').then(module => ({ default: module.ProgramProposalReviewPage })));
 
 // FE-05: Mentoring — phía Học viên (/mentoring/*): tìm Mentor, gửi & theo dõi yêu cầu đã gửi
-const MentorAiSearchPage = React.lazy(() => import('@/features/mentoring/MentorAiSearchPage'));
 const MentorBrowsePage = React.lazy(() => import('@/features/mentoring/MentorBrowsePage'));
 const MentoringPostDetailPage = React.lazy(() => import('@/features/mentoring/MentoringPostDetailPage'));
+const MentoringPostComposerPage = React.lazy(() => import('@/features/mentoring/MentoringPostComposerPage'));
 const MyMentoringRequestsPage = React.lazy(() => import('@/features/mentoring/MyMentoringRequestsPage'));
 const MentoringFeedPage = React.lazy(() => import('@/features/mentoring/MentoringFeedPage'));
 
@@ -223,12 +223,13 @@ export const router = createBrowserRouter([
 
       // FE-05: Mentoring (Student)
       { path: 'mentoring', element: <MentoringFeedPage /> },
-      { path: 'mentoring/ai', element: <MentorAiSearchPage /> },
+      { path: 'mentoring/ai', element: <Navigate to="/mentoring/browse?ai=1" replace /> },
       { path: 'mentoring/browse', element: <MentorBrowsePage /> },
       { path: 'mentoring/feed', element: <MentoringFeedPage /> },
       { path: 'mentoring/mentors/:id', element: <MentorDetailRedirect /> },
       { path: 'mentoring/posts/:id', element: <MentoringPostDetailPage /> },
       { path: 'mentoring/requests', element: <MyMentoringRequestsPage /> },
+      { path: 'mentoring/new', element: <MentoringPostComposerPage /> },
 
       // FE-05: Mentor Application Flow (MR0 - MR3)
       { path: 'mentor/apply', element: <MentorApplyIntroPage /> },

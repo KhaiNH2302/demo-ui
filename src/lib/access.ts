@@ -32,6 +32,7 @@ const RULES: AccessRule[] = [
   { pattern: '/groups/me', access: 'member' },
   { pattern: '/groups/:id/manage', access: 'member' },
   { pattern: '/mentoring/requests', access: 'member' },
+  { pattern: '/mentoring/new', access: 'member' },
   { pattern: '/clubs/registrations/:respId', access: 'member' },
   { pattern: '/clubs/manage/*', access: 'member' },
   { pattern: '/programs/manage/:id', access: 'member' },

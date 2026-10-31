@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import type { MentoringRequest } from '@/types/entities';
 import { RequestPlanDetails } from '@/features/mentoring/RequestPlanDetails';
 import { describeLockedRequest, isRequestClosed, isRequestLocked } from '@/features/mentoring/classRules';
+import { ConnectionStatus } from '@/features/mentoring/ConnectionStatus';
 import { useAuthStore } from '@/store/authStore';
 import { useMentorRequestActions } from './useMentorRequestActions';
 
@@ -216,12 +217,12 @@ export const MentorRequestsPage: React.FC = () => {
                         </Button>
                       </div>
                     )}
-                    {req.status === 'ACCEPTED' && (
-                      <Button size="sm" variant="outline" onClick={() => navigate(`/chats?targetUser=${studentId}`)}>
-                        <MessageSquare className="mr-1.5 h-4 w-4" /> Nhắn chốt lịch
-                      </Button>
-                    )}
                   </div>
+                  {req.status === 'ACCEPTED' && (
+                    <div className="mt-3 rounded-xl bg-neutral-50 p-3 dark:bg-neutral-800/50">
+                      <ConnectionStatus request={req} onOpenClass={() => navigate('/mentor/classes')} />
+                    </div>
+                  )}
                   {expired && req.status === 'PENDING_MENTOR_RESPONSE' && (
                     <p className="mt-2 text-xs text-neutral-500">Yêu cầu đã quá hạn trả lời nên không nhận được nữa.</p>
                   )}

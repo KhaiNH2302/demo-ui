@@ -1,401 +1,345 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarClock, Check, MessageSquare, Plus, Star } from 'lucide-react';
+import { CalendarDays, Check, MapPin, Users, Wallet } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/cn';
-import { formatDate, formatDateTime } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import { useAuthStore } from '@/store/authStore';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { FormField } from '@/components/shared/FormField';
 import { QueryBoundary } from '@/components/shared/QueryBoundary';
-import { ReasonDialog } from '@/components/shared/ReasonDialog';
 import { UserMiniCard } from '@/components/shared/UserMiniCard';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
+import { Chip } from '@/components/ui/Chip';
 import { toast } from '@/components/ui/Toast';
-import type { MentoringClass, MentoringSession } from '@/types/entities';
-import { MODE_LABELS, MODES } from './postOptions';
-import { countDone } from './reviews';
-import { CONNECTION_EXPIRY_DAYS, CONNECTION_STALE_DAYS, connectionAgeDays, connectionDaysLeft } from './classRules';
+import type { MentoringClass, MentorPost } from '@/types/entities';
+import { describePostFee } from './plans';
+import { MODE_LABELS, campusLabel } from './postOptions';
 
-type SessionAction = 'done' | 'confirm' | 'dispute' | 'cancel';
+type SessionAction = 'confirm' | 'dispute' | 'cancel';
+type Kind = 'group' | 'one';
+type Filter = 'all' | Kind;
+// none: chưa ai báo; waiting: mình đã báo, chờ bên kia; asked: bên kia báo, chờ mình; done: đã xác nhận
+type Status = 'none' | 'waiting' | 'asked' | 'done';
 
 const ACTION_TOAST: Record<SessionAction, string> = {
-  done: 'Đã gửi cho học viên xác nhận',
-  confirm: 'Đã xác nhận buổi học',
-  dispute: 'Đã báo cho Mentor là buổi này chưa học',
-  cancel: 'Đã hủy buổi học',
+  confirm: 'Đã xác nhận đã học',
+  dispute: 'Đã báo chưa đúng',
+  cancel: 'Đã rút lại ghi nhận',
 };
 
-const STATUS_LABEL: Record<MentoringSession['status'], string> = {
-  PLANNED: 'Dự kiến',
-  PENDING_CONFIRM: 'Chờ học viên xác nhận',
-  DONE: 'Đã học',
-  CANCELLED: 'Đã hủy',
+const STATUS_STYLE: Record<Status, string> = {
+  none: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
+  waiting: 'bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200',
+  asked: 'bg-amber-100 text-amber-900 ring-1 ring-amber-300 dark:bg-amber-500/20 dark:text-amber-100',
+  done: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200',
 };
 
-const STATUS_STYLE: Record<MentoringSession['status'], string> = {
-  PLANNED: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
-  PENDING_CONFIRM: 'bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200',
-  DONE: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200',
-  CANCELLED: 'bg-neutral-100 text-neutral-400 line-through dark:bg-neutral-800',
-};
-
-// Chuyển giờ địa phương của ô datetime-local thành ISO để lưu
-const defaultStart = () => {
-  const date = new Date();
-  date.setDate(date.getDate() + 2);
-  date.setHours(19, 0, 0, 0);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
-
-// `starting`: buổi đầu tiên đồng thời bắt đầu lớp học; ngược lại chỉ thêm một buổi vào lớp đã bắt đầu
-const AddSessionDialog: React.FC<{ cls: MentoringClass | null; starting: boolean; onClose: () => void }> = ({ cls, starting, onClose }) => {
-  const queryClient = useQueryClient();
-  const [startsAt, setStartsAt] = useState(defaultStart);
-  const [mode, setMode] = useState('online');
-  const [note, setNote] = useState('');
-
-  const add = useMutation({
-    mutationFn: () =>
-      apiClient.post(`/mentoring/classes/${cls?.request.id}/${starting ? 'start' : 'sessions'}`, {
-        startsAt: new Date(startsAt).toISOString(),
-        mode,
-        note,
-      }),
-    onSuccess: () => {
-      toast.success(starting ? 'Đã bắt đầu lớp học' : 'Đã thêm buổi học');
-      queryClient.invalidateQueries({ queryKey: ['mentoring', 'classes'] });
-      onClose();
-    },
-    onError: (error: any) => toast.error(error?.message || 'Chưa thêm được buổi học, thử lại sau ít phút.'),
-  });
-
-  return (
-    <Dialog open={Boolean(cls)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent size="md">
-        <DialogHeader>
-          <DialogTitle>{starting ? 'Bắt đầu lớp học' : 'Thêm buổi học'}</DialogTitle>
-          <DialogDescription>
-            {starting
-              ? 'Chọn ngày giờ buổi đầu tiên. Lớp học sẽ hiện trong mục Lớp học của học viên.'
-              : 'Học viên sẽ thấy buổi này trong mục Lớp học của họ.'}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <FormField label="Ngày giờ" required>
-            <Input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
-          </FormField>
-          <FormField label="Hình thức">
-            <Select value={mode} onChange={(e) => setMode(e.target.value)} options={MODES.map((m) => ({ value: m, label: MODE_LABELS[m] }))} />
-          </FormField>
-          <FormField label="Nội dung buổi học" helperText="Ví dụ: ôn BFS/DFS, review code đăng nhập.">
-            <Input value={note} maxLength={120} onChange={(e) => setNote(e.target.value)} />
-          </FormField>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button disabled={!startsAt} loading={add.isPending} onClick={() => add.mutate()}>
-            {starting ? 'Bắt đầu lớp' : 'Thêm buổi'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
+// Thông tin cơ bản của lớp mở theo bài đăng: môn, lịch, học phí, hình thức, sĩ số
+const ClassInfo: React.FC<{ post: MentorPost; enrolled: number }> = ({ post, enrolled }) => (
+  <dl className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-neutral-700 dark:text-neutral-300">
+    {post.schedule?.length ? (
+      <div className="flex items-center gap-1.5">
+        <CalendarDays className="h-4 w-4 text-neutral-400" />
+        <dt className="sr-only">Lịch học</dt>
+        <dd>{post.schedule.join(', ')}</dd>
+      </div>
+    ) : null}
+    <div className="flex items-center gap-1.5">
+      <Wallet className="h-4 w-4 text-neutral-400" />
+      <dt className="sr-only">Học phí</dt>
+      <dd className="font-semibold text-neutral-900 dark:text-neutral-100">
+        {describePostFee(post.fee)}
+        {post.sessions ? <span className="font-normal text-neutral-500">, {post.sessions} buổi</span> : null}
+      </dd>
+    </div>
+    {post.modes?.length ? (
+      <div className="flex items-center gap-1.5">
+        <MapPin className="h-4 w-4 text-neutral-400" />
+        <dt className="sr-only">Hình thức</dt>
+        <dd>
+          {post.modes.map((mode) => MODE_LABELS[mode as keyof typeof MODE_LABELS] || mode).join(', ')}
+          {post.campus && <span className="text-neutral-500"> · FPTU {campusLabel(post.campus)}</span>}
+        </dd>
+      </div>
+    ) : null}
+    <div className="flex items-center gap-1.5">
+      <Users className="h-4 w-4 text-neutral-400" />
+      <dt className="sr-only">Sĩ số</dt>
+      <dd className="tabular-nums">{post.filledCount ?? enrolled}/{post.capacity || post.slots || enrolled} học viên</dd>
+    </div>
+  </dl>
+);
 
 /**
- * Sổ buổi học của các lớp đã kết nối. Dùng chung cho Mentor (Mentor Center) và học viên (trang Yêu cầu);
- * vai trò được suy ra từ người đang đăng nhập. Mentor đánh dấu đã học, học viên xác nhận thì buổi mới được tính.
+ * Các lớp đã bắt đầu, chỉ gồm thông tin cơ bản và việc xác nhận đã học của cả lớp (không đếm buổi):
+ * bên nào cũng đề nghị xác nhận, bên kia xác nhận thì lớp được tính là đã học.
+ * Lớp nhóm và lớp 1-1 dùng cùng một thẻ (lớp 1-1 là lớp có một học viên), cho Mentor và học viên.
  */
 export const ClassesPanel: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const userId = useAuthStore((state) => state.user?.id);
-  const [adding, setAdding] = useState<{ cls: MentoringClass; starting: boolean } | null>(null);
-  const [ending, setEnding] = useState<MentoringClass | null>(null);
+  const [filter, setFilter] = useState<Filter>('all');
 
   const classesQuery = useQuery({
     queryKey: ['mentoring', 'classes'],
     queryFn: () => apiClient.get<MentoringClass[]>('/mentoring/classes'),
   });
+  const postsQuery = useQuery({
+    queryKey: ['mentoring', 'posts'],
+    queryFn: () => apiClient.get<MentorPost[]>('/mentoring/posts'),
+  });
+
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ['mentoring', 'classes'] });
+
+  const record = useMutation({
+    mutationFn: (members: MentoringClass[]) =>
+      Promise.all(members.map((cls) => apiClient.post(`/mentoring/classes/${cls.request.id}/sessions`, {}))),
+    onSuccess: () => {
+      toast.success('Đã gửi xác nhận, chờ bên kia trả lời');
+      refresh();
+    },
+    onError: (error: any) => toast.error(error?.message || 'Chưa gửi được xác nhận, thử lại sau ít phút.'),
+  });
 
   const act = useMutation({
-    mutationFn: ({ cls, session, action }: { cls: MentoringClass; session: MentoringSession; action: SessionAction }) =>
-      apiClient.post(`/mentoring/classes/${cls.request.id}/sessions/${session.id}/${action}`),
+    mutationFn: ({ cls, sessionId, action }: { cls: MentoringClass; sessionId: string; action: SessionAction }) =>
+      apiClient.post(`/mentoring/classes/${cls.request.id}/sessions/${sessionId}/${action}`),
     onSuccess: (_data, { action }) => {
       toast.success(ACTION_TOAST[action]);
-      queryClient.invalidateQueries({ queryKey: ['mentoring', 'classes'] });
+      refresh();
     },
-    onError: (error: any) => toast.error(error?.message || 'Chưa cập nhật được buổi học, thử lại sau ít phút.'),
-  });
-  const busyId = act.isPending ? act.variables?.session.id : undefined;
-
-  // Hai bên không chốt được: kết thúc kết nối để yêu cầu không nằm chờ mãi
-  const end = useMutation({
-    mutationFn: ({ cls, reason }: { cls: MentoringClass; reason: string }) =>
-      apiClient.post(`/mentoring/classes/${cls.request.id}/end`, { reason }),
-    onSuccess: () => {
-      toast.success('Đã kết thúc kết nối');
-      setEnding(null);
-      queryClient.invalidateQueries({ queryKey: ['mentoring', 'classes'] });
-      queryClient.invalidateQueries({ queryKey: ['mentoring', 'requests'] });
-      queryClient.invalidateQueries({ queryKey: ['mentor', 'requests'] });
-      queryClient.invalidateQueries({ queryKey: ['mentoring', 'posts'] });
-    },
-    onError: (error: any) => {
-      toast.error(error?.message || 'Chưa kết thúc được kết nối, thử lại sau ít phút.');
-      setEnding(null);
-    },
+    onError: (error: any) => toast.error(error?.message || 'Chưa cập nhật được xác nhận, thử lại sau ít phút.'),
   });
 
-  const allClasses = classesQuery.data || [];
-  const waiting = allClasses.filter((cls) => !cls.startedAt && cls.request.status === 'ACCEPTED');
-  const expired = allClasses.filter((cls) => cls.request.status === 'EXPIRED');
-  const classes = allClasses.filter((cls) => cls.startedAt);
+  // Chưa bắt đầu hoặc đã hết hạn thì nằm ở "Đã kết nối" / "Đã đóng" của trang Yêu cầu
+  const started = (classesQuery.data || []).filter((cls) => cls.startedAt && cls.request.status === 'ACCEPTED');
+
+  const statusOf = (cls: MentoringClass): Status => {
+    if (cls.sessions.some((s) => s.status === 'DONE')) return 'done';
+    const pending = cls.sessions.find((s) => s.status === 'PENDING_CONFIRM');
+    if (!pending) return 'none';
+    return pending.createdBy === userId ? 'waiting' : 'asked';
+  };
+
+  const postOf = (key: string) => (key.startsWith('req:') ? undefined : postsQuery.data?.find((item) => item.id === key));
+
+  // Mentor: lớp gom theo bài đăng (lớp kèm riêng gom theo chính nó). Học viên: mỗi lớp của mình một thẻ.
+  const groupsMap = new Map<string, MentoringClass[]>();
+  started.forEach((cls) => {
+    const key = cls.request.sourcePostId ?? `req:${cls.request.id}`;
+    const mapKey = cls.mentorId === userId ? key : `own:${cls.request.id}`;
+    groupsMap.set(mapKey, [...(groupsMap.get(mapKey) || []), cls]);
+  });
+
+  const items = [...groupsMap.entries()].map(([mapKey, members]) => {
+    const asMentor = members[0].mentorId === userId;
+    const key = mapKey.startsWith('own:') ? members[0].request.sourcePostId ?? `req:${members[0].request.id}` : mapKey;
+    const post = postOf(key);
+    const capacity = post ? post.capacity || post.slots || 1 : 1;
+    const kind: Kind = members.length > 1 || capacity > 1 ? 'group' : 'one';
+    const needsAction = members.some((cls) => statusOf(cls) === 'asked');
+    return { mapKey, key, members, asMentor, post, kind, needsAction };
+  });
+
+  const counts = { all: items.length, group: items.filter((i) => i.kind === 'group').length, one: items.filter((i) => i.kind === 'one').length };
+  const visible = items
+    .filter((item) => filter === 'all' || item.kind === filter)
+    .sort((a, b) => Number(b.needsAction) - Number(a.needsAction));
+
+  const renderCard = (item: (typeof items)[number]) => {
+    const { members, asMentor, post, kind } = item;
+    const first = members[0];
+    const statuses = members.map(statusOf);
+    const doneCount = statuses.filter((s) => s === 'done').length;
+    const todo = members.filter((cls) => statusOf(cls) === 'none');
+    const mine = asMentor ? undefined : first;
+    const myStatus = mine ? statusOf(mine) : undefined;
+    const myPending = mine?.sessions.find((s) => s.status === 'PENDING_CONFIRM');
+    const myConfirmed = mine?.sessions.find((s) => s.status === 'DONE');
+
+    // Trạng thái tổng của thẻ
+    const pill: { text: string; style: Status } = asMentor
+      ? kind === 'group'
+        ? { text: `${doneCount}/${members.length} đã xác nhận`, style: doneCount === members.length ? 'done' : doneCount > 0 ? 'waiting' : 'none' }
+        : { text: doneCount ? 'Đã xác nhận' : statuses[0] === 'waiting' ? 'Chờ học viên xác nhận' : statuses[0] === 'asked' ? 'Học viên chờ bạn xác nhận' : 'Chưa xác nhận', style: statuses[0] }
+      : {
+          text: myStatus === 'done' ? 'Đã xác nhận' : myStatus === 'asked' ? 'Chờ bạn xác nhận' : myStatus === 'waiting' ? 'Chờ Mentor xác nhận' : 'Chưa xác nhận',
+          style: myStatus ?? 'none',
+        };
+
+    const busyOn = (sessionId?: string) => act.isPending && act.variables?.sessionId === sessionId;
+    const classmates = first.classmateIds ?? [];
+
+    return (
+      <li
+        key={item.mapKey}
+        className={cn(
+          'flex flex-col rounded-2xl border bg-surface dark:border-neutral-700/80',
+          item.needsAction ? 'border-amber-300 dark:border-amber-500/50' : 'border-neutral-200',
+          kind === 'group' && asMentor && 'lg:col-span-2'
+        )}
+      >
+        <div className="space-y-3 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="flex flex-wrap items-center gap-x-2 text-xs font-medium text-brand-700 dark:text-brand-300">
+                <span className="rounded-full bg-brand-50 px-2 py-0.5 dark:bg-brand-500/15">{kind === 'group' ? 'Lớp nhóm' : 'Lớp 1-1'}</span>
+                {post?.subject && <span>{post.subject}</span>}
+              </p>
+              <h3 className="mt-1 text-base font-semibold leading-snug text-neutral-900 dark:text-neutral-100">{post?.title || first.request.topic}</h3>
+              {(!post || !asMentor) && first.request.planSummary && <p className="text-sm text-neutral-500">{first.request.planSummary}</p>}
+            </div>
+            <span className={cn('shrink-0 rounded-full px-3 py-1 text-xs font-semibold tabular-nums', STATUS_STYLE[pill.style])}>{pill.text}</span>
+          </div>
+
+          {post && <ClassInfo post={post} enrolled={asMentor ? members.length : classmates.length + 1} />}
+
+          {asMentor ? (
+            <ul className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-700">
+              {members.map((cls) => {
+                const status = statusOf(cls);
+                const pending = cls.sessions.find((s) => s.status === 'PENDING_CONFIRM');
+                return (
+                  <li key={cls.request.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
+                    <UserMiniCard userId={cls.studentId} showMajor={kind === 'one'} />
+                    <div className="flex flex-wrap items-center gap-2">
+                      {status === 'done' && (
+                        <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium', STATUS_STYLE.done)}>
+                          <Check className="h-3.5 w-3.5" /> Đã xác nhận
+                        </span>
+                      )}
+                      {status === 'waiting' && pending && (
+                        <>
+                          <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', STATUS_STYLE.waiting)}>Chờ học viên xác nhận</span>
+                          <Button size="sm" variant="ghost" disabled={busyOn(pending.id)} onClick={() => act.mutate({ cls, sessionId: pending.id, action: 'cancel' })}>
+                            Rút lại
+                          </Button>
+                        </>
+                      )}
+                      {status === 'asked' && pending && (
+                        <>
+                          <span className="text-xs text-amber-800">Học viên báo đã học</span>
+                          <Button size="sm" variant="outline" disabled={busyOn(pending.id)} onClick={() => act.mutate({ cls, sessionId: pending.id, action: 'dispute' })}>
+                            Chưa đúng
+                          </Button>
+                          <Button size="sm" loading={busyOn(pending.id)} onClick={() => act.mutate({ cls, sessionId: pending.id, action: 'confirm' })}>
+                            Xác nhận
+                          </Button>
+                        </>
+                      )}
+                      {status === 'none' && <span className="text-xs text-neutral-500">Chưa xác nhận</span>}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div className="space-y-2 rounded-xl bg-neutral-50 p-3 dark:bg-neutral-800/50">
+              <div className="flex items-center justify-between gap-2">
+                <UserMiniCard userId={first.mentorId} showMajor />
+                <span className="shrink-0 rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">Mentor</span>
+              </div>
+              {classmates.length > 0 && (
+                <div className="border-t border-neutral-200 pt-2 dark:border-neutral-700">
+                  <p className="mb-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400">Bạn học cùng ({classmates.length})</p>
+                  <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
+                    {classmates.map((id) => (
+                      <li key={id}>
+                        <UserMiniCard userId={id} size="sm" />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Học viên: xác nhận hai chiều của chính mình */}
+          {mine && myConfirmed && (
+            <p className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium', STATUS_STYLE.done)}>
+              <Check className="h-4 w-4" /> Đã xác nhận đã học · {formatDate(myConfirmed.startsAt)}
+            </p>
+          )}
+          {mine && myPending && (
+            <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+              <p className="text-sm text-amber-900 dark:text-amber-200">
+                {myStatus === 'waiting' ? 'Bạn đã báo đã học. Chờ Mentor xác nhận.' : 'Mentor báo lớp đã học. Bạn xác nhận chứ?'}
+              </p>
+              <div className="flex flex-wrap justify-end gap-2">
+                {myStatus === 'waiting' ? (
+                  <Button size="sm" variant="ghost" disabled={busyOn(myPending.id)} onClick={() => act.mutate({ cls: mine, sessionId: myPending.id, action: 'cancel' })}>
+                    Rút lại
+                  </Button>
+                ) : (
+                  <>
+                    <Button size="sm" variant="outline" disabled={busyOn(myPending.id)} onClick={() => act.mutate({ cls: mine, sessionId: myPending.id, action: 'dispute' })}>
+                      Chưa đúng
+                    </Button>
+                    <Button size="sm" loading={busyOn(myPending.id)} onClick={() => act.mutate({ cls: mine, sessionId: myPending.id, action: 'confirm' })}>
+                      <Check className="mr-1 h-3.5 w-3.5" /> Xác nhận đã học
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Nút gửi xác nhận: Mentor gửi cho các học viên chưa có xác nhận, học viên gửi cho Mentor */}
+        {(asMentor ? todo.length > 0 : myStatus === 'none') && (
+          <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 px-5 py-3 dark:border-neutral-800">
+            <p className="text-xs text-neutral-500">
+              {asMentor && kind === 'group' ? 'Gửi một lần, từng học viên tự xác nhận mình đã học.' : 'Bên kia xác nhận thì lớp được tính là đã học.'}
+            </p>
+            <Button
+              size="sm"
+              loading={record.isPending && Boolean(record.variables?.some((cls) => members.includes(cls)))}
+              onClick={() => record.mutate(asMentor ? todo : [first])}
+            >
+              <Check className="mr-1 h-3.5 w-3.5" />
+              {asMentor && kind === 'group' ? `Xác nhận đã học cho cả lớp (${todo.length})` : 'Xác nhận đã học'}
+            </Button>
+          </div>
+        )}
+      </li>
+    );
+  };
+
+  const FILTERS: { value: Filter; label: string }[] = [
+    { value: 'all', label: `Tất cả (${counts.all})` },
+    { value: 'group', label: `Lớp nhóm (${counts.group})` },
+    { value: 'one', label: `Lớp 1-1 (${counts.one})` },
+  ];
 
   return (
-    <>
-      <QueryBoundary query={classesQuery}>
-        {waiting.length > 0 && (
-          <section className="mb-8 space-y-3" aria-labelledby="waiting-classes">
-            <div>
-              <h2 id="waiting-classes" className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-                Đã kết nối, chờ bắt đầu <span className="font-normal text-neutral-400">{waiting.length}</span>
-              </h2>
-              <p className="text-sm text-neutral-500">Hai bên nhắn tin chốt gói và giờ học, rồi Mentor bắt đầu lớp.</p>
-            </div>
-            <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {waiting.map((cls) => {
-                const isMentorSide = cls.mentorId === userId;
-                const counterpartId = isMentorSide ? cls.studentId : cls.mentorId;
-                return (
-                  <li key={cls.request.id} className="space-y-3 rounded-2xl border border-dashed border-neutral-300 bg-surface p-5 dark:border-neutral-600">
-                    <UserMiniCard userId={counterpartId} showMajor />
-                    <div>
-                      <h3 className="text-base font-semibold leading-snug text-neutral-900 dark:text-neutral-100">{cls.request.topic}</h3>
-                      {cls.request.planSummary && <p className="text-sm text-neutral-500">{cls.request.planSummary}</p>}
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="text-sm">
-                        <p className="text-neutral-600">
-                          {isMentorSide ? 'Chốt xong với học viên thì bắt đầu lớp.' : 'Chờ Mentor xếp lịch buổi đầu tiên.'}
-                        </p>
-                        <p className={cn('text-xs', connectionAgeDays(cls.request) >= CONNECTION_STALE_DAYS ? 'font-medium text-amber-700' : 'text-neutral-500')}>
-                          Đã chờ {connectionAgeDays(cls.request) === 0 ? 'dưới 1 ngày' : `${connectionAgeDays(cls.request)} ngày`}
-                          , còn {connectionDaysLeft(cls.request)} ngày để bắt đầu lớp trước khi kết nối hết hạn
-                          {connectionAgeDays(cls.request) >= CONNECTION_STALE_DAYS && '. Chưa chốt được thì nên kết thúc kết nối.'}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => setEnding(cls)}>
-                          Kết thúc kết nối
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => navigate(`/chats?targetUser=${counterpartId}`)}>
-                          <MessageSquare className="mr-1 h-3.5 w-3.5" /> Nhắn tin
-                        </Button>
-                        {isMentorSide && (
-                          <Button size="sm" onClick={() => setAdding({ cls, starting: true })}>
-                            Bắt đầu lớp học
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        )}
-
-        {expired.length > 0 && (
-          <section className="mb-8 space-y-3" aria-labelledby="expired-classes">
-            <div>
-              <h2 id="expired-classes" className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-                Đã hết hạn <span className="font-normal text-neutral-400">{expired.length}</span>
-              </h2>
-              <p className="text-sm text-neutral-500">
-                Kết nối quá {CONNECTION_EXPIRY_DAYS} ngày mà lớp chưa bắt đầu nên đã bị khóa, không bắt đầu lớp được nữa.
-              </p>
-            </div>
-            <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {expired.map((cls) => {
-                const isMentorSide = cls.mentorId === userId;
-                return (
-                  <li key={cls.request.id} className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-5 opacity-80 dark:border-neutral-700 dark:bg-neutral-900/40">
-                    <UserMiniCard userId={isMentorSide ? cls.studentId : cls.mentorId} showMajor />
-                    <div>
-                      <h3 className="text-base font-semibold leading-snug text-neutral-700 dark:text-neutral-300">{cls.request.topic}</h3>
-                      {cls.request.planSummary && <p className="text-sm text-neutral-500">{cls.request.planSummary}</p>}
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm text-neutral-600">
-                        Hết hạn {cls.request.expiredAt ? formatDate(cls.request.expiredAt) : ''}.{' '}
-                        {isMentorSide ? 'Muốn kèm tiếp, học viên cần gửi yêu cầu mới.' : 'Muốn học tiếp, hãy gửi yêu cầu mới.'}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {isMentorSide ? (
-                          <Button size="sm" disabled>Bắt đầu lớp học</Button>
-                        ) : (
-                          <Button size="sm" variant="outline" onClick={() => navigate('/mentoring')}>Tìm lớp khác</Button>
-                        )}
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        )}
-
-        {classes.length === 0 && waiting.length === 0 && expired.length === 0 ? (
-          <EmptyState
-            title="Chưa có lớp học nào"
-            description="Khi một yêu cầu được chấp nhận, bạn nhắn tin chốt lịch với đối phương, rồi Mentor bắt đầu lớp học tại đây."
-            action={<Button onClick={() => navigate('/mentoring')}>Tìm lớp kèm</Button>}
-          />
-        ) : (
-          <ul className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            {classes.map((cls) => {
-              const isMentorSide = cls.mentorId === userId;
-              const total = cls.request.totalSessions;
-              const done = countDone(cls);
-              const active = cls.sessions.filter((session) => session.status !== 'CANCELLED').length;
-              const full = Boolean(total && active >= total);
-              const percent = total ? Math.min(100, Math.round((done / total) * 100)) : 0;
-              const finished = Boolean(total && done >= total);
-              return (
-                <li key={cls.request.id} className="flex flex-col rounded-2xl border border-neutral-200 bg-surface dark:border-neutral-700/80">
-                  <div className="space-y-3 p-5">
-                    <UserMiniCard userId={isMentorSide ? cls.studentId : cls.mentorId} showMajor />
-                    <div>
-                      <h3 className="text-base font-semibold leading-snug text-neutral-900 dark:text-neutral-100">{cls.request.topic}</h3>
-                      {cls.request.planSummary && <p className="text-sm text-neutral-500">{cls.request.planSummary}</p>}
-                    </div>
-
-                    <div>
-                      <div className="mb-1 flex items-baseline justify-between text-sm">
-                        <span className="font-semibold tabular-nums text-neutral-900 dark:text-neutral-100">
-                          {done}
-                          {total ? `/${total}` : ''} buổi đã học
-                        </span>
-                        {finished && <span className="text-xs font-medium text-emerald-700">Đã học xong gói</span>}
-                      </div>
-                      {total ? (
-                        <div
-                          className="h-2 overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800"
-                          role="progressbar"
-                          aria-valuenow={done}
-                          aria-valuemin={0}
-                          aria-valuemax={total}
-                          aria-label="Tiến độ lớp học"
-                        >
-                          <div className="h-full rounded-full bg-brand-600" style={{ width: `${percent}%` }} />
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <ul className="divide-y divide-neutral-100 border-t border-neutral-100 dark:divide-neutral-800 dark:border-neutral-800">
-                    {cls.sessions.length === 0 && (
-                      <li className="px-5 py-4 text-sm text-neutral-600">
-                        {isMentorSide ? 'Chưa có buổi nào. Thêm buổi đầu tiên để chốt lịch với học viên.' : 'Mentor chưa xếp buổi nào. Nhắn tin để chốt lịch buổi đầu.'}
-                      </li>
-                    )}
-                    {cls.sessions.map((session) => {
-                      const busy = busyId === session.id;
-                      return (
-                        <li key={session.id} className="space-y-2 px-5 py-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <p className={cn('flex items-center gap-1.5 text-sm font-medium tabular-nums', session.status === 'CANCELLED' ? 'text-neutral-400' : 'text-neutral-900 dark:text-neutral-100')}>
-                              <CalendarClock className="h-4 w-4 text-neutral-400" />
-                              {formatDateTime(session.startsAt)}
-                              <span className="font-normal text-neutral-500">· {MODE_LABELS[session.mode]}</span>
-                            </p>
-                            <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', STATUS_STYLE[session.status])}>
-                              {STATUS_LABEL[session.status]}
-                            </span>
-                          </div>
-                          {session.note && <p className="text-sm text-neutral-600">{session.note}</p>}
-                          {session.disputed && session.status === 'PLANNED' && (
-                            <p className="text-xs font-medium text-amber-700">Học viên báo buổi này chưa học. Hai bên nhắn tin để thống nhất lại.</p>
-                          )}
-
-                          <div className="flex flex-wrap justify-end gap-2">
-                            {session.status === 'PLANNED' && isMentorSide && (
-                              <Button size="sm" loading={busy} onClick={() => act.mutate({ cls, session, action: 'done' })}>
-                                <Check className="mr-1 h-3.5 w-3.5" /> Đã học
-                              </Button>
-                            )}
-                            {session.status === 'PLANNED' && (
-                              <Button size="sm" variant="ghost" disabled={busy} onClick={() => act.mutate({ cls, session, action: 'cancel' })}>
-                                Hủy buổi
-                              </Button>
-                            )}
-                            {session.status === 'PENDING_CONFIRM' && !isMentorSide && (
-                              <>
-                                <Button size="sm" variant="outline" disabled={busy} onClick={() => act.mutate({ cls, session, action: 'dispute' })}>
-                                  Chưa học
-                                </Button>
-                                <Button size="sm" loading={busy} onClick={() => act.mutate({ cls, session, action: 'confirm' })}>
-                                  <Check className="mr-1 h-3.5 w-3.5" /> Xác nhận đã học
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-
-                  <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 px-5 py-3 dark:border-neutral-800">
-                    <p className="text-xs text-neutral-500">
-                      {isMentorSide
-                        ? full
-                          ? 'Đã xếp đủ số buổi của gói.'
-                          : 'Học viên xác nhận thì buổi mới được tính.'
-                        : 'Đánh giá Mentor mở sau buổi đầu tiên bạn xác nhận.'}
-                    </p>
-                    {isMentorSide ? (
-                      <Button size="sm" variant="outline" disabled={full} onClick={() => setAdding({ cls, starting: false })}>
-                        <Plus className="mr-1 h-3.5 w-3.5" /> Thêm buổi
-                      </Button>
-                    ) : (
-                      done > 0 && (
-                        <Button size="sm" variant="outline" onClick={() => navigate(`/users/${cls.mentorId}`)}>
-                          <Star className="mr-1 h-3.5 w-3.5" /> Đánh giá Mentor
-                        </Button>
-                      )
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </QueryBoundary>
-
-      <ReasonDialog
-        open={Boolean(ending)}
-        onOpenChange={(open) => !open && setEnding(null)}
-        title="Kết thúc kết nối?"
-        description="Kết nối này sẽ không thành lớp học và bên kia sẽ biết. Nếu là lớp mở theo bài đăng, chỗ được trả lại cho người khác."
-        label="Lý do (tùy chọn)"
-        placeholder="Ví dụ: chưa thống nhất được lịch học."
-        confirmLabel="Kết thúc kết nối"
-        variant="danger"
-        loading={end.isPending}
-        onConfirm={(reason) => {
-          if (ending) end.mutate({ cls: ending, reason });
-        }}
-      />
-
-      <AddSessionDialog key={adding?.cls.request.id ?? 'none'} cls={adding?.cls ?? null} starting={adding?.starting ?? false} onClose={() => setAdding(null)} />
-    </>
+    <QueryBoundary query={classesQuery}>
+      {started.length === 0 ? (
+        <EmptyState
+          title="Chưa có lớp nào đang học"
+          description="Khi Mentor bắt đầu lớp từ mục Đã kết nối trong trang Yêu cầu, lớp học xuất hiện ở đây."
+          action={<Button onClick={() => navigate('/mentoring')}>Tìm lớp kèm</Button>}
+        />
+      ) : (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Loại lớp">
+            {FILTERS.map((item) => (
+              <Chip key={item.value} selected={filter === item.value} onClick={() => setFilter(item.value)}>
+                {item.label}
+              </Chip>
+            ))}
+          </div>
+          {visible.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-neutral-300 px-4 py-6 text-center text-sm text-neutral-500 dark:border-neutral-700">
+              Chưa có {filter === 'group' ? 'lớp nhóm' : 'lớp 1-1'} nào đang học.
+            </p>
+          ) : (
+            <ul className="grid grid-cols-1 gap-5 lg:grid-cols-2">{visible.map(renderCard)}</ul>
+          )}
+        </div>
+      )}
+    </QueryBoundary>
   );
 };
 
