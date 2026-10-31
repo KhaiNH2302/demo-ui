@@ -9,6 +9,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Lock,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import {
@@ -289,6 +290,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       )}
     >
       <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4">
+        {user?.roles.includes('event_manager') && renderItem({key:'admin-programs',label:'Quản lý hoạt động',href:'/admin/programs',to:'/admin/programs',icon:LayoutDashboard})}
         {NAV_SECTIONS.map((section, idx) => (
           <div key={idx}>
             {section.title && !isCollapsed && (

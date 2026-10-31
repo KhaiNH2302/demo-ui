@@ -56,15 +56,15 @@ test('program registration protects deadline, duplicate, last seat, ownership an
   assert.equal((await register(accepted.studentId)).status, 409);
 });
 
-test('Student proposal approval requires Event Manager and reason, creates one owned draft', async () => {
+test('Student proposal approval requires Manager, rejection requires reason, creates one owned draft', async () => {
   const payload = { type: 'Workshop', title: 'Git cho sinh viên', description: 'Học Git qua thực hành.', goal: 'Làm việc nhóm tốt hơn', targetAudience: 'Sinh viên năm nhất', expectedParticipants: 20, suggestedStartAt: future(10), location: 'Phòng học', costInfo: 'Free', safetyNotes: 'Tuân thủ nội quy', mode: 'Offline', contactInfo: 'student@fpt.edu.vn', acknowledgedTerms: true };
   const created = await request('/programs/proposals', student, 'POST', payload);
   assert.equal(created.status, 201);
   const id = created.data.id;
   assert.equal((await request('/programs/proposals?review=true', student)).status, 403);
   assert.equal((await request(`/programs/proposals/${id}`, student, 'PUT', { status: 'Approved', reviewReason: 'Self approval' })).status, 403);
-  assert.equal((await request(`/programs/proposals/${id}`, manager, 'PUT', { status: 'Approved' })).status, 400);
-  const approved = await request(`/programs/proposals/${id}`, manager, 'PUT', { status: 'Approved', reviewReason: 'Nội dung phù hợp và đủ nguồn lực.' });
+  assert.equal((await request(`/programs/proposals/${id}`, manager, 'PUT', { status: 'Rejected' })).status, 400);
+  const approved = await request(`/programs/proposals/${id}`, manager, 'PUT', { status: 'Approved' });
   assert.equal(approved.status, 200);
   const program = seedProgramChannels.find((item) => item.id === approved.data.programId);
   assert.equal(program.status, 'Draft'); assert.equal(program.organizer.userId, manager); assert.deepEqual(program.coOrganizers, []);

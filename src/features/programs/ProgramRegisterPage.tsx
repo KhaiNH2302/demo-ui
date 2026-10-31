@@ -1,4 +1,3 @@
-import { ActivityNavigation } from './ActivityNavigation';
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -131,7 +130,7 @@ export const ProgramRegisterPage: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <ActivityNavigation />
+
       <Link
         to={`/programs/${prog.id}`}
         className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900"

@@ -1,5 +1,4 @@
 import { programUnlimited } from './rules';
-import { ActivityNavigation } from './ActivityNavigation';
 import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,8 +12,6 @@ import {
   Megaphone,
   MessageSquare,
   Plus,
-  QrCode,
-  ScanLine,
   ShieldCheck,
   UserCheck,
   X,
@@ -58,13 +55,6 @@ export const ProgramManagePage: React.FC = () => {
   const [reviewReason, setReviewReason] = useState('');
   const [filterSlot, setFilterSlot] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-
-  const [checkInSlot, setCheckInSlot] = useState('all');
-  const [checkInInput, setCheckInInput] = useState('');
-  const [isScanning, setIsScanning] = useState(false);
-  const [checkedInRecords, setCheckedInRecords] = useState<Record<string, string>>({
-    'pr-1': '08:15:30',
-  });
 
   const [annOpen, setAnnOpen] = useState(false);
   const [annTitle, setAnnTitle] = useState('');
@@ -134,43 +124,6 @@ export const ProgramManagePage: React.FC = () => {
     return true;
   });
 
-  const handlePerformCheckIn = (reg: ProgramRegistration) => {
-    if (checkedInRecords[reg.id]) {
-      toast.error(`⚠️ Cảnh báo chống quét trùng: Mã của ${reg.profileSnapshot.fullName} đã điểm danh lúc ${checkedInRecords[reg.id]}! Không thể quét trùng.`);
-      return;
-    }
-    const nowTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    setCheckedInRecords((prev) => ({ ...prev, [reg.id]: nowTime }));
-    toast.success(`🎉 Điểm danh thành công: ${reg.profileSnapshot.fullName} (${reg.profileSnapshot.studentCode}) - Ca: ${reg.slotName || 'Mặc định'}`);
-  };
-
-  const handleManualCodeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanCode = checkInInput.trim().toUpperCase();
-    if (!cleanCode) return;
-
-    const match = confirmedRegs.find(
-      (r) =>
-        r.id.toUpperCase() === cleanCode ||
-        `SCS-2026-REG${r.id.slice(-6).toUpperCase()}` === cleanCode ||
-        r.profileSnapshot.studentCode.toUpperCase() === cleanCode ||
-        cleanCode.endsWith(r.id.slice(-6).toUpperCase())
-    );
-
-    if (!match) {
-      toast.error(`Không tìm thấy đăng ký nào khớp với mã "${checkInInput}". Vui lòng kiểm tra lại.`);
-      return;
-    }
-
-    if (checkedInRecords[match.id]) {
-      toast.error(`⚠️ Cảnh báo quét trùng: Mã này đã điểm danh lúc ${checkedInRecords[match.id]}!`);
-      return;
-    }
-
-    handlePerformCheckIn(match);
-    setCheckInInput('');
-  };
-
   const handleBatchApprove = async () => {
     const pendingRegs = registrations.filter((r) => r.status === 'Submitted');
     if (pendingRegs.length === 0) {
@@ -214,10 +167,10 @@ export const ProgramManagePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <ActivityNavigation />
+
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <Link
-          to="/programs?tab=organizing"
+          to="/admin/programs"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -277,9 +230,6 @@ export const ProgramManagePage: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="participants">
             Người tham gia đã xác nhận ({confirmedRegs.length})
-          </TabsTrigger>
-          <TabsTrigger value="checkin">
-            Quét QR &amp; Điểm danh ({Object.keys(checkedInRecords).length}/{confirmedRegs.length})
           </TabsTrigger>
           <TabsTrigger value="announcements">
             Thông báo chung ({announcements.length}/5 hôm nay)
@@ -472,164 +422,7 @@ export const ProgramManagePage: React.FC = () => {
           )}
         </TabsContent>
 
-        {/* TAB QUÉT QR & ĐIỂM DANH */}
-        <TabsContent value="checkin" className="space-y-4">
-          <Card className="p-5 space-y-4 bg-gradient-to-r from-neutral-50 to-brand-50/20 border-brand-200">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-card-title text-neutral-900 flex items-center gap-2">
-                  <QrCode className="h-5 w-5 text-brand-600" />
-                  Điểm danh theo ca &amp; Quét mã QR
-                </h3>
-                <p className="text-caption text-neutral-600">
-                  Kiểm soát chống quét trùng tự động: Hệ thống chỉ ghi nhận 1 lần quét duy nhất trên mỗi mã đăng ký.
-                </p>
-              </div>
 
-              {/* Ca filter for checkin */}
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-caption font-semibold text-neutral-700">Chọn ca điểm danh:</span>
-                <Select
-                  value={checkInSlot}
-                  onChange={(e) => setCheckInSlot(e.target.value)}
-                  className="w-44 text-caption"
-                >
-                  <option value="all">Tất cả các ca</option>
-                  {prog.slots?.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            </div>
-
-            {/* Check-in input box */}
-            <form onSubmit={handleManualCodeSubmit} className="flex gap-2.5 max-w-xl">
-              <Input
-                placeholder="Nhập mã check-in (VD: SCS-2026-REG... hoặc MSSV)"
-                value={checkInInput}
-                onChange={(e) => setCheckInInput(e.target.value)}
-                className="font-mono text-sm uppercase"
-              />
-              <Button type="submit" variant="primary" leftIcon={<ShieldCheck className="h-4 w-4" />}>
-                Xác nhận điểm danh
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsScanning(!isScanning);
-                  toast.info(isScanning ? 'Đã tắt chế độ quét camera' : 'Đang kích hoạt camera quét QR...');
-                }}
-                leftIcon={<ScanLine className="h-4 w-4" />}
-              >
-                {isScanning ? 'Tắt quét' : 'Quét Camera'}
-              </Button>
-            </form>
-
-            {isScanning && (
-              <div className="p-6 bg-neutral-900 rounded-xl text-center text-white space-y-3 max-w-md mx-auto border-2 border-brand-500 animate-pulse">
-                <ScanLine className="h-10 w-10 text-brand-400 mx-auto" />
-                <div className="text-sm font-semibold">Khung quét Camera QR Code</div>
-                <p className="text-caption text-neutral-300">
-                  Hướng camera vào mã QR trên màn hình điện thoại của sinh viên để check-in tự động.
-                </p>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    if (confirmedRegs[0]) {
-                      handlePerformCheckIn(confirmedRegs[0]);
-                    }
-                    setIsScanning(false);
-                  }}
-                >
-                  Mô phỏng quét mã sinh viên đầu tiên
-                </Button>
-              </div>
-            )}
-          </Card>
-
-          {/* Table of confirmed attendees for this shift */}
-          <Card className="overflow-hidden">
-            <div className="p-4 border-b border-neutral-200 flex items-center justify-between">
-              <div className="text-caption font-semibold text-neutral-700">
-                Danh sách người tham gia theo ca ({confirmedRegs.filter((r) => checkInSlot === 'all' || r.slotId === checkInSlot).length} sinh viên)
-              </div>
-              <div className="text-caption text-emerald-700 font-semibold">
-                Đã có {confirmedRegs.filter((r) => checkedInRecords[r.id]).length} sinh viên check-in
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-neutral-50 border-b border-neutral-200 text-caption font-semibold text-neutral-600">
-                  <tr>
-                    <th className="py-3 px-4">Sinh viên</th>
-                    <th className="py-3 px-4">Mã Check-in</th>
-                    <th className="py-3 px-4">Ca hoạt động</th>
-                    <th className="py-3 px-4">Trạng thái điểm danh</th>
-                    <th className="py-3 px-4 text-right">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {confirmedRegs
-                    .filter((r) => checkInSlot === 'all' || r.slotId === checkInSlot)
-                    .map((reg) => {
-                      const checkInTime = checkedInRecords[reg.id];
-                      return (
-                        <tr key={reg.id} className="hover:bg-neutral-50/70">
-                          <td className="py-3 px-4">
-                            <div className="font-semibold text-neutral-900">
-                              {reg.profileSnapshot.fullName}
-                            </div>
-                            <div className="text-caption text-neutral-500">
-                              {reg.profileSnapshot.studentCode} · {reg.profileSnapshot.major}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <code className="text-caption font-mono font-bold text-neutral-800 bg-neutral-150 px-2 py-0.5 rounded">
-                              SCS-2026-REG{reg.id.slice(-6).toUpperCase()}
-                            </code>
-                          </td>
-                          <td className="py-3 px-4 text-caption text-neutral-700">
-                            {reg.slotName || 'Ca chung'}
-                          </td>
-                          <td className="py-3 px-4">
-                            {checkInTime ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-caption font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                Đã điểm danh ({checkInTime})
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-caption font-semibold bg-neutral-100 text-neutral-600">
-                                Chưa điểm danh
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            {checkInTime ? (
-                              <span className="text-caption text-neutral-400">Đã check-in</span>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePerformCheckIn(reg)}
-                                leftIcon={<UserCheck className="h-3.5 w-3.5" />}
-                              >
-                                Điểm danh nhanh
-                              </Button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="participants" className="space-y-4">
           <div className="flex items-center justify-between">
@@ -643,7 +436,7 @@ export const ProgramManagePage: React.FC = () => {
               onClick={handleExportCsv}
               leftIcon={<Download className="h-4 w-4" />}
             >
-              Xuất CSV điểm danh
+              Xuất danh sách tham gia
             </Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { seedConversations, seedMessages } from '../data/conversations';
 import { seedUsers } from '../data/users';
+import { seedProgramChannels, seedProgramRegistrations } from '../data/programs';
 import { seedGroups } from '../data/groups';
 import { mockDelay, getViewerId } from '../utils';
 import type { Conversation, Message, MessageAttachment } from '@/types/entities';
@@ -18,6 +19,13 @@ export const chatHandlers = [
   http.get('/api/v1/conversations', async ({ request }) => {
     await mockDelay(80, 150);
     if (!authenticated(request)) return error(401, 'Bạn cần đăng nhập để trò chuyện.');
+    for (const program of seedProgramChannels) {
+      const participantIds = [...new Set([program.organizer.userId, ...seedProgramRegistrations.filter(r => r.programId === program.id && r.status === 'Confirmed').map(r => r.studentId)])];
+      const groupId = `program-group-${program.id}`;
+      const existing = seedConversations.find(c => c.id === groupId);
+      if (existing) existing.participantIds = participantIds;
+      else seedConversations.push({ id: groupId, kind: 'program', refId: program.id, title: `Nhóm hoạt động: ${program.title}`, participantIds, requestStatus: 'accepted', unreadCount: 0 });
+    }
     return HttpResponse.json({ data: seedConversations.filter(c => c.participantIds.includes(getViewerId(request))) });
   }),
 

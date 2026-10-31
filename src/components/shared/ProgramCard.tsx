@@ -39,7 +39,9 @@ export const ProgramCard: React.FC<ProgramCardProps> = ({
 
   const images = [...(coverUrl ? [{ id: 'cover', url: coverUrl, alt: program.title }] : []), ...(program.gallery || []).filter(img => img.url !== coverUrl)];
   return (
-    <> <div className="relative"><ActivityCard
+    <> <div className="relative flex h-full min-w-0 flex-col"><ActivityCard
+      uniformHeight
+      className="flex-1"
       id={program.id}
       href={href}
       title={program.title}
@@ -65,7 +67,7 @@ export const ProgramCard: React.FC<ProgramCardProps> = ({
         myRegistrationStatus ? (
           <StatusBadge group="programRegistration" status={myRegistrationStatus} />
         ) : (
-          <div className="flex flex-col items-start gap-2"><span className="text-xs text-neutral-500">{program.confirmMode === 'Instant' ? 'Xác nhận ngay khi còn chỗ' : 'Cần xét hồ sơ · Gửi đơn chưa giữ chỗ'}</span><Link to={href}>
+          <div className="flex flex-col items-end gap-2 text-right"><span className="text-xs text-neutral-500">{program.confirmMode === 'Instant' ? 'Xác nhận ngay khi còn chỗ' : 'Cần xét hồ sơ · Gửi đơn chưa giữ chỗ'}</span><Link to={href}>
             <Button
               variant={isOpen ? 'primary' : 'secondary'}
               size="sm"

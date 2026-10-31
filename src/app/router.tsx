@@ -1,3 +1,4 @@
+const ManagerProgramsDashboardPage = React.lazy(() => import('@/features/programs/ManagerProgramsDashboardPage'));
 import React from 'react';
 import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
@@ -14,6 +15,11 @@ const AdminOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 const OperationsOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <ProtectedRoute requireRoles={['admin', 'manager', 'Admin', 'Manager']}>{children}</ProtectedRoute>
 );
+
+const AdminProgramsLanding: React.FC = () => {
+ const user = useAuthStore(state => state.user);
+ return user?.roles.includes('event_manager') ? <ManagerProgramsDashboardPage /> : <AdminProgramsPage />;
+};
 
 const AdminLanding: React.FC = () => {
   const user = useAuthStore((state) => state.user);
@@ -81,7 +87,6 @@ const ProgramDetailPage = React.lazy(() => import('@/features/programs/ProgramDe
 const ProgramRegisterPage = React.lazy(() => import('@/features/programs/ProgramRegisterPage'));
 const ProgramFormPage = React.lazy(() => import('@/features/programs/ProgramFormPage'));
 const ProgramManagePage = React.lazy(() => import('@/features/programs/ProgramManagePage'));
-const ProgramProposalsPage = React.lazy(() => import('@/features/programs/ProgramProposalsPage').then(module => ({ default: module.ProgramProposalsPage })));
 const ProgramProposalFormPage = React.lazy(() => import('@/features/programs/ProgramProposalFormPage'));
 const ProgramProposalReviewPage = React.lazy(() => import('@/features/programs/ProgramProposalsPage').then(module => ({ default: module.ProgramProposalReviewPage })));
 
@@ -206,10 +211,10 @@ export const router = createBrowserRouter([
 
       // FE-06: Community Program Registration
       { path: 'programs', element: <ProgramsExplorePage /> },
-      { path: 'programs/proposals', element: <ProtectedRoute requireRoles={['student', 'Student', 'club_rep']}><ProgramProposalsPage /></ProtectedRoute> },
+      { path: 'programs/proposals', element: <ProtectedRoute requireRoles={['student', 'Student', 'club_rep']}><Navigate to="/programs?tab=proposals" replace /></ProtectedRoute> },
       { path: 'programs/proposals/new', element: <ProtectedRoute requireRoles={['student', 'Student', 'club_rep']}><ProgramProposalFormPage key="new" /></ProtectedRoute> },
       { path: 'programs/proposals/:id/edit', element: <ProtectedRoute requireRoles={['student', 'Student', 'club_rep']}><ProgramProposalFormPage key="edit" /></ProtectedRoute> },
-      { path: 'programs/proposals/review', element: <ProtectedRoute requireRoles={['event_manager']}><ProgramProposalReviewPage /></ProtectedRoute> },
+      { path: 'programs/proposals/review', element: <ProtectedRoute requireRoles={['event_manager']}><Navigate to="/admin/programs?tab=review" replace /></ProtectedRoute> },
       { path: 'programs/:id', element: <ProgramDetailPage /> },
       { path: 'programs/new', element: <ProtectedRoute requireRoles={['event_manager', 'club_rep']}><ProgramFormPage /></ProtectedRoute> },
       { path: 'programs/:id/edit', element: <ProtectedRoute requireRoles={['event_manager', 'club_rep']}><ProgramFormPage /></ProtectedRoute> },
@@ -258,7 +263,7 @@ export const router = createBrowserRouter([
   {
     path: '/admin',
     element: (
-      <ProtectedRoute requireRoles={['admin', 'manager', 'school_admin', 'Admin', 'Manager', 'SchoolAdmin']}>
+      <ProtectedRoute requireRoles={['admin', 'manager', 'event_manager', 'school_admin', 'Admin', 'Manager', 'SchoolAdmin']}>
         <AdminShell />
       </ProtectedRoute>
     ),
@@ -270,7 +275,7 @@ export const router = createBrowserRouter([
       { path: 'users/:id', element: <AdminOnly><AdminUserDetailPage /></AdminOnly> },
       { path: 'moderation', element: <OperationsOnly><ModerationPage /></OperationsOnly> },
       { path: 'clubs', element: <OperationsOnly><AdminClubsPage /></OperationsOnly> },
-      { path: 'programs', element: <OperationsOnly><AdminProgramsPage /></OperationsOnly> },
+      { path: 'programs', element: <ProtectedRoute requireRoles={['admin', 'manager', 'event_manager', 'Admin', 'Manager']}><AdminProgramsLanding /></ProtectedRoute> },
       { path: 'mentor-applications', element: <OperationsOnly><AdminMentorApplicationsPage /></OperationsOnly> },
       { path: 'mentor-applications/:id', element: <OperationsOnly><AdminMentorApplicationDetailPage /></OperationsOnly> },
       { path: 'master-data', element: <OperationsOnly><MasterDataPage /></OperationsOnly> },
